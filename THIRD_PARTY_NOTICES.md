@@ -40,3 +40,12 @@ The game ideas and rules of Snake, Brick Breaker, Flappy Bird, Dino Run, Yahtzee
 Games section were taken from this project (Apache-2.0, Copyright its authors). The games were rewritten from
 scratch in Kotlin / Jetpack Compose for touch screens and everything is drawn in code: no images, sounds or
 other assets from the original were copied.
+
+## Nudge (GPL-3.0)
+
+Source: https://github.com/astraedus/nudge (package `com.astraedus.nudge`)
+
+The Shorts/Reels detection signals in `ShortsDetector.kt` (player container ids, selected-tab checks) and the
+look of the gate screen in `Overlay.kt` (opaque themed surface, countdown ring, leave button under the ring)
+follow Nudge's in-app detector and block screens. They were re-implemented for Focus's own View-based overlay
+and treat-bank flow; GPL-3.0 code may be combined with AGPL-3.0 under section 13 of each license.

@@ -29,6 +29,10 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.HOME" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_BROWSER" />
+        </intent>
         <intent><action android:name="android.intent.action.DIAL" /></intent>
         <intent><action android:name="android.media.action.IMAGE_CAPTURE" /></intent>
         <intent><action android:name="android.intent.action.SHOW_ALARMS" /></intent>
@@ -128,6 +132,15 @@
 
         <receiver android:name=".service.TimerReceiver" android:exported="false" />
         <receiver android:name=".service.ReminderReceiver" android:exported="false" />
+
+        <receiver android:name=".service.TreatWidget" android:exported="false" android:label="@string/widget_treat_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_treat_info" />
+        </receiver>
+        <receiver android:name=".service.TodayWidget" android:exported="false" android:label="@string/widget_today_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today_info" />
+        </receiver>
 
         <receiver android:name=".service.BootReceiver" android:exported="true">
             <intent-filter>

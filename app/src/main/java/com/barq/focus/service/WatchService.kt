@@ -218,6 +218,7 @@ class WatchService : Service() {
                 TouchCounter.start { FocusAccessibility.instance?.countSwipe() }
             }
         } else if (TouchCounter.running) TouchCounter.stop()
+        FocusWidgets.refresh(this)
         if (tick++ % 3 == 0) pollMusic(now)
         if (tick % 5 == 2 && Reminders.tickEvents(this)) Reminders.rescheduleEvents(this)
         if (tick % 30 == 1) refreshNotifs()

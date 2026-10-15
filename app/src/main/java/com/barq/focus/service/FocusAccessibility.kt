@@ -25,7 +25,6 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
-import android.view.accessibility.AccessibilityNodeInfo
 import com.barq.focus.data.Config
 import com.barq.focus.data.Db
 import com.barq.focus.data.Store
@@ -39,12 +38,6 @@ import com.barq.focus.data.startOfDay
 class FocusAccessibility : AccessibilityService() {
     companion object {
         @Volatile var instance: FocusAccessibility? = null
-        private const val YT = "com.google.android.youtube"
-        private const val IG = "com.instagram.android"
-        private val KEYS = mapOf(
-            YT to listOf("reel_player_page_container", "reel_recycler", "shorts_player", "reel_watch_fragment"),
-            IG to listOf("clips_viewer", "reel_viewer"),
-        )
     }
 
     private val h = Handler(Looper.getMainLooper())
@@ -79,7 +72,7 @@ class FocusAccessibility : AccessibilityService() {
     override fun onAccessibilityEvent(e: AccessibilityEvent?) {
         if (e == null) return
         val pkg = e.packageName?.toString() ?: return
-        if (pkg !in KEYS) return
+        if (pkg !in ShortsDetector.PACKAGES) return
         val now = System.currentTimeMillis()
         if (e.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && inShorts && !TouchCounter.running && now - lastScroll > 700) {
             lastScroll = now
@@ -95,33 +88,10 @@ class FocusAccessibility : AccessibilityService() {
         val root = rootInActiveWindow ?: return
         if (root.packageName?.toString() != pkg) return
 
-        val ids = HashSet<String>()
-        var selected = false
-        var budget = 600
-        val keysEarly = KEYS[pkg].orEmpty()
-        val debugOn = store.debug
-        var hit = false
-        fun walk(n: AccessibilityNodeInfo?) {
-            if (n == null || budget-- <= 0) return
-            if (hit && !debugOn) return
-            n.viewIdResourceName?.let { v ->
-                val id = v.substringAfter(":id/")
-                ids.add(id)
-                if (keysEarly.any { k -> id.contains(k) }) hit = true
-            }
-            if (n.isSelected) {
-                val t = n.text?.toString() ?: n.contentDescription?.toString()
-                if (t != null && t.equals("Shorts", ignoreCase = true)) selected = true
-            }
-            for (i in 0 until n.childCount) walk(n.getChild(i))
-        }
-        walk(root)
+        val found = ShortsDetector.isShorts(pkg, root)
 
-        val keys = KEYS[pkg] ?: return
-        val found = (pkg == YT && selected) || ids.any { id -> keys.any { id.contains(it) } }
-
-        if (store.debug && pkg == YT) {
-            store.debugIds = "selectedShortsTab=$selected\nshortsDetected=$found\n" + ids.sorted().joinToString("\n")
+        if (store.debug && pkg == ShortsDetector.YT) {
+            store.debugIds = "shortsDetected=$found\n" + ShortsDetector.harvestIds(root).joinToString("\n")
         }
 
         if (found) {
@@ -200,12 +170,12 @@ class FocusAccessibility : AccessibilityService() {
         val mins = db.totalsSince("shorts", startOfDay()).values.sum() / 60_000
         ov.show(
             tag = "shorts",
-            title = tr("Shorts"),
+            title = tr(if (shortsPkg in ShortsDetector.TIKTOK) "TikTok" else "Shorts"),
             subtitle = trf("%d swiped today  ·  %d min", store.shortsSwipes(), mins),
             delaySec = Config.DELAY_SECONDS,
             choices = ch,
             leaveLabel = tr("Back out"),
-            onLeave = { backOut() }
+            onLeave = { if (shortsPkg in ShortsDetector.TIKTOK) { exitApp(shortsPkg!!); endShorts() } else backOut() }
         )
     }
 

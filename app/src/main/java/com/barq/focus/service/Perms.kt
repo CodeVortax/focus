@@ -55,9 +55,34 @@ object Perms {
     }
 }
 
-/** Leaving an app: back out of it (so YouTube can't drop into picture-in-picture), then kill leftovers. */
+/**
+ * Leaving an app: back out of it (so YouTube can't drop into picture-in-picture), then kill leftovers.
+ * Browsers are the exception: BACK walks through (and closes) the tab history, so they just go Home.
+ */
 object Leaver {
+    private val BROWSERS = setOf(
+        "com.android.chrome", "com.chrome.beta", "com.chrome.dev", "com.chrome.canary", "org.chromium.chrome",
+        "org.mozilla.firefox", "org.mozilla.firefox_beta", "org.mozilla.fenix", "org.mozilla.focus",
+        "com.sec.android.app.sbrowser", "com.microsoft.emmx", "com.brave.browser", "com.opera.browser",
+        "com.opera.mini.native", "com.duckduckgo.mobile.android", "com.vivaldi.browser", "com.kiwibrowser.browser",
+        "com.android.browser", "com.mi.globalbrowser", "com.UCMobile.intl", "com.yandex.browser",
+        "org.torproject.torbrowser", "app.vanadium.browser",
+    )
+
+    private var browserCache: Set<String>? = null
+
+    fun isBrowser(ctx: Context, pkg: String): Boolean {
+        if (pkg in BROWSERS) return true
+        val found = browserCache ?: try {
+            val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER)
+            ctx.packageManager.queryIntentActivities(i, 0).map { it.activityInfo.packageName }.toSet()
+        } catch (_: Exception) { emptySet() }
+        browserCache = found
+        return pkg in found
+    }
+
     fun leave(ctx: Context, pkg: String) {
+        if (isBrowser(ctx, pkg)) { home(ctx); return }   // no BACK presses, no kill: tabs and history stay
         val a = FocusAccessibility.instance
         if (a != null) a.exitApp(pkg) else { home(ctx); kill(ctx, pkg, 700) }
     }
