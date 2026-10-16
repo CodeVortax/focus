@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.sp
 import com.barq.focus.data.Config
 import com.barq.focus.data.Db
 import com.barq.focus.data.Row as UsageRow
-import com.barq.focus.data.Span
+import com.barq.focus.data.UsageSpan
 import com.barq.focus.data.Store
 import com.barq.focus.data.SysUsage
 import com.barq.focus.data.tr
@@ -259,12 +259,12 @@ fun LogScreen(db: Db, onBack: () -> Unit) {
     val hasSys = remember { Perms.usage(ctx) }
 
     // all-app screen time (system) when allowed, else what Focus itself logged
-    var spans by remember { mutableStateOf<List<Span>?>(null) }
+    var spans by remember { mutableStateOf<List<UsageSpan>?>(null) }
     LaunchedEffect(Unit) {
         spans = withContext(Dispatchers.Default) {
             val sys = if (hasSys) SysUsage.spans(ctx, SysUsage.dayStart(6), now) else emptyList()
             sys.ifEmpty {
-                rows.filter { it.kind == "app" && it.t0 >= SysUsage.dayStart(6) }.map { Span(it.pkg, it.t0, it.t1 ?: now) }
+                rows.filter { it.kind == "app" && it.t0 >= SysUsage.dayStart(6) }.map { UsageSpan(it.pkg, it.t0, it.t1 ?: now) }
             }
         }
     }

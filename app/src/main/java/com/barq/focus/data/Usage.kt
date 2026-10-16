@@ -28,7 +28,7 @@ import androidx.core.graphics.drawable.toBitmap
 import java.util.Calendar
 
 /** One stretch of an app being on screen. */
-class Span(val pkg: String, val t0: Long, val t1: Long)
+class UsageSpan(val pkg: String, val t0: Long, val t1: Long)
 
 /**
  * Whole-phone screen time (every app, not just the tracked ones), rebuilt from the system's usage
@@ -48,32 +48,32 @@ object SysUsage {
         return s
     }
 
-    fun spans(ctx: Context, from: Long, to: Long): List<Span> {
+    fun spans(ctx: Context, from: Long, to: Long): List<UsageSpan> {
         val usm = ctx.getSystemService(UsageStatsManager::class.java) ?: return emptyList()
         val evs = try { usm.queryEvents(from, to) } catch (_: Exception) { null } ?: return emptyList()
         val skip = skipped(ctx)
         val e = UsageEvents.Event()
         val open = HashMap<String, Long>()
-        val raw = ArrayList<Span>()
+        val raw = ArrayList<UsageSpan>()
         while (evs.hasNextEvent()) {
             evs.getNextEvent(e)
             when (e.eventType) {
                 FG -> { val p = e.packageName; if (p !in skip && p !in open) open[p] = e.timeStamp }
-                BG -> open.remove(e.packageName)?.let { s -> if (e.timeStamp > s) raw += Span(e.packageName, s, e.timeStamp) }
+                BG -> open.remove(e.packageName)?.let { s -> if (e.timeStamp > s) raw += UsageSpan(e.packageName, s, e.timeStamp) }
                 SCREEN_OFF -> {
-                    open.forEach { (p, s) -> if (e.timeStamp > s) raw += Span(p, s, e.timeStamp) }
+                    open.forEach { (p, s) -> if (e.timeStamp > s) raw += UsageSpan(p, s, e.timeStamp) }
                     open.clear()
                 }
             }
         }
-        open.forEach { (p, s) -> if (to > s) raw += Span(p, s, to) }
+        open.forEach { (p, s) -> if (to > s) raw += UsageSpan(p, s, to) }
         // activity A -> activity B inside one app is one visit, not two
-        val out = ArrayList<Span>()
+        val out = ArrayList<UsageSpan>()
         for ((_, l) in raw.groupBy { it.pkg }) {
-            var cur: Span? = null
+            var cur: UsageSpan? = null
             for (x in l.sortedBy { it.t0 }) {
                 val c = cur
-                if (c != null && x.t0 - c.t1 <= 2000L) cur = Span(c.pkg, c.t0, maxOf(c.t1, x.t1))
+                if (c != null && x.t0 - c.t1 <= 2000L) cur = UsageSpan(c.pkg, c.t0, maxOf(c.t1, x.t1))
                 else { if (c != null) out += c; cur = x }
             }
             cur?.let { out += it }
