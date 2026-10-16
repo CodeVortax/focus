@@ -6,7 +6,7 @@
 
 A private, open-source Android app that turns your study plan into a reward system and puts a soft gate in front of the apps that eat your time.
 
-[![Version](https://img.shields.io/badge/version-0.15.10--beta-4285F4?style=flat-square)](#install)
+[![Version](https://img.shields.io/badge/version-0.16.0--beta-4285F4?style=flat-square)](#install)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-34A853?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#install)
 [![Internet](https://img.shields.io/badge/internet%20permission-none-2e8b57?style=flat-square)](PRIVACY.md)
@@ -14,7 +14,7 @@ A private, open-source Android app that turns your study plan into a reward syst
 
 **English** · [العربية](README.ar.md)
 
-[Features](#features) · [How it works](#how-it-works) · [Install](#install) · [Permissions](#permissions) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md)
+[Features](#features) · [How it works](#how-it-works) · [Install](#install) · [Permissions](#permissions) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
 </div>
 
@@ -34,7 +34,7 @@ Everything runs on your phone. There is no account, no server, and the manifest 
 
 | | |
 |---|---|
-| **Subjects and tasks** | Per-subject checklists with a pausable, extendable timer, an alarm with sound, and spoken reminders when you run over. |
+| **Subjects and tasks** | Per-subject checklists with a pausable, extendable timer, an alarm with sound, and spoken reminders when you run over. Long-press a card to edit, delete or change its media. |
 | **Treat bank** | Each subject's reward is split across its tasks and paid out as you tick them off. The bank resets daily. See [Treat bank](docs/architecture/treat-bank.md). |
 | **Weekly tasks** | Do them any day. The sooner you finish, the bigger the multiplier (x2 down to x1, then x0.5 once late). |
 | **Parked thoughts** | Capture a distracting idea straight into Notes without leaving the subject. |
@@ -47,8 +47,9 @@ Everything runs on your phone. There is no account, no server, and the manifest 
 | **Soft gate** | Choose which tracked apps (YouTube, Chrome, YouTube Music, VLC, Telegram) get the gate. Opening one shows a "what for?" overlay with a short countdown and a choice of passes. See [Gate and watcher](docs/architecture/gate-and-watcher.md). |
 | **Not-free blocks** | Scheduled time windows where only an allow-list of apps works. Optional strict mode removes the emergency override. |
 | **Shorts / Reels counting** | Detects YouTube Shorts, Instagram Reels and TikTok, counts swipes, and lets you leave. See [Shorts detection](docs/architecture/shorts-detection.md). |
+| **Safe leave** | **Leave** presses Back to exit most apps, but sends browsers Home so your tabs and history are kept. |
 | **Exact swipe count (root, optional)** | Reads raw touch events so each swipe counts once. |
-| **Usage log** | Time per tracked app and background music, kept in a local database. |
+| **Usage screen** | Digital Wellbeing-style screen time for every app: week chart, donut, per-app list, hourly strip and a day-by-day history. See [Usage screen](docs/guides/usage-screen.md). |
 
 ### Notes, reading and media
 
@@ -61,7 +62,7 @@ Everything runs on your phone. There is no account, no server, and the manifest 
 - Streaks, XP and levels.
 - 30 badges, including 10 hidden "Hall of Shame" ones. See [Badges and XP](docs/guides/badges.md).
 - 17 short games for breaks. See [Games](docs/guides/games.md).
-- Two home-screen widgets: **Treat bank** and **Today**.
+- Four home-screen widgets: **Treat bank**, **Streak**, **Shorts**, and **Today** with a block per subject. See [Widgets](docs/guides/widgets.md).
 
 ### Files and languages
 
@@ -80,6 +81,8 @@ WatchService (foreground, polls UsageStats every second)
 FocusAccessibility (YouTube, Instagram, TikTok only)
   -> ShortsDetector decides "is this a short-form feed?"
   -> swipe counted (accessibility scroll events, or TouchCounter with root)
+Usage screen -> SysUsage (system usage events) when allowed, else Db
+Widgets -> FocusWidgets.refresh(), called from the watcher loop
 Store (preferences) + Db (usage log) + NotesDb
   -> everything local, nothing leaves the device
 ```
@@ -88,12 +91,12 @@ The full picture is in [Architecture overview](docs/architecture/overview.md).
 
 ## Install
 
-> Focus is currently a **beta** (`0.15.10-beta`, version code 20). Requires **Android 8.0 (API 26)** or newer.
+> Focus is currently a **beta** (`0.16.0-beta`, version code 21). Requires **Android 8.0 (API 26)** or newer.
 
 ### Build from source
 
 ```bash
-git clone https://github.com/CodeVortax/focus.git focus
+git clone <your-repository-url> focus
 cd focus
 # Android SDK required; local.properties must contain sdk.dir
 gradle assembleDebug
@@ -111,7 +114,7 @@ Focus guides you through three grants on the home screen ("Setup needed"): **Usa
 
 | Permission | Why Focus needs it |
 |---|---|
-| Usage access (`PACKAGE_USAGE_STATS`) | Learn which app is in the foreground and log time per app. |
+| Usage access (`PACKAGE_USAGE_STATS`) | Learn which app is in the foreground, log time per app, and draw the Usage screen. |
 | Display over other apps (`SYSTEM_ALERT_WINDOW`) | Draw the gate overlay on top of gated apps. |
 | Accessibility service | Only for YouTube, Instagram and TikTok: detect Shorts/Reels, count swipes, close the app when you pick Leave. |
 | Notification listener | Only to read active media sessions, so background music can be logged. |
@@ -135,10 +138,10 @@ Focus guides you through three grants on the home screen ("Setup needed"): **Usa
 
 ```
 app/src/main/java/com/barq/focus/
-  data/      Store, Db, NotesDb, Foc (file formats), I18n, Game (XP, badges), Events, Music, Apps
+  data/      Store, Db, NotesDb, Usage (system screen time), Foc (file formats), I18n, Game (XP, badges), Events, Music, Apps
   service/   WatchService, Overlay, FocusAccessibility, ShortsDetector, TouchCounter,
-             Reminders, Alerts, Notifier, Music, widgets, boot
-  ui/        Compose screens: Home, Subject, Timer, Notes, Pdf, Music, Games, Trophies, Log, Setup, Import
+             Reminders, Alerts, Notifier, Music, Widgets, boot
+  ui/        Compose screens: Home, Subject, Timer, Notes, Pdf, Music, Games, Trophies, Log (Usage), Setup, Import
   ui/theme/  Colour, type, theme
 docs/        Architecture and guides (start at docs/README.md)
 ```
@@ -159,6 +162,8 @@ docs/        Architecture and guides (start at docs/README.md)
 | Permissions | [docs/guides/permissions.md](docs/guides/permissions.md) |
 | Building | [docs/guides/building.md](docs/guides/building.md) |
 | Badges and XP | [docs/guides/badges.md](docs/guides/badges.md) |
+| Widgets | [docs/guides/widgets.md](docs/guides/widgets.md) |
+| Usage screen | [docs/guides/usage-screen.md](docs/guides/usage-screen.md) |
 | Games | [docs/guides/games.md](docs/guides/games.md) |
 | Privacy policy | [PRIVACY.md](PRIVACY.md) |
 | Credits and third-party notices | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) |

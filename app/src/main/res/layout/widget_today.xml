@@ -4,21 +4,73 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center_vertical"
-    android:padding="16dp"
+    android:padding="12dp"
     android:background="@drawable/widget_bg">
-    <TextView android:id="@+id/w_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:textColor="@color/widget_dim" android:textSize="12sp" />
-    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:gravity="bottom">
-        <TextView android:id="@+id/w_big" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textSize="34sp" android:textStyle="bold" android:textColor="@color/widget_on" />
-        <TextView android:id="@+id/w_small" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:paddingStart="8dp" android:paddingBottom="6dp"
-            android:textColor="@color/widget_dim" android:textSize="13sp" />
-    </LinearLayout>
-    <TextView android:id="@+id/w_bank" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:paddingTop="6dp" android:textColor="@color/widget_on" android:textSize="14sp" />
-    <TextView android:id="@+id/w_swipes" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:paddingTop="2dp" android:textColor="@color/widget_dim" android:textSize="13sp" />
+    <TextView android:id="@+id/w_label" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="@color/widget_dim" android:textSize="12sp" android:maxLines="1" />
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:paddingTop="6dp" android:paddingBottom="6dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal">
+        <FrameLayout android:id="@+id/b1" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:layout_marginEnd="6dp">
+            <ImageView android:id="@+id/b1_bg" android:layout_width="match_parent" android:layout_height="match_parent"
+                android:scaleType="fitXY" android:src="@drawable/widget_block_bg" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                android:orientation="vertical" android:gravity="center_vertical" android:padding="8dp">
+                <TextView android:id="@+id/b1_name" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textColor="@color/widget_on" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/b1_count" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
+                <ImageView android:id="@+id/b1_bar" android:layout_width="match_parent" android:layout_height="4dp"
+                    android:layout_marginTop="4dp" android:scaleType="fitXY" />
+            </LinearLayout>
+        </FrameLayout>
+        <FrameLayout android:id="@+id/b2" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:layout_marginEnd="6dp">
+            <ImageView android:id="@+id/b2_bg" android:layout_width="match_parent" android:layout_height="match_parent"
+                android:scaleType="fitXY" android:src="@drawable/widget_block_bg" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                android:orientation="vertical" android:gravity="center_vertical" android:padding="8dp">
+                <TextView android:id="@+id/b2_name" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textColor="@color/widget_on" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/b2_count" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
+                <ImageView android:id="@+id/b2_bar" android:layout_width="match_parent" android:layout_height="4dp"
+                    android:layout_marginTop="4dp" android:scaleType="fitXY" />
+            </LinearLayout>
+        </FrameLayout>
+        <FrameLayout android:id="@+id/b3" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:layout_marginEnd="6dp">
+            <ImageView android:id="@+id/b3_bg" android:layout_width="match_parent" android:layout_height="match_parent"
+                android:scaleType="fitXY" android:src="@drawable/widget_block_bg" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                android:orientation="vertical" android:gravity="center_vertical" android:padding="8dp">
+                <TextView android:id="@+id/b3_name" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textColor="@color/widget_on" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/b3_count" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
+                <ImageView android:id="@+id/b3_bar" android:layout_width="match_parent" android:layout_height="4dp"
+                    android:layout_marginTop="4dp" android:scaleType="fitXY" />
+            </LinearLayout>
+        </FrameLayout>
+        <FrameLayout android:id="@+id/b4" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:layout_marginEnd="0dp">
+            <ImageView android:id="@+id/b4_bg" android:layout_width="match_parent" android:layout_height="match_parent"
+                android:scaleType="fitXY" android:src="@drawable/widget_block_bg" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                android:orientation="vertical" android:gravity="center_vertical" android:padding="8dp">
+                <TextView android:id="@+id/b4_name" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textColor="@color/widget_on" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/b4_count" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
+                <ImageView android:id="@+id/b4_bar" android:layout_width="match_parent" android:layout_height="4dp"
+                    android:layout_marginTop="4dp" android:scaleType="fitXY" />
+            </LinearLayout>
+        </FrameLayout>
+        </LinearLayout>
+        <TextView android:id="@+id/w_empty" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:gravity="center" android:textColor="@color/widget_dim" android:textSize="13sp" android:visibility="gone" />
+    </FrameLayout>
+    <TextView android:id="@+id/w_line" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="@color/widget_on" android:textSize="12sp" android:maxLines="1" />
 </LinearLayout>

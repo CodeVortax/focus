@@ -2,44 +2,46 @@
 
 ## Notes
 
-The notes module is an independent Compose implementation that follows the *feature set* of [NotallyX](https://github.com/Crustack/NotallyX). No NotallyX source was copied (see [third-party notices](../../THIRD_PARTY_NOTICES.md)).
+Notes live in their own SQLite database (`notes.db`, class `NotesDb`), separate from the usage log. The feature set follows [NotallyX](https://github.com/Crustack/NotallyX); the code is Focus's own (see [credits](../../THIRD_PARTY_NOTICES.md)).
 
-| Feature | Detail |
+| Feature | Notes |
 |---|---|
-| Types | Text note, or checklist |
-| Rich text | H1 to H3, bold, italic, underline, strikethrough, colours; stored as spans (`Rich.kt`) |
-| Organisation | Colour, pin, labels, search, archive |
-| Trash | Soft delete with a timestamp; *Empty trash* purges |
-| Saving | Autosave about 0.7 s after the last edit |
-| Backup | Export as JSON through the share sheet; import via `.foc` |
-| Auto-sort | Optional (`notesAutoSort`) |
+| Types | Text notes and checklists |
+| Rich text | H1-H3, bold, italic, underline, strikethrough, colours (`data/Rich.kt`, `ui/RichText.kt`) |
+| Organise | Labels, pin, archive, trash, search |
+| Backup | Export and import as JSON (`"focus": "notes"`, see [.foc file format](foc-files.md)) |
+| Parked thoughts | From a subject, capture a distracting idea straight into Notes and stay on task |
+| Voice notes | Record with the microphone, play back inside the note |
 
-Storage is SQLite (`notes.db`, table `notes`).
+Opening a note from the list goes to `NoteEditorScreen`; Back returns to the list, not Home.
 
-### Parking a thought
+## Voice notes
 
-Inside a subject, **Park a thought** saves an idea straight into Notes with the label *Parked* and returns you to the task. Parking five thoughts earns **Brain Dumper**.
-
-### Voice notes
-
-A note can hold voice recordings. `VoiceRecorder` writes AAC `.m4a` files to the app-private `voice/` folder, and each is stored on the note as a name, duration and timestamp. The microphone is used only while recording.
+- Recorded as AAC `.m4a` into the private `voice/` folder.
+- The microphone is used **only while you hold record**.
+- Voice files stay on the device.
 
 ## PDF library and reader
 
-| | Built-in reader | Episteme Reader |
-|---|---|---|
-| Engine | Android `PdfRenderer`, one page open at a time, off the main thread | The external app |
-| Scroll and zoom | Continuous scroll, two-axis pinch and pan | Its own |
-| Annotation | Pen, highlighter, eraser, undo, saved per PDF | Its own |
-| Extras | Bookmarks, day / sepia / night themes, remembers last page | Its own |
+| | |
+|---|---|
+| Library | A list of PDFs you added, with title, last page and page count. Files are **not copied**: Focus keeps a persisted read grant to the file. |
+| Built-in reader | Android `PdfRenderer`. Keeps Focus's look and remembers your page. |
+| Episteme Reader | If installed, **Setup > PDF reader** can hand PDFs to [Episteme](https://github.com/Aryan-Raj3112/episteme) instead. It is a separate app and is not bundled. If it is not installed Focus opens the built-in reader and says so. |
 
-Choose the reader under **Setup > PDF reader**. If Episteme is selected but not installed, Focus shows a message and opens the built-in reader. Episteme is not bundled; Focus hands it the file through a standard `VIEW` intent.
+Add a PDF from the library, or open one with Focus from any file manager. A `.foc` file whose header is `%PDF` is added the same way.
 
-PDFs reach the library by opening or sharing a `.pdf` or `.foc` file or from the PDF screen. The file is not copied; Focus keeps a persisted read grant.
+## Treat player and music
 
-Reading 100 pages, or adding three PDFs, earns **Bookworm**.
+- **Player:** plays a treat card's video or audio, spending from the [treat bank](treat-bank.md).
+- **Music:** folders, artists, playlists, favourites, queue, A-B repeat, speed and pitch, sleep timer, equalizer. Background playback runs in `MusicService`.
+- Background music is logged as `music` rows when **Notification access** is on (see [Permissions](../guides/permissions.md)).
 
-## Embedded player and music
+## Storage summary
 
-- **Treat player:** a treat card holding a video or audio file plays inside Focus with ExoPlayer, and each second of playback is paid from the [treat bank](treat-bank.md).
-- **Music:** the Music screen reads your library through `MediaStore`: songs, folders, artists, playlists, favourites, queue, play next, A-B repeat, speed and pitch, sleep timer, equalizer, song info and share. Playback runs in `MusicService` as a Media3 session, so it continues in the background.
+| What | Where |
+|---|---|
+| Notes | `notes.db` |
+| Voice notes | `voice/` |
+| PDF entries | `Store` (preferences) |
+| PDF and media files | Where you left them, by URI |

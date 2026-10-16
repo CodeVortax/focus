@@ -2,7 +2,11 @@
     <string name="app_name">Focus</string>
     <string name="a11y_desc">Focus reads the YouTube / Instagram screen only to notice Shorts and Reels, count them, and close the app when you choose Leave. Nothing leaves your phone.</string>
     <string name="widget_treat_name">Focus · Treat bank</string>
-    <string name="widget_treat_desc">Minutes left in today\'s treat bank</string>
+    <string name="widget_treat_desc">Treat bank minutes and your work streak</string>
     <string name="widget_today_name">Focus · Today</string>
-    <string name="widget_today_desc">Tasks done, treat bank and Shorts swiped today</string>
+    <string name="widget_today_desc">Today\'s subjects with progress, treat bank, streak and Shorts</string>
+    <string name="widget_streak_name">Focus · Streak</string>
+    <string name="widget_streak_desc">Your work-day and light-Shorts streaks</string>
+    <string name="widget_shorts_name">Focus · Shorts</string>
+    <string name="widget_shorts_desc">Shorts and Reels swiped today</string>
 </resources>

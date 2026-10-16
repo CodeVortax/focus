@@ -8,7 +8,7 @@ Focus is a single-module Android app (`:app`, package `com.barq.focus`) written 
 ui/        Compose screens. Read and write through Store / Db / NotesDb.
 service/   Long-lived pieces: the watcher, the overlay, the accessibility service,
            reminders, alerts, widgets, the music service.
-data/      Persistence, rules and formats: Store, Db, NotesDb, Foc, I18n, Game, Events, Music, Apps.
+data/      Persistence, rules and formats: Store, Db, NotesDb, Usage, Foc, I18n, Game, Events, Music, Apps.
 ```
 
 `ui/` never talks to Android system services for monitoring; `service/` does. They meet in `data/`.
@@ -23,12 +23,12 @@ data/      Persistence, rules and formats: Store, Db, NotesDb, Foc, I18n, Game, 
 | `MediaListener` | Notification listener | Exists only so Android lets Focus read active media sessions |
 | `MusicService` | Media session service | Background playback for the built-in music player |
 | `TimerReceiver`, `ReminderReceiver` | Broadcast receivers | Timer alarms, event and nudge reminders |
-| `TreatWidget`, `TodayWidget` | App widgets | Home-screen treat bank and today summary |
+| `TreatWidget`, `StreakWidget`, `ShortsWidget`, `TodayWidget` | App widgets | Home-screen treat bank, streaks, Shorts count and today's subjects. See [Widgets](../guides/widgets.md) |
 | `BootReceiver` | Broadcast receiver | Restarts the watcher after reboot |
 
 ## Navigation
 
-`FocusApp` is a small state machine over a `screen` string: `home`, `subject`, `timer`, `notes`, `note`, `player`, `pdfs`, `pdf`, `import`, `music`, `games`, `trophies`, `log`, `schedule`, `events`, `setup`. Back always returns to a sensible parent (`note` to `notes`, `pdf` to `pdfs`, everything else to `home`). The active timer survives process death: `FocusApp` reopens the card whose id is stored as `activeCardId`.
+`FocusApp` is a small state machine over a `screen` string: `home`, `subject`, `timer`, `notes`, `note`, `player`, `pdfs`, `pdf`, `import`, `music`, `games`, `trophies`, `log` (the Usage screen), `schedule`, `events`, `setup`. Back always returns to a sensible parent (`note` to `notes`, `pdf` to `pdfs`, everything else to `home`). The active timer survives process death: `FocusApp` reopens the card whose id is stored as `activeCardId`.
 
 ## Storage
 
@@ -36,6 +36,7 @@ data/      Persistence, rules and formats: Store, Db, NotesDb, Foc, I18n, Game, 
 |---|---|
 | Settings, cards, tasks, blocks, gated apps, treat bank, daily counters, language packs | `Store` (SharedPreferences) |
 | Usage log (`app`, `music`, `shorts` rows with start, end, reason, swipe count) | `Db`, SQLite file `focus.db`, table `usage` |
+| Whole-phone screen time for the Usage screen | Not stored: rebuilt on demand from system usage events (`SysUsage`) |
 | Notes | `NotesDb`, SQLite file `notes.db` |
 | Events and meetings | SharedPreferences file `focus_events` |
 | Voice notes | Private `voice/` folder, AAC `.m4a` |

@@ -140,6 +140,8 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     }
     var showEnd by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<FocusCard?>(null) }
+    var menu by remember { mutableStateOf<FocusCard?>(null) }
+    var editing by remember { mutableStateOf<FocusCard?>(null) }
 
     Scaffold(
         topBar = {
@@ -243,7 +245,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp)
             ) {
-                items(cards, key = { it.id }) { c -> CardTile(c, store.spent(c.id) / 60_000, { open(c) }, { deleting = c }) }
+                items(cards, key = { it.id }) { c -> CardTile(c, store.spent(c.id) / 60_000, { open(c) }, { menu = c }) }
                 item {
                     Box(
                         Modifier.fillMaxWidth().height(136.dp).clip(RoundedCornerShape(24.dp))
@@ -284,6 +286,28 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     )
     if (showAdd) AddCardDialog({ showAdd = false }) { c ->
         store.saveCards(cards + c); cards = store.cards(); showAdd = false
+    }
+    menu?.let { m ->
+        AlertDialog(
+            onDismissRequest = { menu = null },
+            title = { Text(m.title) },
+            text = {
+                Column {
+                    TextButton(onClick = { editing = m; menu = null }) { Text(tr("Edit")) }
+                    if (m.type == CardType.TREAT) TextButton(onClick = {
+                        menu = null; pendingTreat = m; mediaPicker.launch(arrayOf("video/*", "audio/*"))
+                    }) { Text(tr("Change media file")) }
+                    TextButton(onClick = { deleting = m; menu = null }) { Text(tr("Delete")) }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { menu = null }) { Text(tr("Cancel")) } }
+        )
+    }
+    editing?.let { e ->
+        AddCardDialog({ editing = null }, initial = e) { c ->
+            store.saveCards(store.cards().map { if (it.id == c.id) c else it }); cards = store.cards(); editing = null
+        }
     }
     deleting?.let { d ->
         AlertDialog(
@@ -406,22 +430,23 @@ private fun CardTile(c: FocusCard, spentMin: Long, onClick: () -> Unit, onLong: 
 }
 
 @Composable
-private fun AddCardDialog(onDismiss: () -> Unit, onAdd: (FocusCard) -> Unit) {
-    var title by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(CardType.STUDY) }
-    var minutes by remember { mutableStateOf("60") }
+private fun AddCardDialog(onDismiss: () -> Unit, initial: FocusCard? = null, onAdd: (FocusCard) -> Unit) {
+    var title by remember { mutableStateOf(initial?.title ?: "") }
+    var type by remember { mutableStateOf(initial?.type ?: CardType.STUDY) }
+    var minutes by remember { mutableStateOf((initial?.minutes ?: 60).toString()) }
+    var reward by remember { mutableStateOf((initial?.reward ?: 10).toString()) }
     var lines by remember { mutableStateOf("") }
-    var color by remember { mutableStateOf(CardSwatches[0]) }
+    var color by remember { mutableStateOf(initial?.let { Color(it.color) } ?: CardSwatches[0]) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(tr("New card")) },
+        title = { Text(tr(if (initial == null) "New card" else "Edit card")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     title, { title = it }, label = { Text(tr("Title")) }, singleLine = true,
                     textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Content)
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (initial == null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CardType.values().forEach { t ->
                         FilterChip(
                             selected = type == t,
@@ -435,7 +460,14 @@ private fun AddCardDialog(onDismiss: () -> Unit, onAdd: (FocusCard) -> Unit) {
                     label = { Text(tr(if (type == CardType.STUDY) "Time budget (min, be generous)" else "Minutes")) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
-                if (type == CardType.STUDY) {
+                if (type == CardType.STUDY && initial != null) {
+                    OutlinedTextField(
+                        reward, { reward = it.filter(Char::isDigit).take(3) },
+                        label = { Text(tr("Treat reward (min) for finishing the subject")) }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
+                if (type == CardType.STUDY && initial == null) {
                     OutlinedTextField(
                         lines, { lines = it }, label = { Text(tr("Tasks (one per line, optional)")) }, minLines = 3, maxLines = 6,
                         textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Content)
@@ -456,11 +488,19 @@ private fun AddCardDialog(onDismiss: () -> Unit, onAdd: (FocusCard) -> Unit) {
             TextButton(
                 enabled = title.isNotBlank(),
                 onClick = {
-                    val items = if (type == CardType.STUDY)
-                        lines.lines().map { it.trim() }.filter { it.isNotEmpty() }.map { Item(it, false) } else emptyList()
-                    onAdd(FocusCard(System.currentTimeMillis(), title.trim(), type, color.toArgb(), (minutes.toIntOrNull() ?: 60).coerceIn(1, 600), items))
+                    if (initial != null) {
+                        onAdd(initial.copy(
+                            title = title.trim(), color = color.toArgb(),
+                            minutes = (minutes.toIntOrNull() ?: initial.minutes).coerceIn(1, 600),
+                            reward = (reward.toIntOrNull() ?: initial.reward).coerceIn(0, 600)
+                        ))
+                    } else {
+                        val items = if (type == CardType.STUDY)
+                            lines.lines().map { it.trim() }.filter { it.isNotEmpty() }.map { Item(it, false) } else emptyList()
+                        onAdd(FocusCard(System.currentTimeMillis(), title.trim(), type, color.toArgb(), (minutes.toIntOrNull() ?: 60).coerceIn(1, 600), items))
+                    }
                 }
-            ) { Text(tr("Add")) }
+            ) { Text(tr(if (initial == null) "Add" else "Save")) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancel")) } }
     )

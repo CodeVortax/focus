@@ -32,14 +32,20 @@ Set Focus to **Unrestricted** in the phone's battery settings. Many ROMs otherwi
 
 App colour (System or custom), theme, tick shape, and language (English, Arabic, or an imported pack). See [Languages](../architecture/i18n.md).
 
-## 7. Plan your first day
+## 7. Add widgets (optional)
 
-Either add subjects by hand (**+ > New card**), or paste a plan from an AI: **+ > Import / paste (.foc)**. The prompt to give the AI is in [.foc file format](../architecture/foc-files.md#asking-an-ai-to-plan-your-day).
+Long-press the home screen > **Widgets** > **Focus**. Four are available; see [Widgets](widgets.md).
+
+## 8. Plan your first day
+
+Either add subjects by hand (**+ > New card**), or paste a plan from an AI: **+ > Import / paste (.foc)**. Long-press a card any time to **Edit** it (title, time, reward, colour), change its media, or delete it. The prompt to give the AI is in [.foc file format](../architecture/foc-files.md#asking-an-ai-to-plan-your-day).
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
+| Leave in a browser closes my tabs | Update to 0.16.0 or newer: browsers are now sent Home, never Back |
+| Usage screen shows only a few apps | Grant Usage access; without it only the tracked apps are known |
 | Gate never appears | Check Usage access and Display over other apps; check the app is switched on under *Gate these apps*; set battery to Unrestricted |
 | Shorts are not counted | Accessibility service is off, or the app changed its UI. Collect IDs (see [Shorts detection](../architecture/shorts-detection.md#debugging-a-broken-detector)) |
 | Counts look too high | Enable root *Precise swipe counting*, or accept the scroll-based approximation |

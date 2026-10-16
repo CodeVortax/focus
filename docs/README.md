@@ -29,10 +29,13 @@ Task-oriented pages for users and contributors.
 | [Building](guides/building.md) | Local build, Termux, CI |
 | [Badges and XP](guides/badges.md) | Streaks, levels, all 30 badges |
 | [Games](guides/games.md) | The 17 break games |
+| [Widgets](guides/widgets.md) | The four home-screen widgets and how they refresh |
+| [Usage screen](guides/usage-screen.md) | Week chart, donut, hourly strip, where the numbers come from |
 
 ## Project files
 
 - [Privacy policy](../PRIVACY.md)
+- [Changelog](../CHANGELOG.md)
 - [Contributing](../CONTRIBUTING.md)
 - [Credits and third-party notices](../THIRD_PARTY_NOTICES.md)
 - [License header used in every source file](LICENSE_HEADER.txt)

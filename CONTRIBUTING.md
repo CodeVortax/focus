@@ -13,7 +13,7 @@ Thanks for helping. Focus is a small, local-only Android app, and it is easiest 
 ## Getting started
 
 ```bash
-git clone https://github.com/CodeVortax/focus.git focus && cd focus
+git clone <your-repository-url> focus && cd focus
 gradle assembleDebug
 ```
 
@@ -32,7 +32,7 @@ If you can, add the new id to `PLAYER_IDS` or `FRAGMENTS` in `ShortsDetector.kt`
 
 ## Bug reports
 
-Include: Focus version (`0.15.10-beta` or newer), Android version and device, what you did, what you expected, what happened. For crashes use **Setup > Copy last crash**.
+Include: Focus version (`0.16.0-beta` or newer), Android version and device, what you did, what you expected, what happened. For crashes use **Setup > Copy last crash**.
 
 ## Pull requests
 

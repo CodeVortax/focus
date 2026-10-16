@@ -18,7 +18,7 @@ You can verify this: read `app/src/main/AndroidManifest.xml` and `app/build.grad
 
 ## What the special permissions can see
 
-- **Usage access:** the package name of the foreground app and when it changed. Used to log time and show the gate.
+- **Usage access:** the package name of the foreground app and when it changed. Used to log time, show the gate, and draw the Usage screen. For that screen Focus reads Android's own usage events for the last 7 days (every app's foreground time) and computes the charts on the device. They are not copied into Focus's database and never leave the phone.
 - **Accessibility service:** limited to YouTube, Instagram and TikTok. Focus inspects the screen structure of those apps to decide whether a short-form feed is open, counts scroll events, and presses Back when you choose to leave. It does not read messages, text you type, passwords or notification content, and it stores only counts and times.
 - **Notification access:** used only to list active media sessions (which app is playing audio). Focus does not read the content of notifications.
 - **Microphone:** only while you record a voice note.

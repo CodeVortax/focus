@@ -1,59 +1,52 @@
 # Treat bank
 
-The treat bank is a daily balance of minutes you earn by finishing tasks and spend on distraction. It lives in `Store` under day-keyed counters (`earnedS_<day>`, `spentS_<day>`), so each new day starts at zero.
-
-```
-bank (seconds) = max(0, earned today - spent today)
-```
+The treat bank is a pool of minutes you **earn by finishing work** and **spend on distraction**. It resets every day.
 
 ## Earning
 
-### Subject reward, split across tasks
-
-Every study subject has a **reward** (default 10 min) for finishing the whole subject. It is paid proportionally:
-
-```
-target = reward x 60 x (tasks done) / (tasks total)
-```
-
-Finish 1 of 4 tasks in a 10-minute subject and you hold 2.5 minutes. `settle()` only ever adds: unticking a task never takes anything back, and each subject remembers what it has already paid today.
-
-### Day bonuses
-
-| Bonus | Minutes | When |
-|---|---|---|
-| Episode bonus | +40 | Every task of every subject is done |
-| Half-episode | +20 | You press **End day** with at least half the tasks done (and the full bonus is not already claimed) |
-
-If you cash the half-episode and later finish everything, the full bonus is reduced by the 20 you already took. Finishing the plate before 18:00 flags a speedrun for the Speedrunner badge.
-
-### Weekly tasks
-
-Weekly tasks can be done any day. They carry a base reward (default 15 min) multiplied by how early you finish:
-
-| When | Multiplier |
+| Source | Amount |
 |---|---|
-| The moment you add it | x2 |
-| Sliding linearly toward the end of the week | down to x1 |
+| Ticking tasks | A subject's **reward** (default 10 min, editable) is split across its tasks and paid as you tick them. 1 of 4 tasks on a 10 minute subject pays 2.5 minutes. Unticking never takes anything back. |
+| Clearing the plate | **+40 minutes** the first time every subject is fully done that day ("the episode"). If you already took the half episode, +20 instead. |
+| Half episode | End the day with at least half the tasks done and press **End day**: **+20 minutes**. Once per day, and not after a full clear. |
+| Weekly tasks | See below. |
+
+A clear before 18:00 earns the **Speedrunner** badge.
+
+## Weekly tasks
+
+A weekly task is a task you may do any day of the week. It pays **once** (it cannot be paid twice), scaled by how early you finish:
+
+| When you finish | Multiplier |
+|---|---|
+| Right away | x2 |
+| Falling linearly through the week | x2 down to x1 |
+| At the deadline (end of the week) | x1 |
 | After the deadline | x0.5 |
 
-The reward is paid once (`paid` flag), so ticking and unticking cannot be farmed.
+The default base reward is 15 minutes (`Config.WEEKLY_BASE_MIN`).
 
 ## Spending
 
 | Where | Cost |
 |---|---|
-| Gate overlay: *Treat* | 10 min per purchase (`TREAT_STEP`) |
-| Gate overlay: *Use all* | The whole bank |
-| Shorts/Reels overlay: *Treat*, *Use all* | Same |
-| Built-in player (treat cards with a video or audio file) | One second of bank per second of playback; pauses when the bank is empty |
+| App gate: **Treat** | 10 minutes (`Config.TREAT_STEP`) for a 10 minute pass |
+| App gate: **Use all** | The whole bank for a pass of the same length |
+| Shorts gate: **Treat** / **Use all** | Same |
+| Built-in player | Plays treat videos from the bank |
 
-When the bank holds less than 10 minutes the button is replaced with a disabled "Treat bank empty: finish tasks to earn".
+If the bank is under 10 minutes the Treat button is disabled and says **Treat bank empty: finish tasks to earn**.
 
-## Daily rollover
+## Where you see it
 
-On the first launch of a new day `rollover()` removes finished tasks and keeps unfinished ones, so your plate carries over while your bank does not. The biggest plate you had that day is remembered for the Plate Hoarder badge.
+- The treat bank card on the home screen (tap it for the [Usage screen](../guides/usage-screen.md)).
+- The **Treat bank** and **Today** [widgets](../guides/widgets.md).
+- The status notification.
 
-## Widgets
+## Storage
 
-The **Treat bank** widget shows the current balance. The **Today** widget (4x2, resizable) shows tasks done, the bank and Shorts swiped today. Tapping either opens Focus.
+Per-day counters in `Store`: `earnedS_<day>` and `spentS_<day>` in seconds, plus `subs_<day>_<cardId>` for what each subject has already paid. `bank = earned - spent`, never below zero. Whole minutes are what the gate can sell; the display shows tenths.
+
+## Why it is built this way
+
+Paying per task (not per subject) means a half-finished subject still moves the bank, so there is always a reason to tick one more. The bank resets daily so you cannot save a week of study for a night of scrolling.

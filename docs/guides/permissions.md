@@ -6,7 +6,7 @@ Focus declares these in `AndroidManifest.xml`. **`INTERNET` is not among them**,
 
 | Setting | Manifest / service | Used for | Without it |
 |---|---|---|---|
-| Usage access | `PACKAGE_USAGE_STATS` | Foreground app detection and per-app time | No gate, no log |
+| Usage access | `PACKAGE_USAGE_STATS` | Foreground app detection, per-app time, and the all-app [Usage screen](usage-screen.md) | No gate, no log; the Usage screen shows only tracked apps |
 | Display over other apps | `SYSTEM_ALERT_WINDOW` | The gate, block and Shorts overlays | No overlays |
 | Accessibility service | `FocusAccessibility` | Shorts/Reels detection in YouTube, Instagram, TikTok; Back-out | No Shorts counting |
 | Notification access | `MediaListener` | Reading active media sessions so background music can be logged | Music not logged |
@@ -28,7 +28,7 @@ The accessibility service is restricted to four packages (see [Shorts detection]
 
 ## Package visibility (`<queries>`)
 
-Focus asks Android which apps can handle camera, phone, clock, messages, browser, maps and launcher intents, to build the allow-list keywords for not-free blocks. It also checks whether Episteme Reader (`com.aryan.reader`, `com.aryan.reader.oss`) is installed.
+Focus asks Android which apps can handle camera, phone, clock, messages, browser, maps and launcher intents, to build the allow-list keywords for not-free blocks, to recognise browsers (so **Leave** sends them Home instead of pressing Back), and to show app names and icons on the Usage screen. It also checks whether Episteme Reader (`com.aryan.reader`, `com.aryan.reader.oss`) is installed.
 
 ## Optional root
 

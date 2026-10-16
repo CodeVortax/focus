@@ -137,6 +137,14 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_treat_info" />
         </receiver>
+        <receiver android:name=".service.StreakWidget" android:exported="false" android:label="@string/widget_streak_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_streak_info" />
+        </receiver>
+        <receiver android:name=".service.ShortsWidget" android:exported="false" android:label="@string/widget_shorts_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_shorts_info" />
+        </receiver>
         <receiver android:name=".service.TodayWidget" android:exported="false" android:label="@string/widget_today_name">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today_info" />
