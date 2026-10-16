@@ -140,7 +140,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     }
     var showEnd by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<FocusCard?>(null) }
-    var menu by remember { mutableStateOf<FocusCard?>(null) }
+    var cardMenu by remember { mutableStateOf<FocusCard?>(null) }
     var editing by remember { mutableStateOf<FocusCard?>(null) }
 
     Scaffold(
@@ -245,7 +245,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp)
             ) {
-                items(cards, key = { it.id }) { c -> CardTile(c, store.spent(c.id) / 60_000, { open(c) }, { menu = c }) }
+                items(cards, key = { it.id }) { c -> CardTile(c, store.spent(c.id) / 60_000, { open(c) }, { cardMenu = c }) }
                 item {
                     Box(
                         Modifier.fillMaxWidth().height(136.dp).clip(RoundedCornerShape(24.dp))
@@ -287,21 +287,21 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     if (showAdd) AddCardDialog({ showAdd = false }) { c ->
         store.saveCards(cards + c); cards = store.cards(); showAdd = false
     }
-    menu?.let { m ->
+    cardMenu?.let { m ->
         AlertDialog(
-            onDismissRequest = { menu = null },
+            onDismissRequest = { cardMenu = null },
             title = { Text(m.title) },
             text = {
                 Column {
-                    TextButton(onClick = { editing = m; menu = null }) { Text(tr("Edit")) }
+                    TextButton(onClick = { editing = m; cardMenu = null }) { Text(tr("Edit")) }
                     if (m.type == CardType.TREAT) TextButton(onClick = {
-                        menu = null; pendingTreat = m; mediaPicker.launch(arrayOf("video/*", "audio/*"))
+                        cardMenu = null; pendingTreat = m; mediaPicker.launch(arrayOf("video/*", "audio/*"))
                     }) { Text(tr("Change media file")) }
-                    TextButton(onClick = { deleting = m; menu = null }) { Text(tr("Delete")) }
+                    TextButton(onClick = { deleting = m; cardMenu = null }) { Text(tr("Delete")) }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { menu = null }) { Text(tr("Cancel")) } }
+            dismissButton = { TextButton(onClick = { cardMenu = null }) { Text(tr("Cancel")) } }
         )
     }
     editing?.let { e ->
