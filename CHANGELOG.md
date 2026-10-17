@@ -2,6 +2,11 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.19.1-beta (version code 27)
+
+### Fixed
+- Build error in the font code (missing state delegate imports).
+
 ## 0.19.0-beta (version code 26)
 
 ### Added
