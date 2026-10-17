@@ -49,3 +49,7 @@ The Shorts/Reels detection signals in `ShortsDetector.kt` (player container ids,
 look of the gate screen in `Overlay.kt` (opaque themed surface, countdown ring, leave button under the ring)
 follow Nudge's in-app detector and block screens. They were re-implemented for Focus's own View-based overlay
 and treat-bank flow; GPL-3.0 code may be combined with AGPL-3.0 under section 13 of each license.
+
+## Omnibridge (optional, not bundled)
+
+Focus's docs point to [Omnibridge](https://github.com/iTaysonLab/Omnibridge) (iTaysonLab, GPL-2.0) as a separate companion app for phones whose capsules only support whitelisted players. No Omnibridge code is included in Focus.

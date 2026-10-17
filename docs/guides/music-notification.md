@@ -20,4 +20,12 @@ Settings > **Music notification and capsule** shows the steps for your phone and
 - **Xiaomi / Redmi / POCO:** allow the notification, enable Autostart, battery saver No restrictions.
 - **Pixel:** Quick Settings and the lock screen show it once notifications are allowed.
 
+## Phones that whitelist music apps
+
+Some Xiaomi, OPPO and other BBK-family phones draw their capsule or "Dynamic Island" only for a built-in list of music apps (QQ Music is the usual one), so a perfectly valid media session is ignored. [Omnibridge](https://github.com/iTaysonLab/Omnibridge) is a separate, free app (GPL-2.0, not bundled with Focus) for this case: it mirrors any player's media session and presents itself as a supported player. Per its README you install it, give it notification access (App info > Allow permissions), and follow its setup. It lists Xiaomi and OPPO as supported; vivo has extra checks, and Realme is not mentioned there but is closely related to OPPO, so it may work. It only needs the player to have a working media session, which Focus has.
+
+## Check it with the test sound
+
+Settings > Music notification and capsule > **Play a test sound** plays a short tone through the same path as note audio. Pull down Quick Settings: Focus should appear in the media player with play/pause. If it does, Focus is doing its part and any remaining gap is the phone's whitelist (see above). If it does not, check notifications and battery first.
+
 Menu names differ between software versions; if yours differs, search the Settings app for "capsule", "Now bar" or "Dynamic Island".
