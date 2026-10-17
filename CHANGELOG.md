@@ -2,6 +2,12 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.18.1-beta (version code 24)
+
+### Added
+- **Test sound** in Settings > Music notification and capsule: plays a short tone so you can check whether Focus appears in the Quick Settings media player and in your phone's capsule.
+- **Omnibridge** guidance for phones that only draw capsules for whitelisted music apps (Xiaomi, OPPO and other BBK phones). See [Music notification](docs/guides/music-notification.md#phones-that-whitelist-music-apps).
+
 ## 0.18.0-beta (version code 23)
 
 ### Added

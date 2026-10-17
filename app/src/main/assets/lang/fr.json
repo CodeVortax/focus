@@ -827,6 +827,11 @@
   "until %s": "jusqu'à %s",
   "watched": "vu",
   "work-day streak": "série de jours de travail",
-  "x%s  ·  +%s min if done now  ·  %s": "x%s  ·  +%s min si terminé maintenant  ·  %s"
+  "x%s  ·  +%s min if done now  ·  %s": "x%s  ·  +%s min si terminé maintenant  ·  %s",
+  "If your phone only shows capsules for whitelisted music apps, install the free Omnibridge app. It mirrors Focus's media session as a supported player, so the capsule appears. Focus itself needs no change.": "Si ton téléphone n'affiche les capsules que pour des applis musicales en liste blanche, installe l'appli gratuite Omnibridge. Elle reflète la session média de Focus comme un lecteur pris en charge, et la capsule apparaît. Rien à changer dans Focus.",
+  "Open Omnibridge on GitHub": "Ouvrir Omnibridge sur GitHub",
+  "Play a test sound": "Jouer un son de test",
+  "A short tone plays. Pull down Quick Settings: Focus should show in the media player.": "Un court son est joué. Ouvre les réglages rapides : Focus doit apparaître dans le lecteur multimédia.",
+  "Focus test tone": "Son de test Focus"
  }
 }

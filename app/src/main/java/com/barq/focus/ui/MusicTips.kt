@@ -36,7 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.barq.focus.data.NotePlayer
 import com.barq.focus.data.tr
+import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.math.PI
+import kotlin.math.sin
 
 /** Which phone maker's status-bar media feature the user most likely has, from Build.MANUFACTURER. */
 fun oemTip(): Pair<String, String> {
@@ -66,6 +72,28 @@ fun oemTip(): Pair<String, String> {
     }
 }
 
+/** A few seconds of soft tone in the cache folder, to check that the media notification appears. */
+private fun testTone(ctx: android.content.Context): File {
+    val f = File(ctx.cacheDir, "focus_test_tone.wav")
+    if (!f.exists()) {
+        val rate = 8000
+        val n = rate * 8
+        val bb = ByteBuffer.allocate(44 + n * 2).order(ByteOrder.LITTLE_ENDIAN)
+        bb.put("RIFF".toByteArray()); bb.putInt(36 + n * 2); bb.put("WAVE".toByteArray()); bb.put("fmt ".toByteArray())
+        bb.putInt(16); bb.putShort(1); bb.putShort(1); bb.putInt(rate); bb.putInt(rate * 2); bb.putShort(2); bb.putShort(16)
+        bb.put("data".toByteArray()); bb.putInt(n * 2)
+        for (i in 0 until n) bb.putShort((sin(2.0 * PI * 440.0 * i / rate) * 2500.0).toInt().toShort())
+        f.writeBytes(bb.array())
+    }
+    return f
+}
+
+/** Phones that only draw capsules for a whitelist of music apps (BBK family and Xiaomi). */
+private fun whitelistPhone(): Boolean {
+    val m = (Build.MANUFACTURER + " " + Build.BRAND).lowercase()
+    return listOf("realme", "oppo", "oneplus", "xiaomi", "redmi", "poco", "vivo", "iqoo").any { it in m }
+}
+
 /** How to make the music notification and the phone's mini capsule appear. Shown in Settings and in the first-run guide. */
 @Composable
 fun MusicCapsuleHelp() {
@@ -84,6 +112,17 @@ fun MusicCapsuleHelp() {
         )
         Text(name, style = MaterialTheme.typography.titleSmall)
         Text(tip, style = MaterialTheme.typography.bodyMedium)
+        if (whitelistPhone()) {
+            Text(
+                tr("If your phone only shows capsules for whitelisted music apps, install the free Omnibridge app. It mirrors Focus's media session as a supported player, so the capsule appears. Focus itself needs no change."),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            OutlinedButton(onClick = {
+                try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/iTaysonLab/Omnibridge")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}
+            }) { Text(tr("Open Omnibridge on GitHub")) }
+        }
+        OutlinedButton(onClick = { NotePlayer.toggle(ctx, "focus-test", Uri.fromFile(testTone(ctx)), tr("Focus test tone")) }) { Text(tr("Play a test sound")) }
+        Text(tr("A short tone plays. Pull down Quick Settings: Focus should show in the media player."), style = MaterialTheme.typography.labelMedium)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (!notifOk) Button(onClick = { ask.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text(tr("Allow notifications")) }
             OutlinedButton(onClick = {
