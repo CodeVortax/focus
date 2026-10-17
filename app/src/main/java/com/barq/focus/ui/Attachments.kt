@@ -34,6 +34,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -134,10 +135,10 @@ fun WavyBar(frac: Float, playing: Boolean, color: Color, track: Color, onSeek: (
         val len = 22.dp.toPx()
         val path = Path()
         var px = 0f
-        path.moveTo(0f, cy + a * sin(-phase))
+        path.moveTo(0f, cy + a * sin(-phase.toDouble()).toFloat())
         while (px < x) {
             px = minOf(px + 3f, x)
-            path.lineTo(px, cy + a * sin(px / len * 2f * PI.toFloat() - phase))
+            path.lineTo(px, cy + a * sin((px / len * 2.0 * PI) - phase.toDouble()).toFloat())
         }
         drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
         drawLine(color, Offset(x, cy - 10.dp.toPx()), Offset(x, cy + 10.dp.toPx()), stroke, StrokeCap.Round)
