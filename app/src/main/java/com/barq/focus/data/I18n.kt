@@ -27,7 +27,7 @@ import androidx.compose.runtime.setValue
 import org.json.JSONObject
 import java.util.Locale
 
-/** In-app language: built-in Arabic + any language pack imported as a .foc file. */
+/** In-app language: built-in Arabic, Russian, German and French + any language pack imported as a .foc file. */
 object I18n {
     var version by mutableIntStateOf(0)       // snapshot state: UI recomposes when the language changes
     var rtl by mutableStateOf(false)
@@ -42,6 +42,7 @@ object I18n {
         when (newCode) {
             "en" -> {}
             "ar" -> { map = AR + AR_EXTRA; isRtl = true }
+            in BUILTIN -> map = loadAsset(ctx, newCode)
             else -> {
                 val json = store.langPack(newCode)
                 if (json != null) {
@@ -61,15 +62,25 @@ object I18n {
         version++
     }
 
+    /** Languages that ship inside the app as assets/lang/<code>.json (same format as an imported pack). */
+    val BUILTIN = setOf("ru", "de", "fr")
+    private val BUILTIN_NAMES = listOf("ru" to "Русский", "de" to "Deutsch", "fr" to "Français")
+
+    private fun loadAsset(ctx: Context, code: String): Map<String, String> = try {
+        val text = ctx.assets.open("lang/$code.json").use { it.readBytes().toString(Charsets.UTF_8) }
+        val s = JSONObject(text).optJSONObject("strings")
+        if (s == null) emptyMap() else s.keys().asSequence().associateWith { k -> s.getString(k) }
+    } catch (_: Exception) { emptyMap() }
+
     fun init(ctx: Context) = apply(ctx, Store(ctx).lang)
 
     fun names(ctx: Context): List<Pair<String, String>> {
         val store = Store(ctx)
-        val extra = store.langCodes().filter { it != "ar" && it != "en" }.map { c ->
+        val extra = store.langCodes().filter { it != "ar" && it != "en" && it !in BUILTIN }.map { c ->
             val n = try { JSONObject(store.langPack(c) ?: "{}").optString("name", c) } catch (_: Exception) { c }
             c to n
         }
-        return listOf("en" to "English", "ar" to "العربية") + extra
+        return listOf("en" to "English", "ar" to "العربية") + BUILTIN_NAMES + extra
     }
 
     fun speakLocale(): Locale = if (code == "en") Locale.US else Locale(code)

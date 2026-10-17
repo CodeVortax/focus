@@ -15,7 +15,7 @@ How the app is built and why.
 | [Shorts and Reels detection](architecture/shorts-detection.md) | Accessibility service, detector signals, swipe counting, root mode |
 | [Treat bank](architecture/treat-bank.md) | How minutes are earned and spent, weekly multipliers |
 | [.foc file format](architecture/foc-files.md) | Header sniffing and the JSON schemas |
-| [Languages and RTL](architecture/i18n.md) | Built-in Arabic, language packs, translating with an AI |
+| [Languages and RTL](architecture/i18n.md) | Built-in Arabic, Russian, German and French, language packs, translating with an AI |
 | [Notes, PDF and voice](architecture/notes-and-pdf.md) | Notes model, PDF library and reader, voice notes |
 
 ## Guides
@@ -30,6 +30,10 @@ Task-oriented pages for users and contributors.
 | [Badges and XP](guides/badges.md) | Streaks, levels, all 30 badges |
 | [Games](guides/games.md) | The 17 break games |
 | [Widgets](guides/widgets.md) | The four home-screen widgets and how they refresh |
+| [Attachments](guides/attachments.md) | Photos, files, recordings, links, arrange mode |
+| [Treat series](guides/treat-series.md) | Episode tokens and locking |
+| [Music notification](guides/music-notification.md) | Lock screen and status-bar capsules on Realme, Samsung, Xiaomi, Pixel |
+| [First-run guide](guides/first-run.md) | The welcome tour |
 | [Usage screen](guides/usage-screen.md) | Week chart, donut, hourly strip, where the numbers come from |
 
 ## Project files

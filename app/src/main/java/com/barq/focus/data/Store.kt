@@ -403,6 +403,13 @@ class Store(ctx: Context) {
         p.edit().remove("media_pos_${cardId}_$idx").apply()
     }
 
+    // ---- first-run guide ----
+    var onboarded: Boolean
+        get() = p.getBoolean("onboarded", false)
+        set(v) { p.edit().putBoolean("onboarded", v).apply() }
+    /** True on a fresh install: nothing saved yet. (Existing users skip the guide; Settings can replay it.) */
+    fun isFresh(): Boolean = !onboarded && !p.contains("cards")
+
     // ---- recordings ----
     var askRecName: Boolean                       // pop up a name box when a recording stops
         get() = p.getBoolean("rec_ask_name", true)
@@ -479,7 +486,7 @@ class Store(ctx: Context) {
 
     // ---- language ----
     var lang: String
-        get() = p.getString("lang", "en") ?: "en"
+        get() = p.getString("lang", null) ?: java.util.Locale.getDefault().language.takeIf { it in setOf("ar", "ru", "de", "fr") } ?: "en"
         set(v) { p.edit().putString("lang", v).apply() }
     fun langPack(code: String): String? = p.getString("langpack_$code", null)
     fun saveLangPack(code: String, json: String) {

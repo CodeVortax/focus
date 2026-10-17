@@ -98,6 +98,11 @@
         </service>
 
         <service
+            android:name=".service.NoteAudioService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
             android:name=".service.WatchService"
             android:exported="false"
             android:foregroundServiceType="specialUse">

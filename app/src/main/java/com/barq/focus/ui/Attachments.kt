@@ -165,7 +165,7 @@ fun MiniPlayer(a: Attach, accent: Color, onRename: () -> Unit, modifier: Modifie
         verticalAlignment = Alignment.CenterVertically
     ) {
         FilledIconButton(
-            onClick = { NotePlayer.toggle(ctx, a.uri, a.playUri(ctx)) }, Modifier.size(40.dp),
+            onClick = { NotePlayer.toggle(ctx, a.uri, a.playUri(ctx), a.name) }, Modifier.size(40.dp),
             colors = IconButtonDefaults.filledIconButtonColors(containerColor = accent)
         ) { Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, tr(if (playing) "Pause" else "Play")) }
         Spacer(Modifier.width(10.dp))
@@ -179,7 +179,7 @@ fun MiniPlayer(a: Attach, accent: Color, onRename: () -> Unit, modifier: Modifie
                 frac = if (dur > 0L) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f, playing = playing,
                 color = accent, track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
                 onSeek = { f ->
-                    if (!mine) NotePlayer.toggle(ctx, a.uri, a.playUri(ctx))
+                    if (!mine) NotePlayer.toggle(ctx, a.uri, a.playUri(ctx), a.name)
                     NotePlayer.seekTo(f)
                 }
             )

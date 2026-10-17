@@ -34,9 +34,10 @@ import com.barq.focus.data.Store
 @Composable
 fun FocusApp() {
     val ctx = LocalContext.current
+    val fresh = remember { Store(ctx).isFresh() }      // asked before rollover() writes the first cards
     val store = remember { Store(ctx).also { it.rollover() } }
     val db = remember { Db.get(ctx) }
-    var screen by remember { mutableStateOf("home") }
+    var screen by remember { mutableStateOf(if (fresh) "welcome" else "home") }
     var current by remember { mutableStateOf<FocusCard?>(null) }
     var pdf by remember { mutableStateOf<PdfEntry?>(null) }
     var noteId by remember { mutableLongStateOf(0L) }
@@ -61,7 +62,7 @@ fun FocusApp() {
     LaunchedEffect(Shared.pendingTick) {
         if (Shared.pendingUri != null || Shared.pendingText != null) screen = "import"
     }
-    BackHandler(enabled = screen != "home") {
+    BackHandler(enabled = screen != "home" && screen != "welcome") {
         screen = when (screen) { "note" -> "notes"; "pdf" -> "pdfs"; "player" -> if (epIdx >= 0) "series" else "home"; else -> "home" }
     }
 
@@ -100,7 +101,8 @@ fun FocusApp() {
         "log" -> LogScreen(db, back)
         "schedule" -> ScheduleScreen(store, back)
         "events" -> EventsScreen(back)
-        "setup" -> SetupScreen(store, back)
+        "setup" -> SetupScreen(store, back, onTour = { screen = "welcome" })
+        "welcome" -> OnboardingScreen(store) { screen = "home" }
         else -> HomeScreen(store, onOpen = { open(it) }, go = { screen = it })
     }
 }

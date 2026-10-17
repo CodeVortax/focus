@@ -125,31 +125,49 @@ object NotePlayer {
         private set
     var dur by mutableLongStateOf(0L)
         private set
+    var title by mutableStateOf("")
+        private set
     private var mp: MediaPlayer? = null
+    private var app: Context? = null
+
+    /** Tells the media notification (lock screen, status-bar capsules) what changed. */
+    private fun sync() { app?.let { com.barq.focus.service.NoteAudio.sync(it) } }
 
     fun stop() {
         try { mp?.stop() } catch (_: Exception) {}
         try { mp?.release() } catch (_: Exception) {}
         mp = null
-        current = ""; isPlaying = false; pos = 0L; dur = 0L
+        current = ""; isPlaying = false; pos = 0L; dur = 0L; title = ""
+        sync()
     }
 
-    fun toggle(c: Context, key: String, uri: Uri) {
-        if (current == key) {
-            val m = mp ?: return
-            try { if (m.isPlaying) m.pause() else m.start(); isPlaying = m.isPlaying } catch (_: Exception) { stop() }
-            return
-        }
+    fun toggle(c: Context, key: String, uri: Uri, name: String = "") {
+        app = c.applicationContext
+        if (current == key) { if (isPlaying) pause() else resume(); return }
         stop()
         try {
+            com.barq.focus.service.Music.player?.pause()      // one thing at a time
             val m = MediaPlayer()
             m.setDataSource(c.applicationContext, uri)
             m.setOnCompletionListener { stop() }
             m.prepare()
             m.start()
             mp = m
-            current = key; isPlaying = true; dur = m.duration.toLong().coerceAtLeast(0L); pos = 0L
+            current = key; isPlaying = true; dur = m.duration.toLong().coerceAtLeast(0L); pos = 0L; title = name
+            sync()
         } catch (_: Exception) { stop() }
+    }
+
+    fun pause() {
+        val m = mp ?: return
+        try { if (m.isPlaying) m.pause(); isPlaying = false; pos = m.currentPosition.toLong() } catch (_: Exception) { stop(); return }
+        sync()
+    }
+
+    fun resume() {
+        val m = mp ?: return
+        try { com.barq.focus.service.Music.player?.pause(); m.start(); isPlaying = true } catch (_: Exception) { stop(); return }
+        sync()
     }
 
     fun refresh() {
@@ -157,8 +175,11 @@ object NotePlayer {
         try { pos = m.currentPosition.toLong(); dur = m.duration.toLong().coerceAtLeast(0L); isPlaying = m.isPlaying } catch (_: Exception) {}
     }
 
-    fun seekTo(frac: Float) {
+    fun seekToMs(ms: Long) {
         val m = mp ?: return
-        try { m.seekTo((dur * frac.coerceIn(0f, 1f)).toInt()); pos = m.currentPosition.toLong() } catch (_: Exception) {}
+        try { m.seekTo(ms.coerceIn(0L, dur).toInt()); pos = m.currentPosition.toLong() } catch (_: Exception) {}
+        sync()
     }
+
+    fun seekTo(frac: Float) = seekToMs((dur * frac.coerceIn(0f, 1f)).toLong())
 }

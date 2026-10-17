@@ -2,6 +2,16 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.18.0-beta (version code 23)
+
+### Added
+- **Music notification and capsules**: audio played from notes now has a real media session and a MediaStyle notification (play/pause, stop, seek bar), and the music player's notification has a proper channel and icon. Lock screens and phone-maker capsules (Realme Mini Capsule, Samsung Now Bar, Xiaomi Dynamic Island, ColorOS and OxygenOS live alerts, Pixel) read it. Settings has a *Music notification and capsule* section with steps for your phone's brand. See [Music notification](docs/guides/music-notification.md).
+- **First-run guide**: language, how Focus works, permissions, your subjects, music and notification help. Fresh installs only; replay it from Settings > About. See [First-run guide](docs/guides/first-run.md).
+- **Russian, German and French** built in (and chosen automatically on a fresh install when the phone uses one of them).
+
+### Changed
+- Starting music stops a playing note recording, and the other way round.
+
 ## 0.17.0-beta (version code 22)
 
 ### Added

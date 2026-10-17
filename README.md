@@ -6,7 +6,7 @@
 
 A private, open-source Android app that turns your study plan into a reward system and puts a soft gate in front of the apps that eat your time.
 
-[![Version](https://img.shields.io/badge/version-0.17.0--beta-4285F4?style=flat-square)](#install)
+[![Version](https://img.shields.io/badge/version-0.18.0--beta-4285F4?style=flat-square)](#install)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-34A853?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#install)
 [![Internet](https://img.shields.io/badge/internet%20permission-none-2e8b57?style=flat-square)](PRIVACY.md)
@@ -53,9 +53,9 @@ Everything runs on your phone. There is no account, no server, and the manifest 
 
 ### Notes, reading and media
 
-- **Notes** with text, checklists, rich formatting (H1-H3, bold, italic, underline, strikethrough, colours), labels, pin, archive, trash, search, backup and voice notes. See [Notes and PDF](docs/architecture/notes-and-pdf.md).
+- **Notes** with text, checklists, rich formatting (H1-H3, bold, italic, underline, strikethrough, colours), labels, pin, archive, trash, search, backup voice notes, and attachments (photos, videos, any file, links, linked notes) that you can drag to rearrange. See [Notes and PDF](docs/architecture/notes-and-pdf.md) and [Attachments](docs/guides/attachments.md).
 - **PDF library and reader**, built in, or hand-off to Episteme Reader if you have it installed.
-- **Embedded player** for treat videos and a **music player** with folders, artists, playlists, favourites, queue, A-B repeat, speed/pitch, sleep timer and equalizer.
+- **Embedded player** for treat videos, **treat series** with one token per episode and optional file locking ([Treat series](docs/guides/treat-series.md)), a **first-run guide**, and a **music player** with folders, artists, playlists, favourites, queue, A-B repeat, speed/pitch, sleep timer and equalizer. Playing audio shows a media notification that phone-maker capsules (Realme Mini Capsule, Samsung Now Bar, Xiaomi Dynamic Island, Pixel) pick up: see [Music notification](docs/guides/music-notification.md).
 
 ### Motivation
 
@@ -68,7 +68,7 @@ Everything runs on your phone. There is no account, no server, and the manifest 
 
 - **`.foc` / `.fcs` files**: one container, and the file header decides what it is (video/audio, PDF, or JSON for your day, config, notes or a language pack). See [.foc file format](docs/architecture/foc-files.md).
 - **Plan with any AI**: share its JSON reply straight into Focus.
-- **English and Arabic** (full right-to-left) built in, plus importable language packs. See [Languages](docs/architecture/i18n.md).
+- **English, Arabic** (full right-to-left), **Russian, German and French** built in, plus importable language packs. See [Languages](docs/architecture/i18n.md).
 
 ## How it works
 
@@ -91,7 +91,7 @@ The full picture is in [Architecture overview](docs/architecture/overview.md).
 
 ## Install
 
-> Focus is currently a **beta** (`0.17.0-beta`, version code 22). Requires **Android 8.0 (API 26)** or newer.
+> Focus is currently a **beta** (`0.18.0-beta`, version code 23). Requires **Android 8.0 (API 26)** or newer.
 
 ### Build from source
 

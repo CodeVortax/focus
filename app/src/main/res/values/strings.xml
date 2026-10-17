@@ -9,4 +9,6 @@
     <string name="widget_streak_desc">Your work-day and light-Shorts streaks</string>
     <string name="widget_shorts_name">Focus · Shorts</string>
     <string name="widget_shorts_desc">Shorts and Reels swiped today</string>
+    <string name="music_channel">Music playback</string>
+    <string name="note_audio_channel">Note audio</string>
 </resources>

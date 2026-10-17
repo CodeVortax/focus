@@ -36,6 +36,7 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.barq.focus.data.Song
@@ -103,6 +104,7 @@ object Music {
 
     fun playSongs(ctx: Context, list: List<Song>, index: Int) {
         if (list.isEmpty()) return
+        com.barq.focus.data.NotePlayer.stop()          // one thing at a time
         val p = get(ctx)
         p.setMediaItems(list.map { item(it) }, index.coerceIn(0, list.lastIndex), 0L)
         p.prepare()
@@ -138,6 +140,11 @@ class MusicService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        // a clear channel name and icon, so the notification (and the phone makers' status-bar capsules built on it) look right
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this).setChannelName(com.barq.focus.R.string.music_channel).build()
+                .also { it.setSmallIcon(com.barq.focus.R.drawable.ic_music_note) }
+        )
         session = MediaSession.Builder(this, Music.get(this)).setSessionActivity(TimerAlarm.openApp(this)).build()
     }
 

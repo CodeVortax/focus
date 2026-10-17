@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Timer
@@ -83,7 +84,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SetupScreen(store: Store, onBack: () -> Unit) {
+fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
     val ctx = LocalContext.current
     var rev by remember { mutableIntStateOf(0) }
     LifecycleResumeEffect(Unit) { rev++; onPauseOrDispose {} }
@@ -320,12 +321,17 @@ fun SetupScreen(store: Store, onBack: () -> Unit) {
                 }
             }
 
+            Group("music", Icons.Default.MusicNote, "Music notification and capsule", "Lock screen, Mini Capsule, Dynamic Island") {
+                MusicCapsuleHelp()
+            }
+
             Group("about", Icons.Default.Info, "About", "Version and licenses") {
                 Text(tr("Focus is free software under the GNU Affero General Public License v3.0 only (AGPL-3.0-only)."), style = MaterialTheme.typography.bodyMedium)
                 Text(
                     tr("Notes follow the feature set of NotallyX (Crustack, forked from Notally by OmGodse; GPL-3.0). PDFs can be opened in Episteme Reader (Aryan-Raj3112; AGPL-3.0-only), a separate app that is not bundled. The code here is an independent implementation."),
                     style = MaterialTheme.typography.bodyMedium
                 )
+                OutlinedButton(onClick = onTour) { Text(tr("Replay the first-run guide")) }
                 Text(
                     "${com.barq.focus.BuildConfig.LICENSE_ID}  ·  v${com.barq.focus.BuildConfig.VERSION_NAME}",
                     Modifier.clickable {
@@ -402,7 +408,7 @@ private fun NumField(label: String, initial: Int, onValue: (Int) -> Unit) {
 }
 
 @Composable
-private fun PermRow(title: String, desc: String, ok: Boolean, onGrant: () -> Unit) {
+internal fun PermRow(title: String, desc: String, ok: Boolean, onGrant: () -> Unit) {
     Card(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
