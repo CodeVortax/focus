@@ -15,32 +15,58 @@ Omnibridge has five build flavors that each install under the package name of a 
 
 Install only **one** flavor, and uninstall the real app of that name first. It needs notification access.
 
-## Build
-Requirements: JDK 17 (Android Gradle needs 17+, the project targets Java 11), compileSdk 36, minSdk 29.
+## Build in Termux
+Omnibridge ships its own Gradle wrapper, so use `./gradlew` from inside the cloned folder (not `gradle`).
 
 ```sh
-pkg install git openjdk-17
-git clone https://github.com/iTaysonLab/Omnibridge
-cd Omnibridge
+cd ~/Omnibridge
 ```
 
-Termux's own `aapt2` is needed because the Google one is x86. Install the SDK tools (for example with the `android-sdk` package or the `termux-gradle` helpers you already use for Focus), then point Gradle at them in `~/.gradle/gradle.properties`:
+1. **SDK path.** Reuse the one Focus uses:
+   ```sh
+   cp ~/focus/local.properties .
+   ```
+   It must contain `sdk.dir=/path/to/Android/Sdk`.
+2. **aapt2.** Google's aapt2 is x86 and fails on a phone, so point Gradle at Termux's. Install it and add the override:
+   ```sh
+   pkg install aapt2
+   mkdir -p ~/.gradle
+   echo "android.aapt2FromMavenOverride=$PREFIX/bin/aapt2" >> ~/.gradle/gradle.properties
+   ```
+   (If you already did this for Focus, it is already set.)
+3. **Platform 36.** Omnibridge compiles against Android 36, Focus only needs 34:
+   ```sh
+   ls "$(grep sdk.dir local.properties | cut -d= -f2)/platforms"
+   ```
+   If `android-36` is missing, install it with `sdkmanager "platforms;android-36" "build-tools;36.0.0"`.
+4. **Build one flavor:**
+   ```sh
+   ./gradlew assembleAsNeteaseDebug
+   cp app/build/outputs/apk/asNetease/debug/*.apk ~/storage/downloads/
+   ```
+   The first run downloads Gradle and takes a while. The debug APK is signed automatically, so it installs as is.
 
-```
-android.aapt2FromMavenOverride=/path/to/termux/aapt2
-```
+### If Termux's aapt2 is too old
+Termux's aapt2 can be older than what Android 36 resources need. If you see an aapt2 error mentioning an unsupported version or resource, build it on GitHub instead:
 
-Build one flavor (pick the one your phone whitelists; Netease is a common choice for ColorOS/Realme and Xiaomi):
-
-```sh
-./gradlew assembleAsNeteaseDebug
-```
-
-The APK is in `app/build/outputs/apk/asNetease/debug/`. The debug build is signed automatically, so it installs as is:
-
-```sh
-cp app/build/outputs/apk/asNetease/debug/*.apk ~/storage/downloads/
-```
+1. Fork [Omnibridge](https://github.com/iTaysonLab/Omnibridge) on GitHub.
+2. Add `.github/workflows/build.yml`:
+   ```yaml
+   name: build
+   on: workflow_dispatch
+   jobs:
+     apk:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v4
+         - uses: actions/setup-java@v4
+           with: { distribution: temurin, java-version: 17 }
+         - uses: android-actions/setup-android@v3
+         - run: ./gradlew assembleAsNeteaseDebug
+         - uses: actions/upload-artifact@v4
+           with: { name: omnibridge-netease, path: app/build/outputs/apk/asNetease/debug/*.apk }
+   ```
+3. Run it from the Actions tab and download the APK artifact.
 
 ## Use
 1. Uninstall the real app with the same package name if it is installed.
