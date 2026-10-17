@@ -39,32 +39,35 @@ data class Note(
     val trashedAt: Long = 0L,             // 0 = not in trash
     val labels: List<String> = emptyList(),
     val spans: List<Span> = emptyList(),   // rich-text runs over [body]
-    val voices: List<Voice> = emptyList(), // recorded voice notes
+    val voices: List<Voice> = emptyList(), // old recordings (moved into [attachments] when the note is next saved)
+    val attachments: List<Attach> = emptyList(), // images, files, recordings, links, linked notes (in this order)
     val created: Long = System.currentTimeMillis(),
     val modified: Long = System.currentTimeMillis(),
 ) {
-    val isEmpty get() = title.isBlank() && body.isBlank() && items.all { it.text.isBlank() } && voices.isEmpty()
+    val isEmpty get() = title.isBlank() && body.isBlank() && items.all { it.text.isBlank() } && voices.isEmpty() && attachments.isEmpty()
 }
 
 /** Plain SQLite (no Room/KSP needed) so it builds the same way in Termux and GitHub Actions. */
-class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "notes.db", null, 4) {
+class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "notes.db", null, 5) {
 
     override fun onCreate(d: SQLiteDatabase) {
         d.execSQL(
             "CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, type INTEGER, title TEXT, body TEXT, items TEXT, " +
                 "color INTEGER, pinned INTEGER, archived INTEGER, trashed INTEGER, labels TEXT, created INTEGER, modified INTEGER, " +
-                "spans TEXT, voices TEXT)"
+                "spans TEXT, voices TEXT, attach TEXT)"
         )
     }
     override fun onUpgrade(d: SQLiteDatabase, o: Int, n: Int) {
         // each is safe to repeat: the column may already exist from an earlier fix
         try { d.execSQL("ALTER TABLE notes ADD COLUMN spans TEXT") } catch (_: Exception) {}
         try { d.execSQL("ALTER TABLE notes ADD COLUMN voices TEXT") } catch (_: Exception) {}
+        try { d.execSQL("ALTER TABLE notes ADD COLUMN attach TEXT") } catch (_: Exception) {}
     }
     // A newer build may have left a higher version on disk: keep the data, just make sure our columns exist.
     override fun onDowngrade(d: SQLiteDatabase, o: Int, n: Int) {
         try { d.execSQL("ALTER TABLE notes ADD COLUMN spans TEXT") } catch (_: Exception) {}
         try { d.execSQL("ALTER TABLE notes ADD COLUMN voices TEXT") } catch (_: Exception) {}
+        try { d.execSQL("ALTER TABLE notes ADD COLUMN attach TEXT") } catch (_: Exception) {}
     }
 
     private fun itemsToJson(l: List<Item>): JSONArray {
@@ -88,6 +91,7 @@ class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
         put("trashed", n.trashedAt); put("labels", labelsToJson(n.labels).toString())
         put("spans", Rich.toJson(n.spans).toString())
         put("voices", Voices.toJson(n.voices).toString())
+        put("attach", Attach.toJson(n.attachments).toString())
         put("created", n.created); put("modified", n.modified)
     }
 
@@ -102,6 +106,7 @@ class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
             labels = labelsFromJson(JSONArray(c.getString(i("labels")) ?: "[]")),
             spans = try { Rich.fromJson(JSONArray(c.getString(i("spans")) ?: "[]")) } catch (_: Exception) { emptyList() },
             voices = try { Voices.fromJson(JSONArray(c.getString(i("voices")) ?: "[]")) } catch (_: Exception) { emptyList() },
+            attachments = try { Attach.fromJson(JSONArray(c.getString(i("attach")) ?: "[]")) } catch (_: Exception) { emptyList() },
             created = c.getLong(i("created")), modified = c.getLong(i("modified")),
         )
     }

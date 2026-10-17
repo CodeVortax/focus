@@ -41,11 +41,14 @@ fun FocusApp() {
     var pdf by remember { mutableStateOf<PdfEntry?>(null) }
     var noteId by remember { mutableLongStateOf(0L) }
     var noteType by remember { mutableIntStateOf(0) }
+    var epIdx by remember { mutableIntStateOf(-1) }
 
     fun open(c: FocusCard) {
         current = c
+        epIdx = -1
         screen = when {
             c.type == CardType.STUDY -> "subject"
+            c.type == CardType.TREAT && c.eps.isNotEmpty() -> "series"
             c.type == CardType.TREAT && c.media.isNotEmpty() -> "player"
             else -> "timer"
         }
@@ -59,7 +62,7 @@ fun FocusApp() {
         if (Shared.pendingUri != null || Shared.pendingText != null) screen = "import"
     }
     BackHandler(enabled = screen != "home") {
-        screen = when (screen) { "note" -> "notes"; "pdf" -> "pdfs"; else -> "home" }
+        screen = when (screen) { "note" -> "notes"; "pdf" -> "pdfs"; "player" -> if (epIdx >= 0) "series" else "home"; else -> "home" }
     }
 
     val back = { screen = "home" }
@@ -67,8 +70,14 @@ fun FocusApp() {
         "subject" -> current?.let { SubjectScreen(store, it, back) }
         "timer" -> current?.let { TimerScreen(store, it, back) }
         "notes" -> NotesScreen(store, onOpen = { id, type -> noteId = id; noteType = type; screen = "note" }, onBack = back)
-        "note" -> NoteEditorScreen(store, noteId, noteType) { screen = "notes" }
-        "player" -> current?.let { PlayerScreen(store, it, back) }
+        "note" -> key(noteId) {
+            NoteEditorScreen(store, noteId, noteType, onOpenNote = { n -> noteId = n; noteType = 0 }) { screen = "notes" }
+        }
+        "series" -> current?.let { SeriesScreen(store, it, back) { idx -> epIdx = idx; screen = "player" } }
+        "player" -> current?.let { c0 ->
+            val c = remember(c0.id, epIdx) { store.cards().firstOrNull { it.id == c0.id } ?: c0 }
+            PlayerScreen(store, c, { screen = if (epIdx >= 0) "series" else "home" }, epIdx)
+        }
         "pdfs" -> PdfLibraryScreen(
             store,
             onOpen = { e ->

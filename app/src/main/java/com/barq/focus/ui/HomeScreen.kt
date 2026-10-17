@@ -121,22 +121,21 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     var showAddMenu by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     var pendingTreat by remember { mutableStateOf<FocusCard?>(null) }
+    var treatSetup by remember { mutableStateOf<FocusCard?>(null) }
     val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         val c = pendingTreat
         pendingTreat = null
         if (uri != null && c != null) {
             try { ctx.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
-            val updated = c.copy(media = uri.toString())
+            val updated = c.copy(media = uri.toString(), eps = emptyList(), folder = "")
             store.updateCard(updated)
             cards = store.cards()
             onOpen(updated)
         }
     }
     val open: (FocusCard) -> Unit = { c ->
-        if (c.type == CardType.TREAT && c.media.isEmpty()) {
-            pendingTreat = c
-            mediaPicker.launch(arrayOf("video/*", "audio/*"))
-        } else onOpen(c)
+        if (c.type == CardType.TREAT && c.media.isEmpty() && c.eps.isEmpty()) treatSetup = c
+        else onOpen(c)
     }
     var showEnd by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<FocusCard?>(null) }
@@ -295,8 +294,8 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                 Column {
                     TextButton(onClick = { editing = m; cardMenu = null }) { Text(tr("Edit")) }
                     if (m.type == CardType.TREAT) TextButton(onClick = {
-                        cardMenu = null; pendingTreat = m; mediaPicker.launch(arrayOf("video/*", "audio/*"))
-                    }) { Text(tr("Change media file")) }
+                        cardMenu = null; treatSetup = m
+                    }) { Text(tr("Change media / episodes")) }
                     TextButton(onClick = { deleting = m; cardMenu = null }) { Text(tr("Delete")) }
                 }
             },
@@ -309,14 +308,25 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
             store.saveCards(store.cards().map { if (it.id == c.id) c else it }); cards = store.cards(); editing = null
         }
     }
+    treatSetup?.let { t ->
+        TreatSetupDialog(
+            t, onDismiss = { treatSetup = null },
+            onSingle = { pendingTreat = t; treatSetup = null; mediaPicker.launch(arrayOf("video/*", "audio/*")) },
+            onSaved = { u ->
+                treatSetup = null
+                store.updateCard(u); cards = store.cards()
+                onOpen(u)
+            }
+        )
+    }
     deleting?.let { d ->
         AlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text(trf("Delete \"%s\"?", d.title)) },
             text = {
                 if (d.type == CardType.TREAT) TextButton(onClick = {
-                    deleting = null; pendingTreat = d; mediaPicker.launch(arrayOf("video/*", "audio/*"))
-                }) { Text(tr("Change media file")) }
+                    deleting = null; treatSetup = d
+                }) { Text(tr("Change media / episodes")) }
             },
             confirmButton = {
                 TextButton(onClick = { store.saveCards(cards.filter { it.id != d.id }); cards = store.cards(); deleting = null }) { Text(tr("Delete")) }
@@ -422,7 +432,7 @@ private fun CardTile(c: FocusCard, spentMin: Long, onClick: () -> Unit, onLong: 
             }
         } else {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(typeLabel(c.type) + if (c.media.isNotEmpty()) "  ▶" else "", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = col)
+                Text(typeLabel(c.type) + if (c.eps.isNotEmpty()) "  ▶ " + c.eps.count { it.done } + "/" + c.eps.size else if (c.media.isNotEmpty()) "  ▶" else "", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = col)
                 Text("${c.minutes}m", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = col)
             }
         }

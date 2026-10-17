@@ -38,13 +38,21 @@ data class Item(
     val voiceMs: Long = 0L,
 )
 
+/** One video of a treat series. [orig] is the real file name, [locked] means it is renamed so no other app lists it. */
+data class Episode(
+    val uri: String, val name: String, val ms: Long = 0L, val done: Boolean = false,
+    val locked: Boolean = false, val orig: String = ""
+)
+
 data class FocusCard(
     val id: Long, val title: String, val type: CardType, val color: Int,
     val minutes: Int, val items: List<Item> = emptyList(),
     val sound: String = "",           // "" = default alarm, "silent", or a ringtone uri
     val reward: Int = 10,             // treat minutes for finishing the WHOLE subject (split across its tasks)
     val media: String = "",           // treat cards: uri of the video/audio to play in the app
-    val groups: List<TaskGroup> = emptyList()
+    val groups: List<TaskGroup> = emptyList(),
+    val eps: List<Episode> = emptyList(),   // treat cards: a series, one episode per token
+    val folder: String = ""                 // treat cards: the folder (tree uri) the episodes live in, for locking
 )
 
 data class Block(
@@ -129,7 +137,14 @@ class Store(ctx: Context) {
             val groups = o.optJSONArray("groups")?.let { ga ->
                 (0 until ga.length()).map { i -> ga.getJSONObject(i).let { g -> TaskGroup(g.getString("n"), g.getInt("c"), g.optBoolean("x", false)) } }
             } ?: emptyList()
-            FocusCard(o.getLong("id"), o.getString("title"), CardType.valueOf(o.getString("type")), o.getInt("color"), o.getInt("minutes"), items, o.optString("sound", ""), o.optInt("reward", 10), o.optString("media", ""), groups)
+            val eps = o.optJSONArray("eps")?.let { ea ->
+                (0 until ea.length()).map { i ->
+                    ea.getJSONObject(i).let { e ->
+                        Episode(e.getString("u"), e.optString("n", ""), e.optLong("ms", 0L), e.optBoolean("d", false), e.optBoolean("l", false), e.optString("o", ""))
+                    }
+                }
+            } ?: emptyList()
+            FocusCard(o.getLong("id"), o.getString("title"), CardType.valueOf(o.getString("type")), o.getInt("color"), o.getInt("minutes"), items, o.optString("sound", ""), o.optInt("reward", 10), o.optString("media", ""), groups, eps, o.optString("folder", ""))
         }
     }
 
@@ -146,7 +161,10 @@ class Store(ctx: Context) {
             val groups = JSONArray()
             c.groups.forEach { groups.put(JSONObject().put("n", it.name).put("c", it.color).put("x", it.collapsed)) }
             a.put(JSONObject().put("id", c.id).put("title", c.title).put("type", c.type.name)
-                .put("color", c.color).put("minutes", c.minutes).put("items", items).put("sound", c.sound).put("reward", c.reward).put("media", c.media).put("groups", groups))
+                .put("color", c.color).put("minutes", c.minutes).put("items", items).put("sound", c.sound).put("reward", c.reward).put("media", c.media).put("groups", groups)
+                .put("folder", c.folder).put("eps", JSONArray().also { ea ->
+                    c.eps.forEach { e -> ea.put(JSONObject().put("u", e.uri).put("n", e.name).put("ms", e.ms).put("d", e.done).put("l", e.locked).put("o", e.orig)) }
+                }))
         }
         p.edit().putString("cards", a.toString()).apply()
     }
@@ -372,6 +390,31 @@ class Store(ctx: Context) {
     // ---- shorts counter ----
     fun shortsSwipes() = p.getInt("shorts_${day()}", 0)
     fun addShortsSwipe() { p.edit().putInt("shorts_${day()}", shortsSwipes() + 1).apply() }
+
+    // ---- treat series: one episode = one token ----
+    /** Seconds of watching left on this episode's token (its length plus the free rewind minutes). */
+    fun token(cardId: Long, idx: Int): Int = p.getInt("tok_${cardId}_$idx", 0)
+    fun setToken(cardId: Long, idx: Int, sec: Int) { p.edit().putInt("tok_${cardId}_$idx", sec.coerceAtLeast(0)).apply() }
+    fun markEpisodeDone(cardId: Long, idx: Int) {
+        val c = cards().firstOrNull { it.id == cardId } ?: return
+        if (idx !in c.eps.indices) return
+        updateCard(c.copy(eps = c.eps.mapIndexed { i, e -> if (i == idx) e.copy(done = true) else e }))
+        setToken(cardId, idx, 0)
+        p.edit().remove("media_pos_${cardId}_$idx").apply()
+    }
+
+    // ---- recordings ----
+    var askRecName: Boolean                       // pop up a name box when a recording stops
+        get() = p.getBoolean("rec_ask_name", true)
+        set(v) { p.edit().putBoolean("rec_ask_name", v).apply() }
+    var recKbps: Int                              // Opus bit rate for voice: 24 small, 32 balanced, 64 high
+        get() = p.getInt("rec_kbps", 32)
+        set(v) { p.edit().putInt("rec_kbps", v).apply() }
+
+    // ---- hidden developer options (tap the version 7 times) ----
+    var devOptions: Boolean
+        get() = p.getBoolean("dev_options", false)
+        set(v) { p.edit().putBoolean("dev_options", v).apply() }
 
     // ---- detection tuning ----
     var debug: Boolean

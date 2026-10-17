@@ -2,6 +2,20 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.17.0-beta (version code 22)
+
+### Added
+- **Note attachments**: photos, videos, any file (PDF, music...), recordings, web links and links to other notes, all in one list under the note. See [Notes attachments](docs/guides/attachments.md).
+- **Arrange mode**: the button at the bottom right of a note turns on drag handles for checklist items and attachments, so both can be reordered by dragging.
+- **Mini music player** with a wavy progress line that ripples while playing; tap or drag it to seek.
+- **Recording**: Opus voice (about 14 MB an hour at the default), temporary names, a name box when you stop (can be turned off), *Save a copy...* to export with the right extension.
+- **Treat series**: pick a folder and the episodes. One episode costs its length from the bank and gives 5 free minutes to seek back; one token, one episode. See [Treat series](docs/guides/treat-series.md).
+- **Lock episodes**: renames the files so no other app lists them, with a hidden `.focus-lock.json` in the same folder.
+- **Settings** regrouped into collapsible sections; hidden **Developer options** (tap the version 7 times) with *Restore locked episode files*.
+
+### Changed
+- Notes database version 5 (new `attach` column); old voice notes move into the attachment list the next time a note is saved.
+
 ## 0.16.0-beta (version code 21)
 
 ### Added

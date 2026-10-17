@@ -57,30 +57,56 @@ object Voices {
     }
 }
 
-/** Records AAC audio from the microphone into the private voice folder. */
+/** Records voice (Opus where the phone supports it, AAC otherwise) from the microphone into the private voice folder. */
 class VoiceRecorder(private val ctx: Context) {
     private var rec: MediaRecorder? = null
     private var name = ""
     private var t0 = 0L
     val active: Boolean get() = rec != null
 
-    fun start(): Boolean {
-        cancel()
-        return try {
-            val n = "v_" + System.currentTimeMillis() + ".m4a"
-            val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(ctx.applicationContext) else @Suppress("DEPRECATION") MediaRecorder()
+    private fun build(opus: Boolean, n: String): MediaRecorder {
+        val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(ctx.applicationContext) else @Suppress("DEPRECATION") MediaRecorder()
+        try {
             r.setAudioSource(MediaRecorder.AudioSource.MIC)
-            r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            r.setAudioEncodingBitRate(96_000)
-            r.setAudioSamplingRate(44_100)
+            r.setAudioChannels(1)
+            val kbps = Store(ctx).recKbps
+            if (opus) {
+                // Opus is the best speech codec per byte: 32 kbps mono sounds clean and is about 14 MB an hour
+                r.setOutputFormat(MediaRecorder.OutputFormat.OGG)
+                r.setAudioEncoder(MediaRecorder.AudioEncoder.OPUS)
+                r.setAudioSamplingRate(48_000)
+                r.setAudioEncodingBitRate(kbps * 1000)
+            } else {
+                r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                r.setAudioSamplingRate(44_100)
+                r.setAudioEncodingBitRate(kbps * 1000 * 2)   // AAC needs about twice Opus's rate for the same quality
+            }
             r.setOutputFile(Voices.file(ctx, n).absolutePath)
             r.prepare()
             r.start()
-            rec = r; name = n; t0 = System.currentTimeMillis()
+        } catch (e: Exception) {
+            try { r.release() } catch (_: Exception) {}
+            throw e
+        }
+        return r
+    }
+
+    fun start(): Boolean {
+        cancel()
+        val stamp = System.currentTimeMillis()
+        if (Build.VERSION.SDK_INT >= 29) {
+            try {
+                val n = "v_$stamp.ogg"
+                rec = build(true, n); name = n; t0 = System.currentTimeMillis()
+                return true
+            } catch (_: Exception) { rec = null }
+        }
+        return try {
+            val n = "v_$stamp.m4a"
+            rec = build(false, n); name = n; t0 = System.currentTimeMillis()
             true
         } catch (_: Exception) {
-            try { rec?.release() } catch (_: Exception) {}
             rec = null
             false
         }

@@ -113,7 +113,9 @@ private fun clock(ms: Long): String {
  * Every second of playback is paid from the treat bank.
  */
 @Composable
-fun PlayerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
+fun PlayerScreen(store: Store, card0: FocusCard, onExit: () -> Unit, ep: Int = -1) {
+    // an episode plays from its own token; a plain treat file is paid for second by second from the bank
+    val card = remember(card0, ep) { if (ep >= 0 && ep < card0.eps.size) card0.copy(media = card0.eps[ep].uri, title = card0.eps[ep].name) else card0 }
     val ctx = LocalContext.current
     val view = LocalView.current
     val activity = remember { ctx.findActivity() }
@@ -126,10 +128,12 @@ fun PlayerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
             .setAudioAttributes(AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).setUsage(C.USAGE_MEDIA).build(), true)
             .build()
     }
-    val posKey = "media_pos_" + card.media.hashCode()
+    val posKey = if (ep >= 0) "media_pos_${card.id}_$ep" else "media_pos_" + card.media.hashCode()
 
     var bankSec by remember { mutableIntStateOf(store.bankSec()) }
-    var empty by remember { mutableStateOf(store.bankSec() <= 0) }
+    var tokenSec by remember { mutableIntStateOf(if (ep >= 0) store.token(card.id, ep) else 0) }
+    var finished by remember { mutableStateOf(false) }
+    var empty by remember { mutableStateOf(if (ep >= 0) tokenSec <= 0 else store.bankSec() <= 0) }
     var playing by remember { mutableStateOf(false) }
     var pos by remember { mutableLongStateOf(0L) }
     var dur by remember { mutableLongStateOf(0L) }
@@ -169,7 +173,13 @@ fun PlayerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
                 vh = if (swap) videoSize.width else videoSize.height
             }
             override fun onTracksChanged(tracks2: Tracks) { tracks = tracks2 }
-            override fun onPlaybackStateChanged(state: Int) { if (state == Player.STATE_READY) dur = exo.duration.coerceAtLeast(0L) }
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) dur = exo.duration.coerceAtLeast(0L)
+                if (state == Player.STATE_ENDED && ep >= 0) {
+                    store.markEpisodeDone(card.id, ep)
+                    tokenSec = 0; finished = true
+                }
+            }
         }
     }
 
@@ -184,7 +194,14 @@ fun PlayerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
             wic?.show(WindowInsetsCompat.Type.systemBars())
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             window?.let { w -> val lp = w.attributes; lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE; w.attributes = lp }
-            try { store.putLong(posKey, exo.currentPosition) } catch (_: Exception) {}
+            try {
+                if (ep >= 0) {
+                    store.setToken(card.id, ep, tokenSec)
+                    val d = exo.duration
+                    if (d > 0 && exo.currentPosition >= d - 60_000L) store.markEpisodeDone(card.id, ep)
+                    else store.putLong(posKey, exo.currentPosition)
+                } else store.putLong(posKey, exo.currentPosition)
+            } catch (_: Exception) {}
             exo.removeListener(listener)
             exo.release()
         }
@@ -216,9 +233,15 @@ fun PlayerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
         while (true) {
             delay(1000)
             if (exo.isPlaying) {
-                store.spendSec(1)
-                bankSec = store.bankSec()
-                if (bankSec <= 0) { exo.pause(); empty = true }
+                if (ep >= 0) {
+                    tokenSec = (tokenSec - 1).coerceAtLeast(0)
+                    if (tokenSec % 5 == 0) store.setToken(card.id, ep, tokenSec)
+                    if (tokenSec <= 0) { exo.pause(); empty = true }
+                } else {
+                    store.spendSec(1)
+                    bankSec = store.bankSec()
+                    if (bankSec <= 0) { exo.pause(); empty = true }
+                }
             }
         }
     }
@@ -354,7 +377,7 @@ fun PlayerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
                         Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(34.dp))
                     }
                     IconButton(onClick = { exo.seekTo(exo.currentPosition + 10_000L); touch++ }) { Icon(Icons.Default.Forward10, "Forward 10 s", tint = Color.White) }
-                    Text(trf("Bank: %s min", minText(bankSec)), color = Color.White, style = MaterialTheme.typography.labelLarge)
+                    Text(if (ep >= 0) trf("Token: %s left", clock(tokenSec * 1000L)) else trf("Bank: %s min", minText(bankSec)), color = Color.White, style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -362,11 +385,11 @@ fun PlayerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
             FilledIconButton(onClick = { locked = false; controls = true }) { Icon(Icons.Default.Lock, "Unlock") }
         }
 
-        if (empty) Card(Modifier.align(Alignment.Center).padding(24.dp)) {
+        if (empty || finished) Card(Modifier.align(Alignment.Center).padding(24.dp)) {
             Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(tr("Treat bank is empty"), style = MaterialTheme.typography.titleMedium)
-                Text(tr("Finish tasks to earn more watch time."), style = MaterialTheme.typography.bodyMedium)
-                Button(onClick = onExit) { Text(tr("Back to work")) }
+                Text(tr(if (finished) "Episode finished" else if (ep >= 0) "This episode's token is used up" else "Treat bank is empty"), style = MaterialTheme.typography.titleMedium)
+                Text(tr(if (ep >= 0) "Another episode needs another token from the bank." else "Finish tasks to earn more watch time."), style = MaterialTheme.typography.bodyMedium)
+                Button(onClick = onExit) { Text(tr(if (ep >= 0) "Back to the episodes" else "Back to work")) }
             }
         }
     }

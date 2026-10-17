@@ -49,6 +49,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.runtime.saveable.rememberSaveable
+import android.widget.Toast
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,6 +77,10 @@ import com.barq.focus.service.Perms
 import com.barq.focus.service.Reminders
 import com.barq.focus.service.TouchCounter
 
+import com.barq.focus.data.EpLock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SetupScreen(store: Store, onBack: () -> Unit) {
@@ -82,10 +98,24 @@ fun SetupScreen(store: Store, onBack: () -> Unit) {
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { rev++ }
     var gated by remember { mutableStateOf(store.gated()) }
     var debug by remember { mutableStateOf(store.debug) }
+    var dev by remember { mutableStateOf(store.devOptions) }
+    var taps by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
+    val missing = listOf(usage, overlay, a11y).count { !it }
+
+    val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { u: Uri? ->
+        if (u != null) {
+            try { ctx.contentResolver.takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) } catch (_: Exception) {}
+            scope.launch {
+                val n = withContext(Dispatchers.IO) { EpLock.restoreFolder(ctx, u, store) }
+                Toast.makeText(ctx, trf("Restored %d files", n), Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text(tr("Setup")) },
+            title = { Text(tr("Settings")) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
         )
     }, contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime)) { pad ->
@@ -93,29 +123,59 @@ fun SetupScreen(store: Store, onBack: () -> Unit) {
             Modifier.padding(pad).padding(horizontal = 16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            PermRow("Usage access", "Needed to see which app is in front.", usage) {
-                ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-            }
-            PermRow("Display over other apps", "Needed for the gate overlay.", overlay) {
-                ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
-            }
-            PermRow(
-                "Accessibility",
-                "Detects Shorts/Reels, counts them, and lets Leave close apps properly. On Android 13+: App info > ⋮ > Allow restricted settings first.",
-                a11y
-            ) { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-            PermRow(
-                "Notification access",
-                "Optional: logs music playing in the background (VLC, YouTube Music). Same restricted-settings step applies.",
-                listener
-            ) { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
-            if (Build.VERSION.SDK_INT >= 33) {
-                PermRow("Notifications", "Lets the \"Focus is watching\" notice show.", notif) {
-                    notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            Group("perms", Icons.Default.Security, "Permissions", if (missing == 0) "All set" else trf("%d still needed", missing), missing > 0) {
+                PermRow("Usage access", "Needed to see which app is in front.", usage) {
+                    ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                 }
+                PermRow("Display over other apps", "Needed for the gate overlay.", overlay) {
+                    ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
+                }
+                PermRow(
+                    "Accessibility",
+                    "Detects Shorts/Reels, counts them, and lets Leave close apps properly. On Android 13+: App info > ⋮ > Allow restricted settings first.",
+                    a11y
+                ) { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                PermRow(
+                    "Notification access",
+                    "Optional: logs music playing in the background (VLC, YouTube Music). Same restricted-settings step applies.",
+                    listener
+                ) { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+                if (Build.VERSION.SDK_INT >= 33) {
+                    PermRow("Notifications", "Lets the \"Focus is watching\" notice show.", notif) {
+                        notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+                Text(
+                    tr("Set Focus to \"Unrestricted\" in the phone's battery settings, otherwise the ROM may kill the watcher."),
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
-            Card(Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+
+            Group("gate", Icons.Default.Tune, "Gate and Shorts", "Apps, YouTube picture-in-picture, swipe counting") {
+                Text(tr("Gate these apps"), fontWeight = FontWeight.SemiBold)
+                Text(tr("All listed apps are logged. Only the ones switched on show the overlay."), style = MaterialTheme.typography.bodyMedium)
+                Config.TRACKED.forEach { (pkg, name) ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(name, Modifier.weight(1f))
+                        Switch(checked = pkg in gated, onCheckedChange = { on ->
+                            gated = if (on) gated + pkg else gated - pkg
+                            store.setGated(gated)
+                        })
+                    }
+                }
+                var precise by remember { mutableStateOf(store.preciseSwipes) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Precise swipe counting (root)"))
+                        Text(
+                            tr("Reads real touchscreen swipes with getevent, so each Short is counted once. Needs root; without it Focus keeps the scroll-based count."),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        if (precise && TouchCounter.status.isNotEmpty()) Text(tr(TouchCounter.status), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Switch(checked = precise, onCheckedChange = { precise = it; store.preciseSwipes = it })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(tr("Picture-in-picture"), style = MaterialTheme.typography.titleMedium)
                         Text(tr("Switch YouTube off here so it can't float over your screen."), style = MaterialTheme.typography.bodyMedium)
@@ -128,184 +188,204 @@ fun SetupScreen(store: Store, onBack: () -> Unit) {
                     }) { Text(tr("Open")) }
                 }
             }
-            Text(
-                tr("Set Focus to \"Unrestricted\" in the phone's battery settings, otherwise the ROM may kill the watcher."),
-                style = MaterialTheme.typography.bodyMedium
-            )
 
-            Spacer(Modifier.height(8.dp))
-            Text(tr("PDF reader"), fontWeight = FontWeight.SemiBold)
-            var reader by remember { mutableStateOf(store.pdfReader) }
-            val epiOk = remember(rev) { Episteme.installed(ctx) != null }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = reader == "episteme", onClick = { reader = "episteme"; store.pdfReader = "episteme" },
-                    label = { Text("Episteme" + if (epiOk) "" else "  " + tr("(not installed)")) }
-                )
-                FilterChip(
-                    selected = reader == "builtin", onClick = { reader = "builtin"; store.pdfReader = "builtin" },
-                    label = { Text(tr("Built-in")) }
-                )
-            }
-            Text(
-                tr("Episteme opens your PDFs in the Episteme Reader app (install it separately). It keeps its own look; the built-in reader keeps Focus's."),
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            Spacer(Modifier.height(8.dp))
-            var precise by remember { mutableStateOf(store.preciseSwipes) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(tr("Precise swipe counting (root)"))
-                    Text(
-                        tr("Reads real touchscreen swipes with getevent, so each Short is counted once. Needs root; without it Focus keeps the scroll-based count."),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    if (precise && TouchCounter.status.isNotEmpty()) Text(tr(TouchCounter.status), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Group("timer", Icons.Default.Timer, "Timer and reminders", "Alerts, over-time nudges, start reminders") {
+                NumField("Ring length when time is up (sec)", store.ringSec) { store.ringSec = it }
+                NumField("Over-time reminder every (min, 0 = off)", store.nagMin) { store.nagMin = it }
+                NumField("Reminder bell length (sec)", store.nagRingSec) { store.nagRingSec = it }
+                var speak by remember { mutableStateOf(store.speak) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Speak (\"time's up buddy\", \"go faster bro\")"), Modifier.weight(1f))
+                    Switch(checked = speak, onCheckedChange = { speak = it; store.speak = it })
                 }
-                Switch(checked = precise, onCheckedChange = { precise = it; store.preciseSwipes = it })
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(tr("App colour"), fontWeight = FontWeight.SemiBold)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                FilterChip(
-                    selected = AppTheme.accent == 0,
-                    onClick = { AppTheme.accent = 0; store.accent = 0 },
-                    label = { Text(tr("System")) }
-                )
-                CardSwatches.forEach { c ->
-                    val argb = c.toArgb()
-                    Box(
-                        Modifier.size(34.dp).clip(CircleShape).background(c)
-                            .border(if (AppTheme.accent == argb) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                            .clickable { AppTheme.accent = argb; store.accent = argb }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(tr("Theme"), fontWeight = FontWeight.SemiBold)
-            var themeMode by remember { mutableStateOf(store.themeMode) }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(0 to "Follow system", 1 to "Light", 2 to "Dark").forEach { (m, n) ->
-                    FilterChip(
-                        selected = themeMode == m,
-                        onClick = { themeMode = m; store.themeMode = m; AppTheme.mode = m },
-                        label = { Text(tr(n)) }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(tr("Check shape"), fontWeight = FontWeight.SemiBold)
-            var shape by remember { mutableStateOf(store.checkShape) }
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                (0..7).forEach { m ->
-                    Box(
-                        Modifier.clip(CircleShape).clickable { shape = m; store.checkShape = m; AppTheme.checkShape = m }.padding(4.dp)
-                    ) { ShapePreview(m, shape == m, MaterialTheme.colorScheme.primary) }
-                }
-            }
-            var demo by remember { mutableStateOf(false) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ShapeCheck(demo, MaterialTheme.colorScheme.primary, 0) { demo = it }
-                Text(tr("Tap to preview the pop and glow"), style = MaterialTheme.typography.bodyMedium)
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(tr("Language"), fontWeight = FontWeight.SemiBold)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                I18n.names(ctx).forEach { (c, n) ->
-                    FilterChip(selected = I18n.code == c, onClick = { I18n.apply(ctx, c); com.barq.focus.service.Notifier.refreshAll(ctx) }, label = { Text(n) })
-                }
-            }
-            Text(
-                tr("More languages: Import / Export > Language template, translate it with any AI, import it back."),
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            Spacer(Modifier.height(8.dp))
-            Text(tr("Timer alerts"), fontWeight = FontWeight.SemiBold)
-            NumField("Ring length when time is up (sec)", store.ringSec) { store.ringSec = it }
-            NumField("Over-time reminder every (min, 0 = off)", store.nagMin) { store.nagMin = it }
-            NumField("Reminder bell length (sec)", store.nagRingSec) { store.nagRingSec = it }
-            var speak by remember { mutableStateOf(store.speak) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("Speak (\"time's up buddy\", \"go faster bro\")"), Modifier.weight(1f))
-                Switch(checked = speak, onCheckedChange = { speak = it; store.speak = it })
-            }
-            OutlinedButton(onClick = {
-                Alerts.run(ctx, "", minOf(store.ringSec, 4), if (store.speak) tr("Time's up, buddy! This is a test.") else null, true)
-            }) { Text(tr("Test alert")) }
-
-            Spacer(Modifier.height(8.dp))
-            Text(tr("Start reminders"), fontWeight = FontWeight.SemiBold)
-            var sr by remember { mutableStateOf(store.startRemind) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("Nudge me if I haven't started any work"), Modifier.weight(1f))
-                Switch(checked = sr, onCheckedChange = { sr = it; store.startRemind = it; Reminders.rescheduleNudge(ctx) })
-            }
-            if (sr) {
-                var from by remember { mutableStateOf(store.startRemindFrom) }
                 OutlinedButton(onClick = {
-                    android.app.TimePickerDialog(
-                        ctx,
-                        { _, h, m -> from = h * 60 + m; store.startRemindFrom = from; Reminders.rescheduleNudge(ctx) },
-                        from / 60, from % 60, true
-                    ).show()
-                }) { Text(trf("Start nudging from %s", "%02d:%02d".format(from / 60, from % 60))) }
-                NumField("Then every (min)", store.startRemindEvery) { store.startRemindEvery = it; Reminders.rescheduleNudge(ctx) }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(tr("Gate these apps"), fontWeight = FontWeight.SemiBold)
-            Text(tr("All listed apps are logged. Only the ones switched on show the overlay."), style = MaterialTheme.typography.bodyMedium)
-            Config.TRACKED.forEach { (pkg, name) ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(name, Modifier.weight(1f))
-                    Switch(checked = pkg in gated, onCheckedChange = { on ->
-                        gated = if (on) gated + pkg else gated - pkg
-                        store.setGated(gated)
-                    })
+                    Alerts.run(ctx, "", minOf(store.ringSec, 4), if (store.speak) tr("Time's up, buddy! This is a test.") else null, true)
+                }) { Text(tr("Test alert")) }
+                HorizontalDivider()
+                var sr by remember { mutableStateOf(store.startRemind) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Nudge me if I haven't started any work"), Modifier.weight(1f))
+                    Switch(checked = sr, onCheckedChange = { sr = it; store.startRemind = it; Reminders.rescheduleNudge(ctx) })
+                }
+                if (sr) {
+                    var from by remember { mutableStateOf(store.startRemindFrom) }
+                    OutlinedButton(onClick = {
+                        android.app.TimePickerDialog(
+                            ctx,
+                            { _, h, m -> from = h * 60 + m; store.startRemindFrom = from; Reminders.rescheduleNudge(ctx) },
+                            from / 60, from % 60, true
+                        ).show()
+                    }) { Text(trf("Start nudging from %s", "%02d:%02d".format(from / 60, from % 60))) }
+                    NumField("Then every (min)", store.startRemindEvery) { store.startRemindEvery = it; Reminders.rescheduleNudge(ctx) }
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("Collect YouTube screen IDs (to tune Shorts detection)"), Modifier.weight(1f))
-                Switch(checked = debug, onCheckedChange = { debug = it; store.debug = it })
+            Group("look", Icons.Default.Palette, "Appearance", "Colour, theme, check shape, language") {
+                Text(tr("App colour"), fontWeight = FontWeight.SemiBold)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FilterChip(
+                        selected = AppTheme.accent == 0,
+                        onClick = { AppTheme.accent = 0; store.accent = 0 },
+                        label = { Text(tr("System")) }
+                    )
+                    CardSwatches.forEach { c ->
+                        val argb = c.toArgb()
+                        Box(
+                            Modifier.size(34.dp).clip(CircleShape).background(c)
+                                .border(if (AppTheme.accent == argb) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                .clickable { AppTheme.accent = argb; store.accent = argb }
+                        )
+                    }
+                }
+                Text(tr("Theme"), fontWeight = FontWeight.SemiBold)
+                var themeMode by remember { mutableStateOf(store.themeMode) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0 to "Follow system", 1 to "Light", 2 to "Dark").forEach { (m, n) ->
+                        FilterChip(
+                            selected = themeMode == m,
+                            onClick = { themeMode = m; store.themeMode = m; AppTheme.mode = m },
+                            label = { Text(tr(n)) }
+                        )
+                    }
+                }
+                Text(tr("Check shape"), fontWeight = FontWeight.SemiBold)
+                var shape by remember { mutableStateOf(store.checkShape) }
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    (0..7).forEach { m ->
+                        Box(
+                            Modifier.clip(CircleShape).clickable { shape = m; store.checkShape = m; AppTheme.checkShape = m }.padding(4.dp)
+                        ) { ShapePreview(m, shape == m, MaterialTheme.colorScheme.primary) }
+                    }
+                }
+                var demo by remember { mutableStateOf(false) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ShapeCheck(demo, MaterialTheme.colorScheme.primary, 0) { demo = it }
+                    Text(tr("Tap to preview the pop and glow"), style = MaterialTheme.typography.bodyMedium)
+                }
+                Text(tr("Language"), fontWeight = FontWeight.SemiBold)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    I18n.names(ctx).forEach { (c, n) ->
+                        FilterChip(selected = I18n.code == c, onClick = { I18n.apply(ctx, c); com.barq.focus.service.Notifier.refreshAll(ctx) }, label = { Text(n) })
+                    }
+                }
+                Text(
+                    tr("More languages: Import / Export > Language template, translate it with any AI, import it back."),
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
-            if (debug) {
+
+            Group("notes", Icons.Default.Description, "Notes, PDF and recordings", "PDF reader, voice recording, checklists") {
+                Text(tr("PDF reader"), fontWeight = FontWeight.SemiBold)
+                var reader by remember { mutableStateOf(store.pdfReader) }
+                val epiOk = remember(rev) { Episteme.installed(ctx) != null }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = reader == "episteme", onClick = { reader = "episteme"; store.pdfReader = "episteme" },
+                        label = { Text("Episteme" + if (epiOk) "" else "  " + tr("(not installed)")) }
+                    )
+                    FilterChip(
+                        selected = reader == "builtin", onClick = { reader = "builtin"; store.pdfReader = "builtin" },
+                        label = { Text(tr("Built-in")) }
+                    )
+                }
+                Text(
+                    tr("Episteme opens your PDFs in the Episteme Reader app (install it separately). It keeps its own look; the built-in reader keeps Focus's."),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                HorizontalDivider()
+                Text(tr("Voice recordings"), fontWeight = FontWeight.SemiBold)
+                var ask by remember { mutableStateOf(store.askRecName) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Ask for a name when I stop recording"))
+                        Text(tr("Recordings keep a temporary name until you give one. The file type is added for you."), style = MaterialTheme.typography.labelLarge)
+                    }
+                    Switch(checked = ask, onCheckedChange = { ask = it; store.askRecName = it })
+                }
+                var kbps by remember { mutableStateOf(store.recKbps) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(24 to "Smallest", 32 to "Balanced", 64 to "Best").forEach { (k, n) ->
+                        FilterChip(selected = kbps == k, onClick = { kbps = k; store.recKbps = k }, label = { Text(tr(n)) })
+                    }
+                }
+                Text(
+                    tr("Opus voice quality. Balanced is about 14 MB an hour and sounds clean; Best doubles that."),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                HorizontalDivider()
+                var sink by remember { mutableStateOf(store.notesAutoSort) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Checked checklist items sink to the bottom"), Modifier.weight(1f))
+                    Switch(checked = sink, onCheckedChange = { sink = it; store.notesAutoSort = it })
+                }
+            }
+
+            Group("about", Icons.Default.Info, "About", "Version and licenses") {
+                Text(tr("Focus is free software under the GNU Affero General Public License v3.0 only (AGPL-3.0-only)."), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    tr("Notes follow the feature set of NotallyX (Crustack, forked from Notally by OmGodse; GPL-3.0). PDFs can be opened in Episteme Reader (Aryan-Raj3112; AGPL-3.0-only), a separate app that is not bundled. The code here is an independent implementation."),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "${com.barq.focus.BuildConfig.LICENSE_ID}  ·  v${com.barq.focus.BuildConfig.VERSION_NAME}",
+                    Modifier.clickable {
+                        if (dev) { Toast.makeText(ctx, tr("Developer options are already on"), Toast.LENGTH_SHORT).show(); return@clickable }
+                        taps++
+                        if (taps >= 7) { dev = true; store.devOptions = true; Toast.makeText(ctx, tr("Developer options unlocked"), Toast.LENGTH_SHORT).show() }
+                        else if (taps >= 3) Toast.makeText(ctx, trf("%d more taps for developer options", 7 - taps), Toast.LENGTH_SHORT).show()
+                    },
+                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            if (dev) Group("dev", Icons.Default.Code, "Developer options", "Rescue tools and debug capture") {
+                Text(tr("Restore locked episode files"), fontWeight = FontWeight.SemiBold)
+                Text(
+                    tr("If locked treat videos ever stay hidden, pick their folder. Focus reads the hidden config there (or the hidden names) and gives every file its real name back."),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedButton(onClick = { restorePicker.launch(null) }) { Text(tr("Pick the folder and restore")) }
+                HorizontalDivider()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Collect YouTube screen IDs (to tune Shorts detection)"), Modifier.weight(1f))
+                    Switch(checked = debug, onCheckedChange = { debug = it; store.debug = it })
+                }
+                if (debug) {
+                    OutlinedButton(onClick = {
+                        val cm = ctx.getSystemService(ClipboardManager::class.java)
+                        cm.setPrimaryClip(ClipData.newPlainText("ids", store.debugIds.ifEmpty { "nothing captured yet" }))
+                    }) { Text(tr("Copy last captured IDs")) }
+                }
                 OutlinedButton(onClick = {
                     val cm = ctx.getSystemService(ClipboardManager::class.java)
-                    cm.setPrimaryClip(ClipData.newPlainText("ids", store.debugIds.ifEmpty { "nothing captured yet" }))
-                }) { Text(tr("Copy last captured IDs")) }
+                    cm.setPrimaryClip(ClipData.newPlainText("crash", store.lastCrash.ifEmpty { "no crash recorded" }))
+                }) { Text(tr("Copy last crash")) }
+                TextButton(onClick = { dev = false; store.devOptions = false; taps = 0 }) { Text(tr("Hide developer options")) }
             }
-            Spacer(Modifier.height(8.dp))
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(tr("About & licenses"), style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        tr("Focus is free software under the GNU Affero General Public License v3.0 only (AGPL-3.0-only)."),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        tr("Notes follow the feature set of NotallyX (Crustack, forked from Notally by OmGodse; GPL-3.0). PDFs can be opened in Episteme Reader (Aryan-Raj3112; AGPL-3.0-only), a separate app that is not bundled. The code here is an independent implementation."),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "${com.barq.focus.BuildConfig.LICENSE_ID}  ·  v${com.barq.focus.BuildConfig.VERSION_NAME}",
-                        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = {
-                val cm = ctx.getSystemService(ClipboardManager::class.java)
-                cm.setPrimaryClip(ClipData.newPlainText("crash", store.lastCrash.ifEmpty { "no crash recorded" }))
-            }) { Text(tr("Copy last crash")) }
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/** One collapsible block of settings. Opens by itself when [open] (e.g. a permission is missing). */
+@Composable
+private fun Group(id: String, icon: ImageVector, title: String, subtitle: String, open: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    var expanded by rememberSaveable(id) { mutableStateOf(open) }
+    Card(Modifier.fillMaxWidth()) {
+        Column {
+            Row(
+                Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(tr(title), style = MaterialTheme.typography.titleMedium)
+                    Text(if (subtitle.startsWith("%") || subtitle[0].isDigit()) subtitle else tr(subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+            }
+            if (expanded) Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
         }
     }
 }

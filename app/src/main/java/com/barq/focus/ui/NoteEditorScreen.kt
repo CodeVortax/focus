@@ -44,7 +44,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Star
@@ -66,6 +70,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.barq.focus.data.Attach
 import com.barq.focus.data.CardType
 import com.barq.focus.data.Item
 import com.barq.focus.data.Note
@@ -80,7 +85,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onBack: () -> Unit) {
+fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onOpenNote: (Long) -> Unit = {}, onBack: () -> Unit) {
     val ctx = LocalContext.current
     val db = remember { NotesDb.get(ctx) }
     val initial = remember { (if (noteId != 0L) db.get(noteId) else null) ?: Note(type = newType) }
@@ -100,7 +105,15 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onBack: () -> Uni
     var pinned by remember { mutableStateOf(initial.pinned) }
     var archived by remember { mutableStateOf(initial.archived) }
     var labels by remember { mutableStateOf(initial.labels) }
-    var voices by remember { mutableStateOf(initial.voices) }
+    // old voice notes join the attachment list (and are saved there from now on)
+    val atts = remember {
+        mutableStateListOf<Attach>().also { l ->
+            l.addAll(initial.attachments)
+            l.addAll(initial.voices.map { Attach("audio", "voice:" + it.file, tr("Voice note"), it.ms) })
+        }
+    }
+    var arrange by remember { mutableStateOf(false) }
+    var showAttach by remember { mutableStateOf(false) }
     var showRemind by remember { mutableStateOf(false) }
     var modified by remember { mutableLongStateOf(initial.modified) }
     val created = remember { initial.created }
@@ -116,7 +129,7 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onBack: () -> Uni
     fun snapshot() = Note(
         id = id, type = type, title = title, body = body, items = items.toList(), color = color, pinned = pinned,
         archived = archived, labels = labels, spans = if (type == 0) spans else emptyList(),
-        voices = voices, created = created, modified = modified
+        attachments = atts.toList(), created = created, modified = modified
     )
 
     fun save() {
@@ -144,7 +157,7 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onBack: () -> Uni
     }
 
     // autosave shortly after you stop typing, and once more when you leave
-    LaunchedEffect(title, body, spans, color, pinned, archived, labels, type, voices, items.toList()) { delay(700); saveAsync() }
+    LaunchedEffect(title, body, spans, color, pinned, archived, labels, type, atts.toList(), items.toList()) { delay(700); saveAsync() }
     DisposableEffect(Unit) { onDispose { save() } }
 
     fun toggle(i: Int, v: Boolean) {
@@ -310,6 +323,8 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onBack: () -> Uni
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
                 )
             } else {
+                val rs = remember { ReorderState() }
+                Column {
                 items.forEachIndexed { i, it0 ->
                     val fr = remember { FocusRequester() }
                     LaunchedEffect(focusIdx) {
@@ -319,7 +334,11 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onBack: () -> Uni
                             focusIdx = -1
                         }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.reorderRow(rs, i).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        if (arrange) Icon(
+                            Icons.Default.DragHandle, tr("Drag to move"),
+                            Modifier.reorderHandle(rs, i, items.size) { f, t -> items.add(t, items.removeAt(f)) }.padding(10.dp).size(24.dp)
+                        )
                         ShapeCheck(it0.done, accent, i) { v -> toggle(i, v) }
                         TextField(
                             it0.text,
@@ -344,10 +363,11 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onBack: () -> Uni
                         }
                     }
                 }
+                }
                 TextButton(onClick = { items.add(Item("", false)); focusIdx = items.lastIndex }) { Text(tr("+  Add item")) }
             }
 
-            VoiceSection(voices, { voices = it }, accent)
+            AttachSection(atts, arrange, accent, onOpenNote = { n -> save(); onOpenNote(n) })
 
             if (id != 0L) Text(
                 tr("Edited ") + SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()).format(Date(modified)),
@@ -355,9 +375,17 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onBack: () -> Uni
             )
             Spacer(Modifier.height(48.dp))
         }
-        if (type == 0) RichBar(onOp = { op -> applyOp(op) })
+        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant), verticalAlignment = Alignment.Bottom) {
+            IconButton(onClick = { showAttach = true }) { Icon(Icons.Default.Add, tr("Attach")) }
+            Box(Modifier.weight(1f)) { if (type == 0) RichBar(onOp = { op -> applyOp(op) }) }
+            IconButton(onClick = { arrange = !arrange }) {
+                Icon(if (arrange) Icons.Default.Check else Icons.Default.SwapVert, tr(if (arrange) "Done arranging" else "Arrange"))
+            }
+        }
         }
     }
+
+    AttachAdder(showAttach, { showAttach = false }, atts, store, id)
 
     if (showRemind) EventDialog(
         initial = null, defaultTitle = title.ifBlank { tr("Note") }, noteId = id,
