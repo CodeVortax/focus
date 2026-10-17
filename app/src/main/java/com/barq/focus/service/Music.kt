@@ -146,6 +146,8 @@ class MusicService : MediaSessionService() {
                 .also { it.setSmallIcon(com.barq.focus.R.drawable.ic_music_note) }
         )
         session = MediaSession.Builder(this, Music.get(this)).setSessionActivity(TimerAlarm.openApp(this)).build()
+        // the screen drives the player directly (no MediaController), so register the session or Media3 never posts the notification
+        addSession(session!!)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session

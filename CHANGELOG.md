@@ -2,6 +2,14 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.18.2-beta (version code 25)
+
+### Fixed
+- The built-in Music player now shows its media notification, Quick Settings player and capsule. The player service never registered its media session, so Android had nothing to show.
+
+### Added
+- [Building Omnibridge](docs/guides/omnibridge-build.md): step-by-step Termux build guide for the optional companion app.
+
 ## 0.18.1-beta (version code 24)
 
 ### Added
