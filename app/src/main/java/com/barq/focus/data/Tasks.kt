@@ -41,9 +41,19 @@ object Weekly {
         return c.timeInMillis
     }
 
-    fun make(text: String, rewardMin: Int, group: String = ""): Item {
+    /** [due] = 0 means the end of this week; otherwise the end of that chosen day. */
+    fun make(text: String, rewardMin: Int, group: String = "", due: Long = 0L): Item {
         val now = System.currentTimeMillis()
-        return Item(text, false, weekly = true, reward = rewardMin, created = now, deadline = endOfWeek(now), group = group)
+        return Item(text, false, weekly = true, reward = rewardMin, created = now, deadline = if (due > 0L) due else endOfWeek(now), group = group)
+    }
+
+    /** Picked day (any millis inside it) -> the moment that day ends. */
+    fun endOfDay(day: Long): Long {
+        val c = Calendar.getInstance()
+        c.timeInMillis = day
+        c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+        c.add(Calendar.DAY_OF_YEAR, 1)
+        return c.timeInMillis
     }
 
     fun factor(i: Item, now: Long): Float {

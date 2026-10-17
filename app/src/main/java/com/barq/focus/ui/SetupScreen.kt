@@ -263,6 +263,26 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                     ShapeCheck(demo, MaterialTheme.colorScheme.primary, 0) { demo = it }
                     Text(tr("Tap to preview the pop and glow"), style = MaterialTheme.typography.bodyMedium)
                 }
+                Text(tr("Font"), fontWeight = FontWeight.SemiBold)
+                val fontPick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { u ->
+                    if (u != null) {
+                        val nm = try { ctx.contentResolver.query(u, null, null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(c.getColumnIndexOrThrow(android.provider.OpenableColumns.DISPLAY_NAME)) else null } } catch (_: Exception) { null } ?: "custom"
+                        Toast.makeText(ctx, tr(if (com.barq.focus.ui.theme.AppFont.import(ctx, u, nm)) "Font applied" else "That file isn't a usable font"), Toast.LENGTH_SHORT).show()
+                    }
+                }
+                Text(
+                    if (com.barq.focus.ui.theme.AppFont.name.isEmpty()) tr("System font") else com.barq.focus.ui.theme.AppFont.name,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { fontPick.launch(arrayOf("*/*")) }) { Text(tr("Choose a font file")) }
+                    if (com.barq.focus.ui.theme.AppFont.name.isNotEmpty() && com.barq.focus.ui.theme.AppFont.name != "default")
+                        TextButton(onClick = { com.barq.focus.ui.theme.AppFont.reset(ctx) }) { Text(tr("Reset")) }
+                }
+                Text(
+                    tr("Pick a .ttf or .otf file to try a font. To make one permanent, put it at app/src/main/assets/fonts/default.ttf and rebuild."),
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 Text(tr("Language"), fontWeight = FontWeight.SemiBold)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     I18n.names(ctx).forEach { (c, n) ->

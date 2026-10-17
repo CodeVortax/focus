@@ -21,6 +21,19 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "Font" to "الخط",
+    "Font applied" to "تم تطبيق الخط",
+    "That file isn't a usable font" to "هذا الملف ليس خطًا صالحًا",
+    "System font" to "خط النظام",
+    "Choose a font file" to "اختر ملف خط",
+    "Pick a .ttf or .otf file to try a font. To make one permanent, put it at app/src/main/assets/fonts/default.ttf and rebuild." to "اختر ملف ‎.ttf‎ أو ‎.otf‎ لتجربة خط. لتثبيته نهائيًا ضعه في app/src/main/assets/fonts/default.ttf ثم أعد البناء.",
+    "Sub tasks" to "مهام فرعية",
+    "Add a sub task" to "أضف مهمة فرعية",
+    "Change date" to "تغيير التاريخ",
+    "Planned" to "مخطط لها",
+    "Do these any day before the date. The sooner you finish, the bigger the reward." to "أنجزها في أي يوم قبل التاريخ. كلما أنجزتها أسرع زادت المكافأة.",
+    "Add a planned task" to "أضف مهمة مخططة",
+    "End of this week" to "نهاية هذا الأسبوع",
     "%d d left" to "باقي %d يوم",
     "%d h" to "%d ساعة",
     "%d h %d min" to "%d ساعة و%d دقيقة",

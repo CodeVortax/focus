@@ -2,6 +2,16 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.19.0-beta (version code 26)
+
+### Added
+- **Sub tasks**: any task can hold small steps (⋮ > Sub tasks). A progress bar shows how many are done; ticking the last one completes the task, unticking one reopens it.
+- **Plan a task for any day**: the *This week* option is now *Planned* with a date button, so a task can be due next week or in two months. Change it later from ⋮ > Change date. The reward still shrinks from x2 to x1 as the date approaches.
+- **Custom font**: Settings > Appearance > Font lets you pick a .ttf or .otf file to try. To make a font the stock one, put it at `app/src/main/assets/fonts/default.ttf` and rebuild. See [Fonts](docs/guides/fonts.md).
+
+### Fixed
+- Light theme colours: surfaces, top bars, containers and text now come from one consistent palette, and the window background follows the app's Light/Dark choice instead of the phone's night mode.
+
 ## 0.18.2-beta (version code 25)
 
 ### Fixed

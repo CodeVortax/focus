@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import com.barq.focus.data.Item
+import com.barq.focus.data.SubTask
 import com.barq.focus.data.TaskGroup
 import com.barq.focus.data.Weekly
 import com.barq.focus.data.minText
@@ -61,9 +63,12 @@ fun TaskRow(
     item: Item, seed: Int, color: Color, groups: List<TaskGroup>,
     onToggle: (Boolean) -> Unit, onDelete: () -> Unit,
     onMoveToGroup: (String) -> Unit, onNewGroup: () -> Unit,
-    onRecord: () -> Unit, onDeleteVoice: () -> Unit
+    onRecord: () -> Unit, onDeleteVoice: () -> Unit,
+    onSubs: (List<SubTask>) -> Unit = {}, onDue: () -> Unit = {}
 ) {
     var menu by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf(false) }
+    var newSub by remember { mutableStateOf("") }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         ShapeCheck(item.done, color, seed, onToggle)
         Column(Modifier.weight(1f)) {
@@ -87,6 +92,47 @@ fun TaskRow(
                     style = MaterialTheme.typography.labelMedium,
                     color = if (late) MaterialTheme.colorScheme.error else color
                 )
+                Text(
+                    java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(item.deadline - 1L)),
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (item.subs.isNotEmpty()) {
+                val d = item.subs.count { it.done }
+                Row(Modifier.clickable { open = !open }.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    LinearProgressIndicator(
+                        progress = { d / item.subs.size.toFloat() }, Modifier.width(80.dp),
+                        color = color, trackColor = color.copy(alpha = 0.2f)
+                    )
+                    Text("  $d/${item.subs.size}", style = MaterialTheme.typography.labelMedium, color = color)
+                    Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, Modifier.size(18.dp), tint = color)
+                }
+            }
+            if (open) {
+                item.subs.forEachIndexed { k, st ->
+                    Row(Modifier.fillMaxWidth().padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(st.done, { v -> onSubs(item.subs.toMutableList().also { it[k] = st.copy(done = v) }) })
+                        Text(
+                            st.text, Modifier.weight(1f),
+                            style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
+                            textDecoration = if (st.done) TextDecoration.LineThrough else null,
+                            color = if (st.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                        )
+                        IconButton(onClick = { onSubs(item.subs.filterIndexed { j, _ -> j != k }) }) { Icon(Icons.Default.Close, tr("Delete")) }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        newSub, { newSub = it }, Modifier.weight(1f), singleLine = true,
+                        label = { Text(tr("Add a sub task")) },
+                        textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                            if (newSub.isNotBlank()) { onSubs(item.subs + SubTask(newSub.trim())); newSub = "" }
+                        })
+                    )
+                    TextButton(enabled = newSub.isNotBlank(), onClick = { onSubs(item.subs + SubTask(newSub.trim())); newSub = "" }) { Text(tr("Add")) }
+                }
             }
         }
         if (item.voice.isNotEmpty()) VoicePlayButton(item.voice, color)
@@ -103,6 +149,8 @@ fun TaskRow(
                     }
                     DropdownMenuItem(text = { Text(tr("New group…")) }, onClick = { menu = false; onNewGroup() })
                 }
+                DropdownMenuItem(text = { Text(tr("Sub tasks")) }, onClick = { menu = false; open = true })
+                if (item.weekly) DropdownMenuItem(text = { Text(tr("Change date")) }, onClick = { menu = false; onDue() })
                 if (item.voice.isEmpty()) DropdownMenuItem(text = { Text(tr("Record voice note")) }, onClick = { menu = false; onRecord() })
                 else DropdownMenuItem(text = { Text(tr("Delete voice note")) }, onClick = { menu = false; onDeleteVoice() })
                 DropdownMenuItem(text = { Text(tr("Delete task")) }, onClick = { menu = false; onDelete() })
@@ -169,4 +217,30 @@ fun GroupDialog(initial: TaskGroup?, defaultColor: Int, onDismiss: () -> Unit, o
         confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { onSave(name.trim(), color) }) { Text(tr("Save")) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancel")) } }
     )
+}
+
+/** Pick any day (next week, in two months...). [onPick] gets the moment that day ends; [onEndOfWeek] goes back to the default. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DueDialog(initial: Long, onDismiss: () -> Unit, onPick: (Long) -> Unit, onEndOfWeek: () -> Unit) {
+    val st = rememberDatePickerState(initialSelectedDateMillis = if (initial > 0L) initial - 1L else null)
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(enabled = st.selectedDateMillis != null, onClick = {
+                val u = st.selectedDateMillis ?: return@TextButton
+                // the picker speaks UTC midnight; rebuild the same calendar day in local time
+                val c = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")); c.timeInMillis = u
+                val l = java.util.Calendar.getInstance(); l.clear()
+                l.set(c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH), 12, 0)
+                onPick(Weekly.endOfDay(l.timeInMillis))
+            }) { Text(tr("OK")) }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onEndOfWeek) { Text(tr("End of this week")) }
+                TextButton(onClick = onDismiss) { Text(tr("Cancel")) }
+            }
+        }
+    ) { DatePicker(st) }
 }

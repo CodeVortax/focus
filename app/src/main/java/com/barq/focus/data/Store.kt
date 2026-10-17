@@ -36,7 +36,11 @@ data class Item(
     val group: String = "",           // name of the TaskGroup it sits in ("" = none)
     val voice: String = "",           // voice note file name ("" = none)
     val voiceMs: Long = 0L,
+    val subs: List<SubTask> = emptyList(),   // small steps inside a big task
 )
+
+/** One small step of a task. */
+data class SubTask(val text: String, val done: Boolean = false)
 
 /** One video of a treat series. [orig] is the real file name, [locked] means it is renamed so no other app lists it. */
 data class Episode(
@@ -129,7 +133,8 @@ class Store(ctx: Context) {
                     arr.getJSONObject(i).let { x ->
                         Item(
                             x.getString("t"), x.getBoolean("d"), x.optBoolean("w", false), x.optInt("r", 0), x.optLong("c", 0L),
-                            x.optLong("dl", 0L), x.optBoolean("p", false), x.optString("g", ""), x.optString("v", ""), x.optLong("vm", 0L)
+                            x.optLong("dl", 0L), x.optBoolean("p", false), x.optString("g", ""), x.optString("v", ""), x.optLong("vm", 0L),
+                            x.optJSONArray("sb")?.let { sa -> (0 until sa.length()).map { k -> sa.getJSONObject(k).let { so -> SubTask(so.optString("t", ""), so.optBoolean("d", false)) } } } ?: emptyList()
                         )
                     }
                 }
@@ -156,6 +161,7 @@ class Store(ctx: Context) {
                 items.put(
                     JSONObject().put("t", it.text).put("d", it.done).put("w", it.weekly).put("r", it.reward).put("c", it.created)
                         .put("dl", it.deadline).put("p", it.paid).put("g", it.group).put("v", it.voice).put("vm", it.voiceMs)
+                        .put("sb", JSONArray().also { sa -> it.subs.forEach { sx -> sa.put(JSONObject().put("t", sx.text).put("d", sx.done)) } })
                 )
             }
             val groups = JSONArray()

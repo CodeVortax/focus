@@ -29,6 +29,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
@@ -74,21 +78,14 @@ fun FocusTheme(
     val context = LocalContext.current
     val accent = AppTheme.accent
     val colorScheme = when {
-        accent != 0 -> {
-            val a = androidx.compose.ui.graphics.Color(accent)
-            val base = if (darkTheme) DarkColors else LightColors
-            val bg = base.surface
-            base.copy(
-                primary = a, secondary = a, tertiary = a, onPrimary = androidx.compose.ui.graphics.Color.White,
-                primaryContainer = a.copy(alpha = 0.28f).compositeOver(bg),
-                secondaryContainer = a.copy(alpha = 0.22f).compositeOver(bg),
-                surfaceVariant = a.copy(alpha = 0.12f).compositeOver(bg),
-            )
-        }
+        accent != 0 -> accentScheme(androidx.compose.ui.graphics.Color(accent), darkTheme)
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            (if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)).let {
+                // one flat page colour so top bars, status bar and body match
+                it.copy(surface = it.background)
+            }
         darkTheme -> DarkColors
-        else -> LightColors
+        else -> LightColors.copy(surface = LightColors.background, surfaceContainer = SurfaceContainerLight)
     }
 
     // keep status/navigation bar icons readable when the app theme differs from the system one
@@ -100,6 +97,8 @@ fun FocusTheme(
                 val ctl = androidx.core.view.WindowCompat.getInsetsController(window, view)
                 ctl.isAppearanceLightStatusBars = !darkTheme
                 ctl.isAppearanceLightNavigationBars = !darkTheme
+                // the XML window background follows the phone's night mode; follow the app's choice instead
+                window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(colorScheme.background.toArgb()))
             }
         }
     }
@@ -107,7 +106,33 @@ fun FocusTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         shapes = PixelShapes,
-        typography = FocusTypography,
+        typography = FocusTypography.withFont(AppFont.family),
         content = content
+    )
+}
+
+/** A full, consistent scheme around one accent colour, for both light and dark, so no surface keeps a stray default tint. */
+private fun accentScheme(a: Color, dark: Boolean): ColorScheme {
+    val base = if (dark) DarkColors else LightColors
+    val page = lerp(if (dark) SurfaceDark else SurfaceLight, a, if (dark) 0.05f else 0.04f)
+    fun over(alpha: Float) = a.copy(alpha = alpha).compositeOver(page)
+    val onAcc = if (dark) Color(0xFF1B1B1F) else Color.White
+    val onCont = if (dark) lerp(a, Color.White, 0.8f) else lerp(a, Color.Black, 0.65f)
+    return base.copy(
+        primary = a, secondary = a, tertiary = a, onPrimary = onAcc, onSecondary = onAcc, onTertiary = onAcc,
+        primaryContainer = over(if (dark) 0.30f else 0.22f),
+        secondaryContainer = over(if (dark) 0.24f else 0.18f),
+        tertiaryContainer = over(if (dark) 0.20f else 0.14f),
+        onPrimaryContainer = onCont, onSecondaryContainer = onCont, onTertiaryContainer = onCont,
+        background = page, surface = page,
+        surfaceVariant = over(0.10f),
+        surfaceContainerLowest = page,
+        surfaceContainerLow = over(0.04f), surfaceContainer = over(0.07f),
+        surfaceContainerHigh = over(0.10f), surfaceContainerHighest = over(0.13f),
+        onBackground = if (dark) OnSurfaceDark else OnSurfaceLight,
+        onSurface = if (dark) OnSurfaceDark else OnSurfaceLight,
+        onSurfaceVariant = lerp(if (dark) OnSurfaceDark else OnSurfaceLight, a, 0.25f),
+        outline = lerp(if (dark) OnSurfaceDark else OnSurfaceLight, a, 0.4f).copy(alpha = 0.6f),
+        outlineVariant = a.copy(alpha = 0.25f),
     )
 }

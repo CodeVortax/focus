@@ -70,6 +70,7 @@ import com.barq.focus.data.TaskGroup
 import com.barq.focus.data.Voices
 import com.barq.focus.data.VoicePlayer
 import com.barq.focus.data.Weekly
+import com.barq.focus.data.SubTask
 import com.barq.focus.data.dayItems
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
@@ -97,6 +98,8 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
     var rewardText by remember { mutableStateOf(initial.reward.toString()) }
     var compact by remember { mutableStateOf(store.timerCompact) }
     var addWeekly by remember { mutableStateOf(false) }
+    var newDue by remember { mutableLongStateOf(0L) }       // 0 = end of this week
+    var dueDlg by remember { mutableStateOf<Int?>(null) }   // -1 = the new task, else the task index
     var weekReward by remember { mutableStateOf(Config.WEEKLY_BASE_MIN.toString()) }
     var addGroup by remember { mutableStateOf("") }
     var groupMenu by remember { mutableStateOf(false) }
@@ -144,6 +147,13 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
             if (award > 0) { store.earnSec(award); store.touchDay() }
         }
         commit(card.items.toMutableList().also { l -> l[i] = next }, award)
+    }
+
+    fun setSubs(i: Int, l: List<SubTask>) {
+        val x = card.items[i]
+        commit(card.items.toMutableList().also { it[i] = x.copy(subs = l) })
+        if (l.isNotEmpty() && l.all { it.done } && !x.done) setDone(i, true)          // last step ticked: the task is done
+        else if (x.done && l.any { !it.done }) commit(card.items.toMutableList().also { it[i] = it[i].copy(done = false) })
     }
 
     fun moveTo(i: Int, g: String) = commit(card.items.toMutableList().also { l -> l[i] = l[i].copy(group = g) })
@@ -312,6 +322,8 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
                         Voices.delete(ctx, x.voice)
                         commit(card.items.filterIndexed { j, _ -> j != i })
                     },
+                    onSubs = { l -> setSubs(i, l) },
+                    onDue = { dueDlg = i },
                     onMoveToGroup = { g -> moveTo(i, g) },
                     onNewGroup = { groupDlg = GroupDlg(null, i) },
                     onRecord = { recordFor = i },
@@ -325,8 +337,8 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
 
             val weekIdx = card.items.indices.filter { card.items[it].weekly }
             if (weekIdx.isNotEmpty()) {
-                Text(tr("This week"), style = MaterialTheme.typography.titleMedium)
-                Text(tr("Do these any day. The sooner you finish, the bigger the reward."), style = MaterialTheme.typography.bodyMedium)
+                Text(tr("Planned"), style = MaterialTheme.typography.titleMedium)
+                Text(tr("Do these any day before the date. The sooner you finish, the bigger the reward."), style = MaterialTheme.typography.bodyMedium)
                 weekIdx.forEach { RowFor(it) }
             }
 
@@ -355,10 +367,10 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
             val addTask: () -> Unit = {
                 if (newItem.isNotBlank()) {
                     val t = newItem.trim()
-                    val x = if (addWeekly) Weekly.make(t, weekReward.toIntOrNull() ?: Config.WEEKLY_BASE_MIN)
+                    val x = if (addWeekly) Weekly.make(t, weekReward.toIntOrNull() ?: Config.WEEKLY_BASE_MIN, due = newDue)
                     else Item(t, false, group = if (card.groups.any { g -> g.name == addGroup }) addGroup else "")
                     commit(card.items + x)
-                    newItem = ""
+                    newItem = ""; newDue = 0L
                 }
             }
             Row(
@@ -371,15 +383,24 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
                         if (f.isFocused) scope.launch { delay(300); addRequester.bringIntoView() }
                     },
                     textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
-                    label = { Text(tr(if (addWeekly) "Add a task for this week" else "Add a task")) }, singleLine = true,
+                    label = { Text(tr(if (addWeekly) "Add a planned task" else "Add a task")) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { addTask() })
                 )
                 Button(enabled = newItem.isNotBlank(), onClick = addTask) { Text(tr("Add")) }
             }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                FilterChip(selected = addWeekly, onClick = { addWeekly = !addWeekly }, label = { Text(tr("This week")) })
+                FilterChip(selected = addWeekly, onClick = { addWeekly = !addWeekly }, label = { Text(tr("Planned")) })
                 if (addWeekly) {
+                    AssistChip(
+                        onClick = { dueDlg = -1 },
+                        label = {
+                            Text(
+                                if (newDue > 0L) java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(newDue - 1L))
+                                else tr("End of this week")
+                            )
+                        }
+                    )
                     OutlinedTextField(
                         weekReward, { s2 -> weekReward = s2.filter(Char::isDigit).take(3) },
                         Modifier.width(150.dp), label = { Text(tr("Reward (min)")) }, singleLine = true,
@@ -413,6 +434,18 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
             )
             Spacer(Modifier.height(24.dp))
         }
+    }
+    dueDlg?.let { di ->
+        DueDialog(
+            initial = if (di >= 0) card.items[di].deadline else newDue,
+            onDismiss = { dueDlg = null },
+            onPick = { d -> if (di >= 0) commit(card.items.toMutableList().also { it[di] = it[di].copy(deadline = d) }) else newDue = d; dueDlg = null },
+            onEndOfWeek = {
+                val e = Weekly.endOfWeek(System.currentTimeMillis())
+                if (di >= 0) commit(card.items.toMutableList().also { it[di] = it[di].copy(deadline = e) }) else newDue = 0L
+                dueDlg = null
+            }
+        )
     }
     groupDlg?.let { dlg ->
         val e = dlg.edit
