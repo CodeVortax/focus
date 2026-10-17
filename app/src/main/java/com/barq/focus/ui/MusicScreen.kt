@@ -212,11 +212,18 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
 
     Scaffold(
         bottomBar = {
-            MusicBar(
-                tab, { tab = it; sub = null },
-                { reload++ }, { showSleep = true }, { openEqualizer(ctx) },
-                { Music.stopAll(ctx); toast(tr("Player closed")) }
-            )
+            Column {
+                if (current != null && (tab != MTab.NOW || sub != null)) MiniNow(
+                    current, favs.contains(current.id),
+                    onOpen = { tab = MTab.NOW; sub = null },
+                    onFav = { favs = store.toggleFavorite(current.id) }
+                )
+                MusicBar(
+                    tab, { tab = it; sub = null },
+                    { reload++ }, { showSleep = true }, { openEqualizer(ctx) },
+                    { Music.stopAll(ctx); toast(tr("Player closed")) }
+                )
+            }
         }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
@@ -737,7 +744,7 @@ private fun NowPage(
 
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onFav, enabled = current != null) { Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", tint = if (fav) primary else dim) }
+            IconButton(onClick = onFav, enabled = current != null) { Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", Modifier.size(30.dp), tint = if (fav) primary else dim) }
             IconButton(onClick = onInfo, enabled = current != null) { Icon(Icons.Default.Info, "Info", tint = dim) }
             IconButton(onClick = onAddPlaylist, enabled = current != null) { Icon(Icons.Default.PlaylistAdd, "Playlist", tint = dim) }
             IconButton(onClick = onMore, enabled = current != null) { Icon(Icons.Default.MoreHoriz, "More", tint = dim) }
@@ -763,16 +770,57 @@ private fun NowPage(
             Text(mmss(dur), style = MaterialTheme.typography.labelLarge, color = dim)
         }
 
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onVolume) { Icon(Icons.Default.VolumeUp, "Volume", tint = dim) }
+        Row(Modifier.fillMaxWidth().padding(bottom = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { Music.player?.seekToPreviousMediaItem() }) { Icon(Icons.Default.SkipPrevious, "Previous", Modifier.size(32.dp)) }
             IconButton(onClick = { Music.player?.let { it.seekTo((it.currentPosition - 10_000L).coerceAtLeast(0L)) } }) { Icon(Icons.Default.FastRewind, "Back 10 s") }
-            FilledIconButton(onClick = { Music.player?.let { if (it.isPlaying) it.pause() else it.play() } }, Modifier.size(68.dp)) {
-                Icon(if (Music.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(38.dp))
+            FilledIconButton(onClick = { Music.player?.let { if (it.isPlaying) it.pause() else it.play() } }, Modifier.size(84.dp)) {
+                Icon(if (Music.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(48.dp))
             }
             IconButton(onClick = { Music.player?.let { it.seekTo(it.currentPosition + 10_000L) } }) { Icon(Icons.Default.FastForward, "Forward 10 s") }
             IconButton(onClick = { Music.player?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Next", Modifier.size(32.dp)) }
+        }
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onVolume) { Icon(Icons.Default.VolumeUp, "Volume", tint = dim) }
             IconButton(onClick = onEq) { Icon(Icons.Default.Equalizer, "Equalizer", tint = dim) }
+        }
+    }
+}
+
+
+/** Small now-playing strip shown above the tabs on every other page: art, title, love, previous, big play/pause, next. */
+@Composable
+private fun MiniNow(song: Song, fav: Boolean, onOpen: () -> Unit, onFav: () -> Unit) {
+    var pos by remember { mutableLongStateOf(0L) }
+    var dur by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            Music.player?.let { pos = it.currentPosition; dur = it.duration.coerceAtLeast(0L) }
+            delay(500)
+        }
+    }
+    Surface(color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 2.dp) {
+        Column {
+            LinearProgressIndicator(
+                progress = { if (dur > 0L) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f },
+                Modifier.fillMaxWidth().height(2.dp)
+            )
+            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen), verticalAlignment = Alignment.CenterVertically) {
+                    Art(song, Modifier.size(48.dp), 120, 10.dp)
+                    Column(Modifier.padding(start = 10.dp)) {
+                        Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+                        Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                IconButton(onClick = onFav) {
+                    Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", tint = if (fav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = { Music.player?.seekToPreviousMediaItem() }) { Icon(Icons.Default.SkipPrevious, "Previous") }
+                FilledIconButton(onClick = { Music.player?.let { if (it.isPlaying) it.pause() else it.play() } }, Modifier.size(52.dp)) {
+                    Icon(if (Music.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(30.dp))
+                }
+                IconButton(onClick = { Music.player?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Next") }
+            }
         }
     }
 }

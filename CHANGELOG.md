@@ -2,6 +2,12 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.19.2-beta (version code 28)
+
+### Added
+- Music: a now-playing strip on every page except Now playing, with the song, a love button, previous, a big play/pause and next. Tap it to open the full player.
+- Music: bigger play/pause and love buttons in the full player. Volume and equalizer moved to a row below so the controls no longer run off narrow screens.
+
 ## 0.19.1-beta (version code 27)
 
 ### Fixed
