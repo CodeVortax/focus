@@ -105,20 +105,30 @@ object AppFont {
     var name by androidx.compose.runtime.mutableStateOf("")
         private set
 
+    /** The same font for classic Views (the gate overlay). Null = system font. */
+    @Volatile var typeface: android.graphics.Typeface? = null
+        private set
+
     private fun file(c: android.content.Context) = java.io.File(java.io.File(c.filesDir, "fonts").also { it.mkdirs() }, "custom.font")
 
     fun load(c: android.content.Context) {
         var f: FontFamily? = null; var n = ""
+        typeface = null
         try {
             val file = file(c)
             if (file.exists()) {
-                f = FontFamily(android.graphics.Typeface.createFromFile(file))
+                val t = android.graphics.Typeface.createFromFile(file)
+                typeface = t
+                f = FontFamily(t)
                 n = c.getSharedPreferences("focus", 0).getString("font_name", "") ?: ""
             }
         } catch (_: Exception) { f = null }
         if (f == null) {
             for (a in listOf("fonts/default.ttf", "fonts/default.otf")) {
-                try { f = FontFamily(android.graphics.Typeface.createFromAsset(c.assets, a)); n = "default"; break } catch (_: Exception) {}
+                try {
+                    val t = android.graphics.Typeface.createFromAsset(c.assets, a)
+                    typeface = t; f = FontFamily(t); n = "default"; break
+                } catch (_: Exception) {}
             }
         }
         family = f; name = n

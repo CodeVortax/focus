@@ -21,6 +21,14 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "Extra buttons in the notification player (pick two)" to "أزرار إضافية في مشغّل الإشعارات (اختر زرّين)",
+    "Android shows at most five buttons: previous, play/pause, next and these two." to "يعرض أندرويد خمسة أزرار كحد أقصى: السابق وتشغيل/إيقاف والتالي وهذان الزرّان.",
+    "Shuffle" to "عشوائي",
+    "Repeat" to "تكرار",
+    "Favorite" to "المفضلة",
+    "Back 10 s" to "رجوع 10 ث",
+    "Forward 10 s" to "تقديم 10 ث",
+    "Close" to "إغلاق",
     "Font" to "الخط",
     "Font applied" to "تم تطبيق الخط",
     "That file isn't a usable font" to "هذا الملف ليس خطًا صالحًا",

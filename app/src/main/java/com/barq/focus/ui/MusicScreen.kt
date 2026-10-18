@@ -216,7 +216,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                 if (current != null && (tab != MTab.NOW || sub != null)) MiniNow(
                     current, favs.contains(current.id),
                     onOpen = { tab = MTab.NOW; sub = null },
-                    onFav = { favs = store.toggleFavorite(current.id) }
+                    onFav = { favs = store.toggleFavorite(current.id); com.barq.focus.service.MusicService.refresh() }
                 )
                 MusicBar(
                     tab, { tab = it; sub = null },
@@ -253,7 +253,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                     MTab.NOW -> NowPage(
                         current, false,
                         favs.contains(current?.id), 
-                        { current?.let { favs = store.toggleFavorite(it.id) } },
+                        { current?.let { favs = store.toggleFavorite(it.id); com.barq.focus.service.MusicService.refresh() } },
                         { infoOf = current }, { addTo = current }, { showMore = true },
                         { showRepeat = true },
                         {

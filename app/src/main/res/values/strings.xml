@@ -13,4 +13,8 @@
     <string name="note_audio_channel">Note audio</string>
     <string name="music_shuffle">Shuffle</string>
     <string name="music_repeat">Repeat</string>
+    <string name="music_love">Favorite</string>
+    <string name="music_back10">Back 10 s</string>
+    <string name="music_fwd10">Forward 10 s</string>
+    <string name="music_close">Close player</string>
 </resources>

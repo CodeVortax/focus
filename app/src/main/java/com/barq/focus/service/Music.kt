@@ -47,6 +47,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import androidx.media3.session.MediaSessionService
 import com.barq.focus.data.Song
+import com.barq.focus.data.Store
 
 /** The one music player. The UI talks to it directly; [MusicService] hands it to Android for the notification and lock screen. */
 object Music {
@@ -144,29 +145,42 @@ object Music {
 
 class MusicService : MediaSessionService() {
     private var session: MediaSession? = null
-    private val shuffleCmd = SessionCommand("focus.shuffle", Bundle.EMPTY)
-    private val repeatCmd = SessionCommand("focus.repeat", Bundle.EMPTY)
+    private val cmds = listOf("shuffle", "repeat", "heart", "back10", "fwd10", "close").associateWith { SessionCommand("focus.$it", Bundle.EMPTY) }
 
-    /** Samsung-style extra buttons beside previous / play / next: shuffle and repeat, dimmed when off. */
-    private fun layout(): ImmutableList<CommandButton> {
+    private fun button(id: String): CommandButton? {
         val p = Music.get(this)
-        val sh = CommandButton.Builder().setDisplayName(getString(com.barq.focus.R.string.music_shuffle))
-            .setIconResId(if (p.shuffleModeEnabled) com.barq.focus.R.drawable.ic_shuffle_on else com.barq.focus.R.drawable.ic_shuffle_off)
-            .setSessionCommand(shuffleCmd).build()
-        val rp = CommandButton.Builder().setDisplayName(getString(com.barq.focus.R.string.music_repeat))
-            .setIconResId(
-                when (p.repeatMode) {
-                    Player.REPEAT_MODE_ONE -> com.barq.focus.R.drawable.ic_repeat_one
-                    Player.REPEAT_MODE_ALL -> com.barq.focus.R.drawable.ic_repeat_all
-                    else -> com.barq.focus.R.drawable.ic_repeat_off
-                }
-            ).setSessionCommand(repeatCmd).build()
-        return ImmutableList.of(sh, rp)
+        val c = cmds[id] ?: return null
+        val (name, icon) = when (id) {
+            "shuffle" -> com.barq.focus.R.string.music_shuffle to
+                (if (p.shuffleModeEnabled) com.barq.focus.R.drawable.ic_shuffle_on else com.barq.focus.R.drawable.ic_shuffle_off)
+            "repeat" -> com.barq.focus.R.string.music_repeat to when (p.repeatMode) {
+                Player.REPEAT_MODE_ONE -> com.barq.focus.R.drawable.ic_repeat_one
+                Player.REPEAT_MODE_ALL -> com.barq.focus.R.drawable.ic_repeat_all
+                else -> com.barq.focus.R.drawable.ic_repeat_off
+            }
+            "heart" -> com.barq.focus.R.string.music_love to
+                (if (Store(this).favorites().contains(Music.currentId)) com.barq.focus.R.drawable.ic_heart_on else com.barq.focus.R.drawable.ic_heart_off)
+            "back10" -> com.barq.focus.R.string.music_back10 to com.barq.focus.R.drawable.ic_back10
+            "fwd10" -> com.barq.focus.R.string.music_fwd10 to com.barq.focus.R.drawable.ic_fwd10
+            else -> com.barq.focus.R.string.music_close to com.barq.focus.R.drawable.ic_close
+        }
+        return CommandButton.Builder().setDisplayName(getString(name)).setIconResId(icon).setSessionCommand(c).build()
+    }
+
+    /** The extra buttons beside previous / play / next: the two you chose in Settings (Android shows five in total). */
+    private fun layout(): ImmutableList<CommandButton> =
+        ImmutableList.copyOf(Store(this).notifBtns.split(",").mapNotNull { button(it.trim()) }.take(2))
+
+    companion object {
+        @Volatile private var live: MusicService? = null
+        /** Rebuild the extra buttons (after the favourite or the setting changed). */
+        fun refresh() { live?.let { it.session?.setCustomLayout(it.layout()) } }
     }
 
     private val modeListener = object : Player.Listener {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) { session?.setCustomLayout(layout()) }
         override fun onRepeatModeChanged(repeatMode: Int) { session?.setCustomLayout(layout()) }
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) { session?.setCustomLayout(layout()) }
     }
 
     override fun onCreate() {
@@ -182,7 +196,7 @@ class MusicService : MediaSessionService() {
                 override fun onConnect(s: MediaSession, c: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
                     MediaSession.ConnectionResult.AcceptedResultBuilder(s)
                         .setAvailableSessionCommands(
-                            MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(shuffleCmd).add(repeatCmd).build()
+                            MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().also { b -> cmds.values.forEach { b.add(it) } }.build()
                         )
                         .setCustomLayout(layout())
                         .build()
@@ -196,7 +210,12 @@ class MusicService : MediaSessionService() {
                             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
                             else -> Player.REPEAT_MODE_OFF
                         }
+                        "focus.heart" -> if (Music.currentId >= 0L) Store(this@MusicService).toggleFavorite(Music.currentId)
+                        "focus.back10" -> pl.seekTo((pl.currentPosition - 10_000L).coerceAtLeast(0L))
+                        "focus.fwd10" -> pl.seekTo(pl.currentPosition + 10_000L)
+                        "focus.close" -> Music.stopAll(this@MusicService)
                     }
+                    try { s.setCustomLayout(layout()) } catch (_: Exception) {}
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
             }).build()
@@ -204,6 +223,7 @@ class MusicService : MediaSessionService() {
         addSession(session!!)
         session?.setCustomLayout(layout())
         player.addListener(modeListener)
+        live = this
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
@@ -214,6 +234,7 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        live = null
         Music.player?.removeListener(modeListener)
         session?.release()
         session = null

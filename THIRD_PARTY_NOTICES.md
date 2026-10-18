@@ -30,6 +30,7 @@ Those licenses (GPL-3.0 / AGPL-3.0) are compatible with distributing Focus under
 | AndroidX / Jetpack Compose / Material 3 | Apache-2.0 |
 | AndroidX Media3 (ExoPlayer) | Apache-2.0 |
 | Baloo 2 font (Ek Type) | SIL Open Font License 1.1 |
+| Baloo Bhaijaan 2 font (Ek Type), if you bundle it as the default font | SIL Open Font License 1.1 |
 | Pdfium via `io.legere:pdfiumandroid` (PDFium build only) | Apache-2.0 / BSD-3-Clause |
 
 ## formulas-games (Apache License 2.0)

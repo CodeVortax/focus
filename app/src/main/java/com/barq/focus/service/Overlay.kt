@@ -57,6 +57,7 @@ class Choice(
     val color: Int,
     val enabled: Boolean = true,
     val wait: Int = 0,           // > 0: "breathe" countdown before onClick runs
+    val icon: String = "",       // emoji shown on the choice tile
     val onClick: () -> Unit,
 )
 
@@ -65,13 +66,18 @@ private class Pal(
     val bg: Int, val on: Int, val dim: Int, val track: Int, val primary: Int, val onPrimary: Int,
 )
 
-/** The countdown ring: a track plus an arc that drains clockwise from the top. */
+/** A calm "breathing" orb with a thin countdown arc around it. Shows a tick when [done]. */
 private class RingView(c: Context, private val track: Int, private val color: Int) : View(c) {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
+    private val f = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val box = RectF()
     private var anim: ValueAnimator? = null
+    private var breath: ValueAnimator? = null
+    private var phase = 0f
     var fraction = 1f
         set(v) { field = v.coerceIn(0f, 1f); invalidate() }
+    var done = false
+        set(v) { field = v; invalidate() }
 
     fun animateTo(target: Float) {
         anim?.cancel()
@@ -82,18 +88,44 @@ private class RingView(c: Context, private val track: Int, private val color: In
         }
     }
 
-    fun stop() { anim?.cancel(); anim = null }
+    fun stop() { anim?.cancel(); anim = null; breath?.cancel(); breath = null }
+
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); startBreathing() }
+
+    fun startBreathing() {
+        if (breath == null) breath = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 4000
+            repeatCount = ValueAnimator.INFINITE; repeatMode = ValueAnimator.REVERSE
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            addUpdateListener { phase = it.animatedValue as Float; invalidate() }
+            start()
+        }
+    }
+
+    override fun onDetachedFromWindow() { stop(); super.onDetachedFromWindow() }
 
     override fun onDraw(cv: Canvas) {
-        val w = 8f * resources.displayMetrics.density
+        val d = resources.displayMetrics.density
+        val cx = width / 2f; val cy = height / 2f
+        val r = minOf(width, height) / 2f
+        // soft layered orb that swells and settles (about 4 s in, 4 s out)
+        val base = r * 0.70f * (0.90f + 0.10f * phase)
+        f.color = ColorUtils.setAlphaComponent(color, 26); cv.drawCircle(cx, cy, base * 1.18f, f)
+        f.color = ColorUtils.setAlphaComponent(color, 48); cv.drawCircle(cx, cy, base * 1.02f, f)
+        f.color = ColorUtils.setAlphaComponent(color, 84); cv.drawCircle(cx, cy, base * 0.82f, f)
+        // thin countdown arc
+        val w = 4f * d
         p.strokeWidth = w
         val m = w / 2f
         box.set(m, m, width - m, height - m)
-        p.color = track
+        p.color = ColorUtils.setAlphaComponent(track, 160)
         cv.drawOval(box, p)
-        if (fraction > 0f) {
-            p.color = color
-            cv.drawArc(box, -90f, 360f * fraction, false, p)
+        if (fraction > 0f) { p.color = color; cv.drawArc(box, -90f, 360f * fraction, false, p) }
+        if (done) {
+            p.color = color; p.strokeWidth = 6f * d; p.strokeJoin = Paint.Join.ROUND
+            val path = android.graphics.Path()
+            path.moveTo(width * 0.34f, height * 0.52f); path.lineTo(width * 0.46f, height * 0.64f); path.lineTo(width * 0.68f, height * 0.38f)
+            cv.drawPath(path, p)
         }
     }
 }
@@ -129,21 +161,22 @@ class Overlay private constructor(private val ctx: Context) {
         }
         val accent = s.accent
         val dynamic = accent == 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        val bg = if (dynamic) sys(if (night) android.R.color.system_neutral1_900 else android.R.color.system_neutral1_10, if (night) 0xFF131318.toInt() else 0xFFF7F9FC.toInt())
-                 else if (night) 0xFF131318.toInt() else 0xFFF7F9FC.toInt()
-        val on = if (dynamic) sys(if (night) android.R.color.system_neutral1_100 else android.R.color.system_neutral1_900, if (night) 0xFFE3E2E6.toInt() else 0xFF1A1C1E.toInt())
-                 else if (night) 0xFFE3E2E6.toInt() else 0xFF1A1C1E.toInt()
-        val dim = if (dynamic) sys(if (night) android.R.color.system_neutral2_200 else android.R.color.system_neutral2_700, if (night) 0xFFB0B4C0.toInt() else 0xFF5F6368.toInt())
-                  else if (night) 0xFFB0B4C0.toInt() else 0xFF5F6368.toInt()
-        val track = if (dynamic) sys(if (night) android.R.color.system_neutral2_700 else android.R.color.system_neutral2_100, if (night) 0xFF2A2B31.toInt() else 0xFFE1E4EA.toInt())
-                    else if (night) 0xFF2A2B31.toInt() else 0xFFE1E4EA.toInt()
-        val primary = when {
+        val raw = when {
             accent != 0 -> accent
             dynamic -> sys(if (night) android.R.color.system_accent1_200 else android.R.color.system_accent1_600, 0xFF4285F4.toInt())
             else -> 0xFF4285F4.toInt()
         }
-        val onPrimary = if (dynamic) sys(if (night) android.R.color.system_accent1_800 else android.R.color.system_accent1_0, 0xFFFFFFFF.toInt()) else 0xFFFFFFFF.toInt()
-        return Pal(bg, on, dim, track, primary, onPrimary)
+        if (night) {
+            val bg = if (dynamic) sys(android.R.color.system_neutral1_900, 0xFF131318.toInt()) else 0xFF131318.toInt()
+            val on = if (dynamic) sys(android.R.color.system_neutral1_100, 0xFFE3E2E6.toInt()) else 0xFFE3E2E6.toInt()
+            val dim = if (dynamic) sys(android.R.color.system_neutral2_200, 0xFFB0B4C0.toInt()) else 0xFFB0B4C0.toInt()
+            val track = if (dynamic) sys(android.R.color.system_neutral2_700, 0xFF2A2B31.toInt()) else 0xFF2A2B31.toInt()
+            val onP = if (dynamic) sys(android.R.color.system_accent1_800, 0xFFFFFFFF.toInt()) else 0xFFFFFFFF.toInt()
+            return Pal(bg, on, dim, track, raw, onP)
+        }
+        // light: the same calm beige-grey as the app, never pure white; accent muted toward warm grey
+        return Pal(0xFFD9D2C4.toInt(), 0xFF2B2A27.toInt(), 0xFF5E594F.toInt(), 0xFFC7BFAE.toInt(),
+            ColorUtils.blendARGB(raw, 0xFF7A7467.toInt(), 0.22f), 0xFFFFFFFF.toInt())
     }
 
     private fun pill(color: Int, stroke: Int = 0) = GradientDrawable().apply {
@@ -161,6 +194,11 @@ class Overlay private constructor(private val ctx: Context) {
         layoutParams = LinearLayout.LayoutParams(w, dp(h)).apply { topMargin = dp(10) }
     }
 
+    private fun face(bold: Boolean): Typeface? {
+        val t = com.barq.focus.ui.theme.AppFont.typeface ?: return null
+        return if (bold) Typeface.create(t, Typeface.BOLD) else t
+    }
+
     fun show(
         tag: String, title: String, subtitle: String, delaySec: Int, choices: List<Choice>,
         typedLabel: String? = null, onTyped: ((String) -> Unit)? = null,
@@ -169,31 +207,37 @@ class Overlay private constructor(private val ctx: Context) {
         if (root != null || !Settings.canDrawOverlays(ctx)) return
 
         val pal = palette()
-        // buttons are centred and capped at 320 dp, like the rest of the screen
-        val bw = minOf(dp(320), ctx.resources.displayMetrics.widthPixels - dp(56))
+        val gap = dp(10)
 
         val col = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(28), dp(48), dp(28), dp(40))
+            setPadding(dp(22), dp(56), dp(22), dp(24))
         }
         fun tv(t: String, sp: Float, c: Int, bold: Boolean = false) = TextView(ctx).apply {
-            text = t; textSize = sp; setTextColor(c); gravity = Gravity.CENTER
-            if (bold) setTypeface(typeface, Typeface.BOLD)
+            text = t; textSize = sp; setTextColor(c)
+            val f = face(bold)
+            if (f != null) typeface = f else if (bold) setTypeface(typeface, Typeface.BOLD)
         }
-        col.addView(tv(title, 28f, pal.on, true))
-        col.addView(tv(subtitle, 15f, pal.dim).apply { setPadding(0, dp(8), 0, 0) })
 
-        // countdown ring (hidden when there is nothing to count until a "breathe" wait starts)
+        // header: big title and the app as a soft chip
+        col.addView(tv(title, 34f, pal.on, true))
+        val chip = tv(subtitle, 14f, pal.dim).apply {
+            setPadding(dp(14), dp(6), dp(14), dp(6))
+            background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(pal.track) }
+            layoutParams = LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(10) }
+        }
+        col.addView(chip)
+
+        // the breathing orb with the countdown number (hidden until there is something to count)
         val ringBox = FrameLayout(ctx).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(180), dp(180)).apply { topMargin = dp(28); bottomMargin = dp(8) }
+            layoutParams = LinearLayout.LayoutParams(dp(200), dp(200)).apply { topMargin = dp(20); bottomMargin = dp(4); gravity = Gravity.CENTER_HORIZONTAL }
             visibility = if (delaySec > 0) View.VISIBLE else View.GONE
         }
         val rv = RingView(ctx, pal.track, pal.primary)
         val num = TextView(ctx).apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 56f)
             setTextColor(pal.primary); gravity = Gravity.CENTER
-            setTypeface(typeface, Typeface.BOLD)
+            face(true)?.let { typeface = it } ?: setTypeface(typeface, Typeface.BOLD)
             text = delaySec.toString()
         }
         ringBox.addView(rv, FrameLayout.LayoutParams(-1, -1))
@@ -201,68 +245,102 @@ class Overlay private constructor(private val ctx: Context) {
         col.addView(ringBox)
         ring = rv
 
-        // the way out sits right under the ring: big, filled, easiest thing to hit
-        val leave = btn(tr(leaveLabel), pal.primary, pal.onPrimary, bw, h = 56)
-        // hide first so the BACK/HOME actions land on the app underneath, not on this window
-        leave.setOnClickListener { hide(); onLeave() }
-        col.addView(leave)
-
-        val status = tv("", 13f, pal.dim).apply { setPadding(0, dp(12), 0, dp(2)) }
-        col.addView(status)
+        val status = tv("", 13f, pal.dim).apply { gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(10)) }
+        col.addView(status, LinearLayout.LayoutParams(-1, -2))
 
         val locked = ArrayList<View>()
         fun setLocked(on: Boolean) = locked.forEach { it.isEnabled = !on; it.alpha = if (on) 0.4f else 1f }
 
-        choices.forEach { ch ->
-            // tonal: a light wash of the choice colour with a coloured outline, readable in both themes
-            val b = btn(ch.label, ColorUtils.setAlphaComponent(ch.color, 38), pal.on, bw, stroke = ch.color)
-            col.addView(b)
-            if (!ch.enabled) {
-                b.isEnabled = false; b.alpha = 0.4f
-            } else {
-                locked.add(b)
-                b.setOnClickListener {
-                    if (ch.wait > 0) {
-                        setLocked(true)
-                        ringBox.visibility = View.VISIBLE
-                        rv.stop(); rv.fraction = 1f
-                        num.text = ch.wait.toString()
-                        var n = ch.wait
-                        val r = object : Runnable {
-                            override fun run() {
-                                if (root == null) return
-                                if (n <= 0) { hide(); ch.onClick(); return }
-                                status.text = trf("Breathe… %ds", n)
-                                num.text = n.toString()
-                                rv.animateTo((n - 1).toFloat() / ch.wait)
-                                n--
-                                h.postDelayed(this, 1000)
-                            }
-                        }
-                        h.post(r)
-                    } else {
-                        hide(); ch.onClick()
+        fun pick(ch: Choice) {
+            if (ch.wait > 0) {
+                setLocked(true)
+                ringBox.visibility = View.VISIBLE
+                rv.stop(); rv.done = false; rv.fraction = 1f
+                rv.startBreathing()
+                num.text = ch.wait.toString()
+                var n = ch.wait
+                val r = object : Runnable {
+                    override fun run() {
+                        if (root == null) return
+                        if (n <= 0) { hide(); ch.onClick(); return }
+                        status.text = trf("Breathe… %ds", n)
+                        num.text = n.toString()
+                        rv.animateTo((n - 1).toFloat() / ch.wait)
+                        n--
+                        h.postDelayed(this, 1000)
                     }
                 }
+                h.post(r)
+            } else {
+                hide(); ch.onClick()
             }
         }
+
+        // reasons as tiles (two per row): emoji, name, and the minutes below
+        fun tile(ch: Choice): View = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            minimumHeight = dp(96)
+            background = GradientDrawable().apply {
+                cornerRadius = dp(24).toFloat()
+                setColor(ColorUtils.setAlphaComponent(ch.color, 40))
+                setStroke(dp(1), ColorUtils.setAlphaComponent(ch.color, 120))
+            }
+            val parts = ch.label.split("  ·  ", limit = 2)
+            if (ch.icon.isNotEmpty()) addView(tv(ch.icon, 24f, pal.on))
+            addView(tv(parts[0], 16f, pal.on, true).apply { setPadding(0, dp(4), 0, 0) })
+            val sub = parts.getOrNull(1) ?: if (ch.wait > 0) trf("Breathe… %ds", ch.wait) else ""
+            if (sub.isNotEmpty()) addView(tv(sub, 13f, pal.dim))
+            if (!ch.enabled) alpha = 0.4f
+            else { locked.add(this); setOnClickListener { pick(ch) } }
+        }
+
+        fun addRow(items: List<Choice>) {
+            val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+            items.forEachIndexed { i, ch ->
+                row.addView(tile(ch), LinearLayout.LayoutParams(0, -2, 1f).apply { if (i > 0) marginStart = gap })
+            }
+            col.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = gap })
+        }
+        val pending = ArrayList<Choice>()
+        choices.forEach { ch ->
+            if (ch.label.contains("  ·  ")) {
+                pending += ch
+                if (pending.size == 2) { addRow(ArrayList(pending)); pending.clear() }
+            } else {
+                if (pending.isNotEmpty()) { addRow(ArrayList(pending)); pending.clear() }
+                addRow(listOf(ch))
+            }
+        }
+        if (pending.isNotEmpty()) addRow(ArrayList(pending))
 
         if (onTyped != null) {
             val input = EditText(ctx).apply {
                 hint = tr("Or type why…")
                 setHintTextColor(pal.dim)
                 setTextColor(pal.on)
+                face(false)?.let { typeface = it }
                 inputType = InputType.TYPE_CLASS_TEXT
                 maxLines = 2
-                layoutParams = LinearLayout.LayoutParams(bw, -2).apply { topMargin = dp(16) }
+                setPadding(dp(20), 0, dp(20), 0)
+                background = GradientDrawable().apply { cornerRadius = dp(28).toFloat(); setColor(pal.track) }
             }
-            col.addView(input); locked.add(input)
-            val go = btn(typedLabel ?: "Go", pal.track, pal.on, bw)
+            val go = Button(ctx).apply {
+                text = "\u2192"; textSize = 22f; isAllCaps = false; stateListAnimator = null
+                setTextColor(pal.onPrimary)
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(pal.primary) }
+                setPadding(0, 0, 0, 0)
+            }
+            val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            row.addView(input, LinearLayout.LayoutParams(0, dp(52), 1f))
+            row.addView(go, LinearLayout.LayoutParams(dp(52), dp(52)).apply { marginStart = gap })
+            col.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
+            if (typedLabel != null) col.addView(tv(typedLabel, 12f, pal.dim).apply { setPadding(dp(20), dp(6), 0, 0) })
+            locked.add(input); locked.add(go)
             go.setOnClickListener {
                 val r = input.text.toString().trim()
                 if (r.isNotEmpty()) { hide(); onTyped(r) }
             }
-            col.addView(go); locked.add(go)
         }
 
         var left = delaySec
@@ -272,7 +350,7 @@ class Overlay private constructor(private val ctx: Context) {
                 if (root == null) return
                 if (left <= 0) {
                     status.text = ""; setLocked(false)
-                    if (delaySec > 0) { rv.animateTo(0f); num.text = "\u2713" }
+                    if (delaySec > 0) { rv.animateTo(0f); num.text = ""; rv.done = true }
                     return
                 }
                 status.text = trf("Wait %ds…", left)
@@ -283,12 +361,30 @@ class Overlay private constructor(private val ctx: Context) {
             }
         }
 
-        // opaque, full-bleed: the screen behind must not show through
+        // the way out is pinned to the bottom edge: wide, filled, always in reach
+        val leave = Button(ctx).apply {
+            text = tr(leaveLabel); isAllCaps = false; textSize = 17f; stateListAnimator = null
+            setTextColor(pal.onPrimary)
+            face(true)?.let { typeface = it } ?: setTypeface(typeface, Typeface.BOLD)
+            background = pill(pal.primary)
+            // hide first so the BACK/HOME actions land on the app underneath, not on this window
+            setOnClickListener { hide(); onLeave() }
+        }
         val scroll = ScrollView(ctx).apply {
-            setBackgroundColor(pal.bg)
-            layoutDirection = if (I18n.rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
             isFillViewport = true
+            clipToPadding = false
+            setPadding(0, 0, 0, dp(104))
             addView(col, FrameLayout.LayoutParams(-1, -2))
+        }
+        // opaque, full-bleed: the screen behind must not show through
+        val frame = FrameLayout(ctx).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(pal.bg, ColorUtils.blendARGB(pal.bg, pal.primary, 0.12f))
+            )
+            layoutDirection = if (I18n.rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+            addView(scroll, FrameLayout.LayoutParams(-1, -1))
+            addView(leave, FrameLayout.LayoutParams(-1, dp(60), Gravity.BOTTOM).apply { setMargins(dp(22), 0, dp(22), dp(28)) })
         }
         val lp = WindowManager.LayoutParams(
             -1, -1,
@@ -298,8 +394,8 @@ class Overlay private constructor(private val ctx: Context) {
         ).apply { softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE }
 
         try {
-            wm.addView(scroll, lp)
-            root = scroll
+            wm.addView(frame, lp)
+            root = frame
             this.tag = tag
             grabAudio()
             h.post(countdown)

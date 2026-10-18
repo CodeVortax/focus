@@ -106,6 +106,23 @@ fun MusicCapsuleHelp() {
     }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { rev++ }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val store = remember { com.barq.focus.data.Store(ctx) }
+        var picked by remember { mutableStateOf(store.notifBtns.split(",").filter { it.isNotBlank() }) }
+        Text(tr("Extra buttons in the notification player (pick two)"), fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("shuffle" to "Shuffle", "repeat" to "Repeat", "heart" to "Favorite", "back10" to "Back 10 s", "fwd10" to "Forward 10 s", "close" to "Close").forEach { (id, label) ->
+                FilterChip(
+                    selected = id in picked,
+                    onClick = {
+                        picked = if (id in picked) picked - id else (picked + id).takeLast(2)
+                        store.notifBtns = picked.joinToString(",")
+                        com.barq.focus.service.MusicService.refresh()
+                    },
+                    label = { Text(tr(label)) }
+                )
+            }
+        }
+        Text(tr("Android shows at most five buttons: previous, play/pause, next and these two."), style = MaterialTheme.typography.bodyMedium)
         Text(
             tr("Music and audio from Focus show as a media notification with play, pause and a seek bar. Phones with a status-bar capsule (Realme Mini Capsule, Samsung Now Bar, Xiaomi Dynamic Island, Pixel) show it there too."),
             style = MaterialTheme.typography.bodyMedium

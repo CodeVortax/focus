@@ -229,7 +229,7 @@ class WatchService : Service() {
 
     private fun showBlock(b: Block, cur: String) {
         val ch = ArrayList<Choice>()
-        if (!b.strict) ch += Choice(tr("I really need this  ·  2 min"), 0xFFEA4335.toInt(), wait = 30) {
+        if (!b.strict) ch += Choice(tr("I really need this  ·  2 min"), 0xFFEA4335.toInt(), wait = 30, icon = "\uD83C\uDD98") {
             blockPass[cur] = System.currentTimeMillis() + 2 * 60_000L
             if (fgRow >= 0) db.setReason(fgRow, "Emergency (block)")
         }
@@ -266,19 +266,19 @@ class WatchService : Service() {
         val block = store.activeBlock()
         val bank = store.bank()
         val ch = ArrayList<Choice>()
-        ch += Choice(trf("Just search  ·  %d min", Config.SEARCH_MINUTES), 0xFF4285F4.toInt()) { grant(cur, "Just search", Config.SEARCH_MINUTES) }
-        ch += Choice(trf("A link  ·  %d min", Config.LINK_MINUTES), 0xFF4285F4.toInt()) { grant(cur, "A link", Config.LINK_MINUTES) }
+        ch += Choice(trf("Just search  ·  %d min", Config.SEARCH_MINUTES), 0xFF4285F4.toInt(), icon = "\uD83D\uDD0D") { grant(cur, "Just search", Config.SEARCH_MINUTES) }
+        ch += Choice(trf("A link  ·  %d min", Config.LINK_MINUTES), 0xFF4285F4.toInt(), icon = "\uD83D\uDD17") { grant(cur, "A link", Config.LINK_MINUTES) }
         if (bank >= Config.TREAT_STEP) {
-            ch += Choice(trf("Treat  ·  %d min  (bank %d)", Config.TREAT_STEP, bank), 0xFF34A853.toInt()) {
+            ch += Choice(trf("Treat  ·  %d min  (bank %d)", Config.TREAT_STEP, bank), 0xFF34A853.toInt(), icon = "\uD83C\uDF7F") {
                 store.spend(Config.TREAT_STEP); grant(cur, "Treat", Config.TREAT_STEP)
             }
-            if (bank > Config.TREAT_STEP) ch += Choice(trf("Use all  ·  %d min", bank), 0xFF34A853.toInt()) {
+            if (bank > Config.TREAT_STEP) ch += Choice(trf("Use all  ·  %d min", bank), 0xFF34A853.toInt(), icon = "\uD83C\uDF89") {
                 store.spend(bank); grant(cur, "Treat (all)", bank)
             }
         } else {
             ch += Choice(tr("Treat bank empty: finish tasks to earn"), 0xFF555866.toInt(), enabled = false) {}
         }
-        ch += Choice(tr("I'm distracted"), 0xFFEA4335.toInt(), wait = Config.DISTRACTED_WAIT) {
+        ch += Choice(tr("I'm distracted"), 0xFFEA4335.toInt(), wait = Config.DISTRACTED_WAIT, icon = "\uD83C\uDF00") {
             grant(cur, "I'm distracted", Config.DISTRACTED_MINUTES)
         }
 

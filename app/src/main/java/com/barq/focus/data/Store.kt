@@ -533,6 +533,11 @@ class Store(ctx: Context) {
     fun setFlagNamed(name: String) { p.edit().putBoolean(name, true).apply() }
     val today: Int get() = day()
 
+    /** The two extra buttons in the music notification / Quick Settings player (ids: shuffle, repeat, heart, back10, fwd10, close). */
+    var notifBtns: String
+        get() = p.getString("notif_btns", "shuffle,repeat") ?: "shuffle,repeat"
+        set(v) { p.edit().putString("notif_btns", v).apply() }
+
     var accent: Int
         get() = p.getInt("accent", 0)
         set(v) { p.edit().putInt("accent", v).apply() }
