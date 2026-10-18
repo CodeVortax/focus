@@ -109,9 +109,9 @@ fun FocusTheme(
     )
 }
 
-private val Cream = Color(0xFFF6F1E7)      // warm, anti-glare page
-private val CardCream = Color(0xFFFBF8F2)  // soft cards, never pure white
-private val WarmGray = Color(0xFF8C8577)
+private val Cream = Color(0xFFD9D2C4)      // dark cream / beige-grey page
+private val CardCream = Color(0xFFE6E0D3)  // cards a step lighter than the page
+private val WarmGray = Color(0xFF7A7467)
 
 /**
  * Light mode for a calm, low-stimulation look: a soft warm page, off-white cards (no pure white anywhere)

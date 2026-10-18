@@ -2,6 +2,11 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.20.2-beta (version code 31)
+
+### Changed
+- Light theme is now a darker beige-grey cream (page #D9D2C4, cards #E6E0D3) instead of a pale cream.
+
 ## 0.20.1-beta (version code 30)
 
 ### Changed
