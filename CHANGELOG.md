@@ -2,6 +2,13 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.21.1-beta (version code 33)
+
+### Fixed
+- **Shorts / Reels / TikTok swipe counting** (ideas from the SwipeTally test app). Focus no longer counts raw scroll events. It waits until the page settles and counts a swipe only if the video really changed: by the pager's page index when the app reports one, otherwise by comparing a hash of the visible texts (never stored). Fast swipes are no longer lost, small drags that return to the same video no longer count, and comment sheets and carousels are ignored.
+- The accessibility service now uses `notificationTimeout=0`, so Android stops merging close scroll events.
+- Feed detection gets a structural fallback (a screen-sized vertical pager) that keeps working if YouTube or Instagram rename their views.
+
 ## 0.21.0-beta (version code 32)
 
 ### Added

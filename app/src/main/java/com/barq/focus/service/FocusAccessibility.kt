@@ -22,6 +22,8 @@ package com.barq.focus.service
 import com.barq.focus.data.tr
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.graphics.Rect
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
@@ -30,6 +32,7 @@ import com.barq.focus.data.Db
 import com.barq.focus.data.Store
 import com.barq.focus.data.trf
 import com.barq.focus.data.startOfDay
+import kotlin.math.abs
 
 /**
  * Detects short-form feeds (YouTube Shorts, Instagram Reels), counts swipes + time,
@@ -50,7 +53,14 @@ class FocusAccessibility : AccessibilityService() {
     private var row = -1L
     private var lastFoundAt = 0L
     private var lastScan = 0L
-    private var lastScroll = 0L
+    // swipe counting: count video CHANGES after the page settles, not raw scroll events
+    private var lastIdx = -1
+    private var lastFp = 0
+    private var burstIdx = -1
+    private var burstPending = false
+    private var lastScrollAt = 0L
+    private val sw get() = resources.displayMetrics.widthPixels
+    private val sh get() = resources.displayMetrics.heightPixels
     private var ignoreUntil = 0L
     private var allowedUntil = 0L
 
@@ -74,21 +84,60 @@ class FocusAccessibility : AccessibilityService() {
         val pkg = e.packageName?.toString() ?: return
         if (pkg !in ShortsDetector.PACKAGES) return
         val now = System.currentTimeMillis()
-        if (e.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && inShorts && !TouchCounter.running && now - lastScroll > 700) {
-            lastScroll = now
-            store.addShortsSwipe()
-            if (row >= 0) db.addCount(row, 1)
+        if (e.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && inShorts && !TouchCounter.running &&
+            pkg == shortsPkg && !sideways(e) && bigSource(e)
+        ) {
+            // the pager only reports an index when exactly one page is showing
+            burstIdx = if (e.fromIndex >= 0 && e.fromIndex == e.toIndex) e.fromIndex else -1
+            burstPending = true
+            lastScrollAt = now
+            h.removeCallbacks(settle)
+            h.postDelayed(settle, 250)
         }
         if (now - lastScan < 700 || now < ignoreUntil) return
         lastScan = now
         try { scan(pkg) } catch (_: Exception) {}
     }
 
+    /** Sideways scrolling is a carousel, not a video change. */
+    private fun sideways(e: AccessibilityEvent) =
+        Build.VERSION.SDK_INT >= 28 && e.scrollDeltaX != 0 && e.scrollDeltaY == 0
+
+    /** The comment sheet and other small lists scroll too; the feed pager is screen-sized. */
+    private fun bigSource(e: AccessibilityEvent): Boolean {
+        val src = try { e.source } catch (_: Exception) { null } ?: return true
+        val r = Rect()
+        src.getBoundsInScreen(r)
+        return r.width() >= sw * 0.85 && r.height() >= sh * 0.6
+    }
+
+    /** Runs once the page stopped moving: did the video really change, and by how many? */
+    private val settle = Runnable {
+        val pkg = shortsPkg
+        val root = try { rootInActiveWindow } catch (_: Exception) { null }
+        if (!inShorts || pkg == null || root == null || root.packageName?.toString() != pkg) {
+            burstIdx = -1; burstPending = false
+            return@Runnable
+        }
+        val fp = ShortsDetector.fingerprint(root)
+        var steps = 0
+        if (burstIdx >= 0 && lastIdx >= 0 && burstIdx != lastIdx) {
+            val d = abs(burstIdx - lastIdx)
+            steps = if (d > 8) 1 else d          // a huge jump is a feed refresh, not many swipes
+        } else if (lastFp != 0 && fp != lastFp) {
+            steps = 1                             // no usable index: the visible video changed
+        }
+        if (burstIdx >= 0) lastIdx = burstIdx
+        lastFp = fp
+        burstIdx = -1; burstPending = false
+        repeat(steps) { store.addShortsSwipe(); if (row >= 0) db.addCount(row, 1) }
+    }
+
     private fun scan(pkg: String) {
         val root = rootInActiveWindow ?: return
         if (root.packageName?.toString() != pkg) return
 
-        val found = ShortsDetector.isShorts(pkg, root)
+        val found = ShortsDetector.isShorts(pkg, root) || ShortsDetector.isPager(pkg, root, sw, sh)
 
         if (store.debug && pkg == ShortsDetector.YT) {
             store.debugIds = "shortsDetected=$found\n" + ShortsDetector.harvestIds(root).joinToString("\n")
@@ -115,6 +164,8 @@ class FocusAccessibility : AccessibilityService() {
         inShorts = true; Shared.inShorts = true
         shortsPkg = pkg
         lastFoundAt = now
+        lastIdx = -1; burstIdx = -1; burstPending = false
+        lastFp = try { rootInActiveWindow?.let { ShortsDetector.fingerprint(it) } ?: 0 } catch (_: Exception) { 0 }
         // coming back within 90 s continues the same burst instead of starting a new row
         val last = db.lastRow("shorts", pkg)
         val end = last?.t1
@@ -140,6 +191,10 @@ class FocusAccessibility : AccessibilityService() {
                 if (inShorts) {
                     if (now - lastFoundAt > 4000L || (Shared.watchAlive && Shared.fg != shortsPkg)) endShorts()
                     else if (now > allowedUntil && now > Shared.suppressUntil && !ov.showing) showShortsOverlay()
+                    // keep the baseline fresh while nothing moves, so autoplay or a like is not mistaken for a swipe
+                    if (inShorts && !burstPending && now - lastScrollAt > 800L) {
+                        rootInActiveWindow?.let { r -> if (r.packageName?.toString() == shortsPkg) lastFp = ShortsDetector.fingerprint(r) }
+                    }
                 }
             } catch (_: Exception) {}
             h.postDelayed(this, 1000)

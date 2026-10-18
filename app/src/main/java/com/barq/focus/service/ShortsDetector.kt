@@ -19,6 +19,7 @@
 
 package com.barq.focus.service
 
+import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 
 /**
@@ -148,6 +149,61 @@ object ShortsDetector {
             depth++
         }
         return false
+    }
+
+    /**
+     * Structural fallback (needs no view ids, so it survives renamed views): a screen-sized, vertically
+     * scrollable pager with a page that fills it. Only used for YouTube and Instagram.
+     */
+    fun isPager(pkg: String, root: AccessibilityNodeInfo, sw: Int, sh: Int): Boolean = try {
+        (pkg == YT || pkg == IG) && pager(root, sw, sh)
+    } catch (_: Exception) { false }
+
+    private fun pager(root: AccessibilityNodeInfo, sw: Int, sh: Int): Boolean {
+        var budget = 400
+        val r = Rect()
+        val cr = Rect()
+        fun go(n: AccessibilityNodeInfo?): Boolean {
+            if (n == null || budget-- <= 0) return false
+            if (n.isScrollable && n.childCount in 1..6 && n.actionList.any {
+                    it == AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_UP ||
+                        it == AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_DOWN
+                }) {
+                n.getBoundsInScreen(r)
+                if (r.width() >= sw * 0.9 && r.height() >= sh * 0.6) {
+                    for (i in 0 until n.childCount) {
+                        val c = n.getChild(i) ?: continue
+                        if (!c.isVisibleToUser) continue
+                        c.getBoundsInScreen(cr)
+                        if (cr.height() >= r.height() * 0.8) return true
+                    }
+                }
+            }
+            for (i in 0 until n.childCount) if (go(n.getChild(i))) return true
+            return false
+        }
+        return go(root)
+    }
+
+    private val NOISE = Regex("[0-9:.,/ KkMmBb%+\\-]*")
+
+    /**
+     * A number that says WHICH video is showing: a hash of the visible texts (channel, caption...),
+     * ignoring pure numbers and times that change while one video plays. Only the hash is kept.
+     */
+    fun fingerprint(root: AccessibilityNodeInfo): Int {
+        var h = 17
+        var budget = 350
+        fun go(n: AccessibilityNodeInfo?) {
+            if (n == null || budget-- <= 0) return
+            if (n.isVisibleToUser) {
+                val t = (n.text ?: n.contentDescription)?.toString()
+                if (t != null && t.length > 2 && !NOISE.matches(t)) h = h * 31 + t.hashCode()
+            }
+            for (i in 0 until n.childCount) go(n.getChild(i))
+        }
+        try { go(root) } catch (_: Exception) {}
+        return if (h == 0) 1 else h
     }
 
     /** Debug aid: view ids only (never text, which would be captions and messages), bounded. */
