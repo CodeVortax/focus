@@ -13,7 +13,7 @@ The bundled font is used until someone picks another one in Settings. Check the 
 - Variable fonts work, but only the default weight is used.
 - A file Android cannot read is refused with a message.
 
-## Example: Baloo Bhaijaan 2 (Arabic and Latin)
+## Stock font: Baloo Bhaijaan 2 (Arabic and Latin), already bundled
 ```sh
 cp /storage/emulated/0/Download/Baloo_Bhaijaan_2/static/BalooBhaijaan2-SemiBold.ttf ~/focus/app/src/main/assets/fonts/default.ttf
 cd ~/focus && git add app/src/main/assets/fonts/default.ttf && git commit -m "Bundle Baloo Bhaijaan 2 as the default font"
