@@ -5,6 +5,7 @@ Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 ## 0.21.0-beta (version code 32)
 
 ### Added
+- **Release signing**: `gradle assembleRelease` signs with your own key from a git-ignored `keystore.properties`. See [Signing](docs/guides/signing.md).
 - **New gate screen** ("What for?"): a calm breathing orb with the countdown, the reasons as two-per-row tiles with an icon and the minutes, a rounded "type why" field with a send button, and a wide Leave button pinned to the bottom. It uses the soft light palette in light mode and your font.
 - **Notification player buttons you choose**: Settings > Music notification and capsule lets you pick two extra buttons from shuffle, repeat, favorite (heart), back 10 s, forward 10 s and close. Android shows five buttons in total (previous, play/pause, next and your two).
 - **Baloo Bhaijaan 2 SemiBold is now the stock font** everywhere, including the gate (Arabic and Latin). Replace `app/src/main/assets/fonts/default.ttf` to change it. See [Fonts](docs/guides/fonts.md).

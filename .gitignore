@@ -11,3 +11,8 @@ local.properties
 *.apk
 
 app/build/
+
+# signing keys: never commit
+keystore.properties
+*.jks
+*.keystore

@@ -19,8 +19,21 @@ android {
         versionName = "0.21.0-beta"
     }
 
+    // Release signing: put your key details in keystore.properties (git-ignored, see docs/guides/signing.md).
+    val ksFile = rootProject.file("keystore.properties")
+    val ks = java.util.Properties().also { if (ksFile.exists()) ksFile.inputStream().use { s -> it.load(s) } }
+    signingConfigs {
+        if (ksFile.exists()) create("release") {
+            storeFile = rootProject.file(ks.getProperty("storeFile"))
+            storePassword = ks.getProperty("storePassword")
+            keyAlias = ks.getProperty("keyAlias")
+            keyPassword = ks.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
+            if (ksFile.exists()) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
