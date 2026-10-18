@@ -109,17 +109,29 @@ fun FocusTheme(
     )
 }
 
-private val Cream = Color(0xFFFFF6E5)
+private val Cream = Color(0xFFF6F1E7)      // warm, anti-glare page
+private val CardCream = Color(0xFFFBF8F2)  // soft cards, never pure white
+private val WarmGray = Color(0xFF8C8577)
 
-/** Light mode: a warm cream page (not stark white) with soft white cards on top, lightly tinted by [a]. */
+/**
+ * Light mode for a calm, low-stimulation look: a soft warm page, off-white cards (no pure white anywhere)
+ * and an accent muted toward warm grey. The wallpaper colour only tints it, it never sets the surfaces.
+ */
 private fun creamy(s: ColorScheme, a: Color): ColorScheme {
-    val page = lerp(Cream, a, 0.07f)
-    val card = lerp(Color.White, a, 0.025f)
+    val page = lerp(Cream, a, 0.04f)
+    val card = lerp(CardCream, a, 0.02f)
+    val m = lerp(a, WarmGray, 0.22f)
+    fun over(alpha: Float) = m.copy(alpha = alpha).compositeOver(page)
+    val onCont = lerp(m, Color.Black, 0.6f)
     return s.copy(
+        primary = m, secondary = m, tertiary = m,
+        primaryContainer = over(0.20f), secondaryContainer = over(0.16f), tertiaryContainer = over(0.12f),
+        onPrimaryContainer = onCont, onSecondaryContainer = onCont, onTertiaryContainer = onCont,
         background = page, surface = page,
-        surfaceContainerLowest = Color.White, surfaceContainerLow = card, surfaceContainer = card,
+        surfaceContainerLowest = card, surfaceContainerLow = card, surfaceContainer = card,
         surfaceContainerHigh = card, surfaceContainerHighest = card,
-        surfaceVariant = lerp(page, a, 0.10f),
+        surfaceVariant = lerp(page, m, 0.10f),
+        onBackground = Color(0xFF2B2A27), onSurface = Color(0xFF2B2A27),
     )
 }
 

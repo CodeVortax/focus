@@ -2,6 +2,11 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.20.1-beta (version code 30)
+
+### Changed
+- Light theme is calmer for a low-stimulation look: a soft warm page (#F6F1E7), off-white cards (no pure white anywhere), and accent colours muted toward warm grey. Wallpaper (Material You) colours only tint it and never set the surfaces.
+
 ## 0.20.0-beta (version code 29)
 
 ### Added

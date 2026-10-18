@@ -13,10 +13,10 @@ android {
         applicationId = "com.barq.focus"
         minSdk = 26
         targetSdk = 34
-        versionCode = 29
+        versionCode = 30
         buildConfigField("String", "LICENSE_ID", "\"AGPL-3.0-only\"")
         buildConfigField("String", "LICENSE_NAME", "\"GNU Affero General Public License v3.0 only\"")
-        versionName = "0.20.0-beta"
+        versionName = "0.20.1-beta"
     }
 
     buildTypes {
