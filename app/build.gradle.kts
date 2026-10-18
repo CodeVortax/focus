@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 MR.English2008. See LICENSE.
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -21,7 +23,7 @@ android {
 
     // Release signing: put your key details in keystore.properties (git-ignored, see docs/guides/signing.md).
     val ksFile = rootProject.file("keystore.properties")
-    val ks = java.util.Properties().also { if (ksFile.exists()) ksFile.inputStream().use { s -> it.load(s) } }
+    val ks = Properties().also { if (ksFile.exists()) ksFile.inputStream().use { s -> it.load(s) } }
     signingConfigs {
         if (ksFile.exists()) create("release") {
             storeFile = rootProject.file(ks.getProperty("storeFile"))
