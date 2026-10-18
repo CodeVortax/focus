@@ -80,12 +80,10 @@ fun FocusTheme(
     val colorScheme = when {
         accent != 0 -> accentScheme(androidx.compose.ui.graphics.Color(accent), darkTheme)
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            (if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)).let {
-                // one flat page colour so top bars, status bar and body match
-                it.copy(surface = it.background)
-            }
+            if (darkTheme) dynamicDarkColorScheme(context).let { it.copy(surface = it.background) }
+            else dynamicLightColorScheme(context).let { creamy(it, it.primary) }
         darkTheme -> DarkColors
-        else -> LightColors.copy(surface = LightColors.background, surfaceContainer = SurfaceContainerLight)
+        else -> creamy(LightColors, GoogleBlue)
     }
 
     // keep status/navigation bar icons readable when the app theme differs from the system one
@@ -111,6 +109,20 @@ fun FocusTheme(
     )
 }
 
+private val Cream = Color(0xFFFFF6E5)
+
+/** Light mode: a warm cream page (not stark white) with soft white cards on top, lightly tinted by [a]. */
+private fun creamy(s: ColorScheme, a: Color): ColorScheme {
+    val page = lerp(Cream, a, 0.07f)
+    val card = lerp(Color.White, a, 0.025f)
+    return s.copy(
+        background = page, surface = page,
+        surfaceContainerLowest = Color.White, surfaceContainerLow = card, surfaceContainer = card,
+        surfaceContainerHigh = card, surfaceContainerHighest = card,
+        surfaceVariant = lerp(page, a, 0.10f),
+    )
+}
+
 /** A full, consistent scheme around one accent colour, for both light and dark, so no surface keeps a stray default tint. */
 private fun accentScheme(a: Color, dark: Boolean): ColorScheme {
     val base = if (dark) DarkColors else LightColors
@@ -118,7 +130,7 @@ private fun accentScheme(a: Color, dark: Boolean): ColorScheme {
     fun over(alpha: Float) = a.copy(alpha = alpha).compositeOver(page)
     val onAcc = if (dark) Color(0xFF1B1B1F) else Color.White
     val onCont = if (dark) lerp(a, Color.White, 0.8f) else lerp(a, Color.Black, 0.65f)
-    return base.copy(
+    val out = base.copy(
         primary = a, secondary = a, tertiary = a, onPrimary = onAcc, onSecondary = onAcc, onTertiary = onAcc,
         primaryContainer = over(if (dark) 0.30f else 0.22f),
         secondaryContainer = over(if (dark) 0.24f else 0.18f),
@@ -135,4 +147,5 @@ private fun accentScheme(a: Color, dark: Boolean): ColorScheme {
         outline = lerp(if (dark) OnSurfaceDark else OnSurfaceLight, a, 0.4f).copy(alpha = 0.6f),
         outlineVariant = a.copy(alpha = 0.25f),
     )
+    return if (dark) out else creamy(out, a)
 }

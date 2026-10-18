@@ -11,4 +11,6 @@
     <string name="widget_shorts_desc">Shorts and Reels swiped today</string>
     <string name="music_channel">Music playback</string>
     <string name="note_audio_channel">Note audio</string>
+    <string name="music_shuffle">Shuffle</string>
+    <string name="music_repeat">Repeat</string>
 </resources>

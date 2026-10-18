@@ -20,6 +20,7 @@ package com.barq.focus.service
 
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.getValue
@@ -37,7 +38,13 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import androidx.media3.session.MediaSessionService
 import com.barq.focus.data.Song
 
@@ -137,6 +144,30 @@ object Music {
 
 class MusicService : MediaSessionService() {
     private var session: MediaSession? = null
+    private val shuffleCmd = SessionCommand("focus.shuffle", Bundle.EMPTY)
+    private val repeatCmd = SessionCommand("focus.repeat", Bundle.EMPTY)
+
+    /** Samsung-style extra buttons beside previous / play / next: shuffle and repeat, dimmed when off. */
+    private fun layout(): ImmutableList<CommandButton> {
+        val p = Music.get(this)
+        val sh = CommandButton.Builder().setDisplayName(getString(com.barq.focus.R.string.music_shuffle))
+            .setIconResId(if (p.shuffleModeEnabled) com.barq.focus.R.drawable.ic_shuffle_on else com.barq.focus.R.drawable.ic_shuffle_off)
+            .setSessionCommand(shuffleCmd).build()
+        val rp = CommandButton.Builder().setDisplayName(getString(com.barq.focus.R.string.music_repeat))
+            .setIconResId(
+                when (p.repeatMode) {
+                    Player.REPEAT_MODE_ONE -> com.barq.focus.R.drawable.ic_repeat_one
+                    Player.REPEAT_MODE_ALL -> com.barq.focus.R.drawable.ic_repeat_all
+                    else -> com.barq.focus.R.drawable.ic_repeat_off
+                }
+            ).setSessionCommand(repeatCmd).build()
+        return ImmutableList.of(sh, rp)
+    }
+
+    private val modeListener = object : Player.Listener {
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) { session?.setCustomLayout(layout()) }
+        override fun onRepeatModeChanged(repeatMode: Int) { session?.setCustomLayout(layout()) }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -145,9 +176,34 @@ class MusicService : MediaSessionService() {
             DefaultMediaNotificationProvider.Builder(this).setChannelName(com.barq.focus.R.string.music_channel).build()
                 .also { it.setSmallIcon(com.barq.focus.R.drawable.ic_music_note) }
         )
-        session = MediaSession.Builder(this, Music.get(this)).setSessionActivity(TimerAlarm.openApp(this)).build()
+        val player = Music.get(this)
+        session = MediaSession.Builder(this, player).setSessionActivity(TimerAlarm.openApp(this))
+            .setCallback(object : MediaSession.Callback {
+                override fun onConnect(s: MediaSession, c: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
+                    MediaSession.ConnectionResult.AcceptedResultBuilder(s)
+                        .setAvailableSessionCommands(
+                            MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(shuffleCmd).add(repeatCmd).build()
+                        )
+                        .setCustomLayout(layout())
+                        .build()
+
+                override fun onCustomCommand(s: MediaSession, c: MediaSession.ControllerInfo, cmd: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
+                    val pl = s.player
+                    when (cmd.customAction) {
+                        "focus.shuffle" -> pl.shuffleModeEnabled = !pl.shuffleModeEnabled
+                        "focus.repeat" -> pl.repeatMode = when (pl.repeatMode) {
+                            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                            else -> Player.REPEAT_MODE_OFF
+                        }
+                    }
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+            }).build()
         // the screen drives the player directly (no MediaController), so register the session or Media3 never posts the notification
         addSession(session!!)
+        session?.setCustomLayout(layout())
+        player.addListener(modeListener)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
@@ -158,6 +214,7 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        Music.player?.removeListener(modeListener)
         session?.release()
         session = null
         Music.release()

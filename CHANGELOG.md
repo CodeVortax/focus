@@ -2,6 +2,14 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.20.0-beta (version code 29)
+
+### Added
+- Music notification and Quick Settings player: **shuffle** and **repeat** (off / all / one) buttons next to previous, play/pause and next, like Samsung's player. They dim when off.
+
+### Changed
+- Light theme: a warm cream page with soft white cards instead of stark white, lightly tinted by your accent colour. Top bars and the status area match the page.
+
 ## 0.19.2-beta (version code 28)
 
 ### Added
