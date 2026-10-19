@@ -2,6 +2,14 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.22.1-beta (version code 35)
+
+Lessons from the closed issues of the Nudge project (astraedus/nudge), checked against Focus.
+
+### Fixed
+- **Focus now restarts itself after an app update.** Until now the watch service only started at boot or when you opened the app, so every update left it stopped.
+- **"On" no longer hides "dead".** When Android kills the accessibility service it keeps the switch on and never starts it again. If the switch is on but the service has not been running for 90 seconds, Focus posts a notification ("Focus stopped counting Shorts") that opens Accessibility settings; toggling Focus off and on is what brings it back. The notification goes away by itself when the service is running again.
+
 ## 0.22.0-beta (version code 34)
 
 ### Added

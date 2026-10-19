@@ -854,6 +854,8 @@
   "I am wasting my time right now and I know it hurts my focus.": "Я сейчас трачу время впустую и знаю, что это вредит моей концентрации.",
   "Typing it unlocks %d min. You have to type it every time.": "Набор фразы даёт %d мин. Печатать нужно каждый раз.",
   "Type the sentence above, letter by letter": "Наберите фразу выше, буква за буквой",
-  "Close it": "Закрыть"
+  "Close it": "Закрыть",
+  "Focus stopped counting Shorts": "Focus перестал считать Shorts",
+  "Android switched the accessibility service off in the background. Open Accessibility settings and turn Focus off and on.": "Android отключил службу специальных возможностей в фоне. Откройте настройки и выключите, затем включите Focus."
  }
 }

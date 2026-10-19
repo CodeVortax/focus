@@ -854,6 +854,8 @@
   "I am wasting my time right now and I know it hurts my focus.": "Ich verschwende gerade meine Zeit und weiß, dass es meinem Fokus schadet.",
   "Typing it unlocks %d min. You have to type it every time.": "Tippen schaltet %d Min. frei. Du musst es jedes Mal tippen.",
   "Type the sentence above, letter by letter": "Tippe den Satz oben Buchstabe für Buchstabe",
-  "Close it": "Schließen"
+  "Close it": "Schließen",
+  "Focus stopped counting Shorts": "Focus zählt keine Shorts mehr",
+  "Android switched the accessibility service off in the background. Open Accessibility settings and turn Focus off and on.": "Android hat den Bedienungshilfen-Dienst im Hintergrund beendet. Öffne die Einstellungen und schalte Focus aus und wieder ein."
  }
 }

@@ -41,6 +41,8 @@ import com.barq.focus.data.trf
 object Notifier {
     const val STATUS_ID = 1
     const val TIMER_ID = 4
+    const val HEALTH_ID = 5
+    private const val CH_HEALTH = "focus_health"
     const val CH_STATUS = "focus_watch"
     const val CH_REMIND = "focus_remind"
     private const val CH_TIMER = "focus_timer_live"
@@ -54,6 +56,7 @@ object Notifier {
         nm.createNotificationChannel(NotificationChannel(CH_STATUS, "Focus", NotificationManager.IMPORTANCE_MIN))
         nm.createNotificationChannel(NotificationChannel(CH_REMIND, "Task reminders", NotificationManager.IMPORTANCE_DEFAULT))
         nm.createNotificationChannel(NotificationChannel(CH_TIMER, "Running timer", NotificationManager.IMPORTANCE_LOW))
+        nm.createNotificationChannel(NotificationChannel(CH_HEALTH, "Focus needs attention", NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     private data class Left(val title: String, val n: Int)
@@ -114,6 +117,23 @@ object Notifier {
     }
 
     /** The running study timer: the system counts it down by itself, so nothing needs updating each second. */
+    /** The accessibility switch is on but Android stopped the service (it never restarts it by itself). Say so instead of failing silently. */
+    fun accessibilityDead(ctx: Context, dead: Boolean) {
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        if (!dead) { nm.cancel(HEALTH_ID); return }
+        ensureChannels(ctx)
+        val b = NotificationCompat.Builder(ctx, CH_HEALTH)
+            .setSmallIcon(android.R.drawable.stat_sys_warning)
+            .setContentTitle(tr("Focus stopped counting Shorts"))
+            .setContentText(tr("Android switched the accessibility service off in the background. Open Accessibility settings and turn Focus off and on."))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(tr("Android switched the accessibility service off in the background. Open Accessibility settings and turn Focus off and on.")))
+            .setAutoCancel(true).setOnlyAlertOnce(true)
+            .setContentIntent(android.app.PendingIntent.getActivity(ctx, 55,
+                android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT))
+        try { nm.notify(HEALTH_ID, b.build()) } catch (_: SecurityException) {}
+    }
+
     fun syncTimer(ctx: Context, store: Store) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         val id = store.activeCardId

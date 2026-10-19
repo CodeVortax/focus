@@ -62,6 +62,8 @@ class WatchService : Service() {
     private var fgRow = -1L
     private var lastEventTs = 0L
     private var tick = 0
+    private var deadSince = 0L
+    private var deadShown = false
     private val allowedUntil = HashMap<String, Long>()
     private val blockPass = HashMap<String, Long>()
     private var always: Set<String> = emptySet()
@@ -214,6 +216,7 @@ class WatchService : Service() {
         if (tick++ % 3 == 0) pollMusic(now)
         if (tick % 5 == 2 && Reminders.tickEvents(this)) Reminders.rescheduleEvents(this)
         if (tick % 30 == 1) refreshNotifs()
+        if (tick % 10 == 3) checkAccessibility(now)
     }
 
     private fun isAllowed(b: Block, pkg: String) =
@@ -289,6 +292,14 @@ class WatchService : Service() {
                 Leaver.leave(applicationContext, cur)
             }
         )
+    }
+
+    /** "On" in Settings is not "running": after a crash or a kill Android keeps the switch on but never rebinds the service. */
+    private fun checkAccessibility(now: Long) {
+        val dead = Perms.accessibility(this) && FocusAccessibility.instance == null
+        if (!dead) { deadSince = 0L; if (deadShown) { deadShown = false; Notifier.accessibilityDead(this, false) }; return }
+        if (deadSince == 0L) deadSince = now
+        if (!deadShown && now - deadSince > 90_000L) { deadShown = true; Notifier.accessibilityDead(this, true) }
     }
 
     private fun pollMusic(now: Long) {
