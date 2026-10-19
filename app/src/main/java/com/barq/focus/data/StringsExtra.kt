@@ -21,6 +21,13 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "Strict Shorts mode" to "وضع الشورتس الصارم",
+    "The gate opens at once with no \"just finish this one\", no treat button and no swipe count. To keep watching you must type a sentence by hand (paste is blocked), every time. Leaving closes the app. Optional gray screen: run  adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS  once." to "تفتح البوابة فوراً دون «أكمل هذا فقط» ودون زر المكافأة ودون عدّاد السحبات. للاستمرار عليك كتابة جملة بيدك (اللصق ممنوع) في كل مرة. المغادرة تغلق التطبيق. شاشة رمادية اختيارية: نفّذ مرة واحدة  adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS",
+    "Strict mode" to "الوضع الصارم",
+    "I am wasting my time right now and I know it hurts my focus." to "أنا أضيّع وقتي الآن وأعلم أن هذا يضرّ بتركيزي.",
+    "Typing it unlocks %d min. You have to type it every time." to "كتابتها تفتح %d دقائق. عليك كتابتها في كل مرة.",
+    "Type the sentence above, letter by letter" to "اكتب الجملة أعلاه حرفاً حرفاً",
+    "Close it" to "أغلقه",
     "Extra buttons in the notification player (pick two)" to "أزرار إضافية في مشغّل الإشعارات (اختر زرّين)",
     "Android shows at most five buttons: previous, play/pause, next and these two." to "يعرض أندرويد خمسة أزرار كحد أقصى: السابق وتشغيل/إيقاف والتالي وهذان الزرّان.",
     "Shuffle" to "عشوائي",

@@ -851,6 +851,13 @@
   "until %s": "jusqu'à %s",
   "watched": "vu",
   "work-day streak": "série de jours de travail",
-  "x%s  ·  +%s min if done now  ·  %s": "x%s  ·  +%s min si terminé maintenant  ·  %s"
+  "x%s  ·  +%s min if done now  ·  %s": "x%s  ·  +%s min si terminé maintenant  ·  %s",
+  "Strict Shorts mode": "Mode Shorts strict",
+  "The gate opens at once with no \"just finish this one\", no treat button and no swipe count. To keep watching you must type a sentence by hand (paste is blocked), every time. Leaving closes the app. Optional gray screen: run  adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS  once.": "La porte s'ouvre aussitôt, sans « juste celle-ci », sans bouton récompense et sans compteur de swipes. Pour continuer, tapez à la main une phrase (le collage est bloqué), à chaque fois. Quitter ferme l'app. Écran gris facultatif : exécutez une fois  adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS",
+  "Strict mode": "Mode strict",
+  "I am wasting my time right now and I know it hurts my focus.": "Je perds mon temps en ce moment et je sais que cela nuit à ma concentration.",
+  "Typing it unlocks %d min. You have to type it every time.": "La taper débloque %d min. Il faut la taper à chaque fois.",
+  "Type the sentence above, letter by letter": "Tapez la phrase ci-dessus, lettre par lettre",
+  "Close it": "Fermer"
  }
 }

@@ -2,6 +2,16 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.22.0-beta (version code 34)
+
+### Added
+- **Strict Shorts mode** (Settings, next to precise swipes; off by default). When on:
+  - the gate opens at once, with no "Just finish this one" and no treat button;
+  - the swipe count is hidden;
+  - to keep watching you must type a sentence by hand, and you get 5 minutes. Copy, cut and paste are blocked in that box (menu, long-press and large keyboard pastes are all rejected), so you type it every single time;
+  - "Close it" backs out until the app is gone and closes it (never Home first, so no picture-in-picture).
+- **Optional gray screen** in strict mode: while a feed is open the system colour filter turns the screen gray, and it is restored when you leave. It needs one adb command, once: `adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS`. Without it nothing changes. If gray ever sticks, switch it off in Settings > Accessibility > Color correction.
+
 ## 0.21.1-beta (version code 33)
 
 ### Fixed

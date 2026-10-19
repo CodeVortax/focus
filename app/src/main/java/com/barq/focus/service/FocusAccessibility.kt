@@ -67,6 +67,7 @@ class FocusAccessibility : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         store = Store(this); db = Db.get(this); ov = Overlay.get(this)
+        Gray.recover(this)
         h.post(tick)
     }
 
@@ -74,6 +75,7 @@ class FocusAccessibility : AccessibilityService() {
         instance = null
         h.removeCallbacksAndMessages(null)
         if (::db.isInitialized) endShorts()
+        Gray.off(this)
         return super.onUnbind(intent)
     }
 
@@ -164,6 +166,7 @@ class FocusAccessibility : AccessibilityService() {
         inShorts = true; Shared.inShorts = true
         shortsPkg = pkg
         lastFoundAt = now
+        if (store.strictShorts) Gray.on(this)
         lastIdx = -1; burstIdx = -1; burstPending = false
         lastFp = try { rootInActiveWindow?.let { ShortsDetector.fingerprint(it) } ?: 0 } catch (_: Exception) { 0 }
         // coming back within 90 s continues the same burst instead of starting a new row
@@ -180,6 +183,7 @@ class FocusAccessibility : AccessibilityService() {
     private fun endShorts() {
         if (!inShorts) return
         inShorts = false; Shared.inShorts = false
+        Gray.off(this)
         if (row >= 0) { db.close(row, System.currentTimeMillis()); row = -1 }
         if (ov.showing && ov.tag == "shorts") ov.hide()
     }
@@ -207,6 +211,7 @@ class FocusAccessibility : AccessibilityService() {
     }
 
     private fun showShortsOverlay() {
+        if (store.strictShorts) { showStrictOverlay(); return }
         val bank = store.bank()
         val ch = ArrayList<Choice>()
         ch += Choice(trf("Just finish this one  ·  %d min", Config.SHORTS_GRACE_MIN), 0xFF4285F4.toInt()) {
@@ -231,6 +236,22 @@ class FocusAccessibility : AccessibilityService() {
             choices = ch,
             leaveLabel = tr("Back out"),
             onLeave = { if (shortsPkg in ShortsDetector.TIKTOK) { exitApp(shortsPkg!!); endShorts() } else backOut() }
+        )
+    }
+
+    /** Strict mode: no "finish this one", no treat button, no swipe count. The only way on is a sentence typed by hand. */
+    private fun showStrictOverlay() {
+        ov.show(
+            tag = "shorts",
+            title = tr(if (shortsPkg in ShortsDetector.TIKTOK) "TikTok" else "Shorts"),
+            subtitle = tr("Strict mode"),
+            delaySec = 0,
+            choices = emptyList(),
+            strictPhrase = tr("I am wasting my time right now and I know it hurts my focus."),
+            typedLabel = trf("Typing it unlocks %d min. You have to type it every time.", Config.STRICT_EXTEND_MIN),
+            onTyped = { grant("Typed", Config.STRICT_EXTEND_MIN) },
+            leaveLabel = tr("Close it"),
+            onLeave = { shortsPkg?.let { exitApp(it) }; endShorts() }
         )
     }
 

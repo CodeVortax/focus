@@ -851,6 +851,13 @@
   "until %s": "до %s",
   "watched": "просмотрено",
   "work-day streak": "серия рабочих дней",
-  "x%s  ·  +%s min if done now  ·  %s": "x%s  ·  +%s мин, если выполнить сейчас  ·  %s"
+  "x%s  ·  +%s min if done now  ·  %s": "x%s  ·  +%s мин, если выполнить сейчас  ·  %s",
+  "Strict Shorts mode": "Строгий режим Shorts",
+  "The gate opens at once with no \"just finish this one\", no treat button and no swipe count. To keep watching you must type a sentence by hand (paste is blocked), every time. Leaving closes the app. Optional gray screen: run  adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS  once.": "Шлюз открывается сразу: без «только это видео», без кнопки награды и без счётчика свайпов. Чтобы смотреть дальше, каждый раз нужно вручную набрать фразу (вставка заблокирована). Выход закрывает приложение. Серый экран по желанию: один раз выполните  adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS",
+  "Strict mode": "Строгий режим",
+  "I am wasting my time right now and I know it hurts my focus.": "Я сейчас трачу время впустую и знаю, что это вредит моей концентрации.",
+  "Typing it unlocks %d min. You have to type it every time.": "Набор фразы даёт %d мин. Печатать нужно каждый раз.",
+  "Type the sentence above, letter by letter": "Наберите фразу выше, буква за буквой",
+  "Close it": "Закрыть"
  }
 }

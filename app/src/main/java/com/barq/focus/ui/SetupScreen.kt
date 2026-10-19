@@ -164,6 +164,17 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                         })
                     }
                 }
+                var strict by remember { mutableStateOf(store.strictShorts) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Strict Shorts mode"))
+                        Text(
+                            tr("The gate opens at once with no \"just finish this one\", no treat button and no swipe count. To keep watching you must type a sentence by hand (paste is blocked), every time. Leaving closes the app. Optional gray screen: run  adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS  once."),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Switch(checked = strict, onCheckedChange = { strict = it; store.strictShorts = it })
+                }
                 var precise by remember { mutableStateOf(store.preciseSwipes) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {

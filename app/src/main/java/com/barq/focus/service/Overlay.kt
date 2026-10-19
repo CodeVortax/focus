@@ -201,7 +201,7 @@ class Overlay private constructor(private val ctx: Context) {
 
     fun show(
         tag: String, title: String, subtitle: String, delaySec: Int, choices: List<Choice>,
-        typedLabel: String? = null, onTyped: ((String) -> Unit)? = null,
+        typedLabel: String? = null, onTyped: ((String) -> Unit)? = null, strictPhrase: String? = null,
         leaveLabel: String = "Leave", onLeave: () -> Unit,
     ) {
         if (root != null || !Settings.canDrawOverlays(ctx)) return
@@ -315,15 +315,49 @@ class Overlay private constructor(private val ctx: Context) {
         if (pending.isNotEmpty()) addRow(ArrayList(pending))
 
         if (onTyped != null) {
-            val input = EditText(ctx).apply {
-                hint = tr("Or type why…")
+            val strict = strictPhrase != null
+            val input = object : EditText(ctx) {
+                // strict mode: no paste, cut or copy, from the menu or the keyboard
+                override fun onTextContextMenuItem(id: Int): Boolean =
+                    if (strict && (id == android.R.id.paste || id == android.R.id.pasteAsPlainText || id == android.R.id.cut || id == android.R.id.copy)) true
+                    else super.onTextContextMenuItem(id)
+            }.apply {
+                hint = tr(if (strict) "Type the sentence above, letter by letter" else "Or type why…")
                 setHintTextColor(pal.dim)
                 setTextColor(pal.on)
                 face(false)?.let { typeface = it }
-                inputType = InputType.TYPE_CLASS_TEXT
+                inputType = if (strict) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                    else InputType.TYPE_CLASS_TEXT
                 maxLines = 2
                 setPadding(dp(20), 0, dp(20), 0)
                 background = GradientDrawable().apply { cornerRadius = dp(28).toFloat(); setColor(pal.track) }
+                if (strict) {
+                    isLongClickable = false
+                    imeOptions = imeOptions or android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+                    val none = object : android.view.ActionMode.Callback {
+                        override fun onCreateActionMode(m: android.view.ActionMode?, menu: android.view.Menu?) = false
+                        override fun onPrepareActionMode(m: android.view.ActionMode?, menu: android.view.Menu?) = false
+                        override fun onActionItemClicked(m: android.view.ActionMode?, item: android.view.MenuItem?) = false
+                        override fun onDestroyActionMode(m: android.view.ActionMode?) {}
+                    }
+                    customSelectionActionModeCallback = none
+                    customInsertionActionModeCallback = none
+                    // a keyboard's clipboard chip or a long swipe-typing burst can still push many characters at once: undo it
+                    addTextChangedListener(object : android.text.TextWatcher {
+                        private var prev = ""
+                        private var busy = false
+                        override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) { if (!busy) prev = s?.toString() ?: "" }
+                        override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                        override fun afterTextChanged(e: android.text.Editable?) {
+                            if (busy || e == null) return
+                            if (e.length - prev.length > 2) {
+                                busy = true
+                                e.replace(0, e.length, prev)
+                                busy = false
+                            }
+                        }
+                    })
+                }
             }
             val go = Button(ctx).apply {
                 text = "\u2192"; textSize = 22f; isAllCaps = false; stateListAnimator = null
@@ -334,12 +368,17 @@ class Overlay private constructor(private val ctx: Context) {
             val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
             row.addView(input, LinearLayout.LayoutParams(0, dp(52), 1f))
             row.addView(go, LinearLayout.LayoutParams(dp(52), dp(52)).apply { marginStart = gap })
-            col.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
+            if (strictPhrase != null) col.addView(tv(strictPhrase, 18f, pal.on, true).apply { setPadding(dp(6), dp(14), dp(6), 0) })
+            col.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(if (strictPhrase != null) 10 else 18) })
             if (typedLabel != null) col.addView(tv(typedLabel, 12f, pal.dim).apply { setPadding(dp(20), dp(6), 0, 0) })
             locked.add(input); locked.add(go)
             go.setOnClickListener {
                 val r = input.text.toString().trim()
-                if (r.isNotEmpty()) { hide(); onTyped(r) }
+                if (strictPhrase != null) {
+                    fun norm(x: String) = x.trim().replace(Regex("\\s+"), " ").lowercase()
+                    if (norm(r) == norm(strictPhrase)) { hide(); onTyped(r) }
+                    else input.setText("")
+                } else if (r.isNotEmpty()) { hide(); onTyped(r) }
             }
         }
 

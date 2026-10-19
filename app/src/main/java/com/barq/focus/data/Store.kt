@@ -97,6 +97,7 @@ object Config {
     const val DELAY_SECONDS = 3
     const val BLOCK_DELAY_SECONDS = 15
     const val SHORTS_GRACE_MIN = 2
+    const val STRICT_EXTEND_MIN = 5
 
     // treat bank (minutes), resets every day
     const val SUBJECT_BONUS = 10          // every subject whose checklist is fully done
@@ -541,6 +542,11 @@ class Store(ctx: Context) {
     var accent: Int
         get() = p.getInt("accent", 0)
         set(v) { p.edit().putInt("accent", v).apply() }
+
+    /** Strict Shorts mode: gate at once, no "finish this one", no swipe count, extending needs a typed sentence (no paste). */
+    var strictShorts: Boolean
+        get() = p.getBoolean("strict_shorts", false)
+        set(v) { p.edit().putBoolean("strict_shorts", v).apply() }
 
     var preciseSwipes: Boolean
         get() = p.getBoolean("precise_swipes", false)
