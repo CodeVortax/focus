@@ -86,7 +86,7 @@ class FocusAccessibility : AccessibilityService() {
         val pkg = e.packageName?.toString() ?: return
         if (pkg !in ShortsDetector.PACKAGES) return
         val now = System.currentTimeMillis()
-        if (e.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && inShorts && !TouchCounter.running &&
+        if (e.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && inShorts &&
             pkg == shortsPkg && !sideways(e) && bigSource(e)
         ) {
             // the pager only reports an index when exactly one page is showing
@@ -148,16 +148,6 @@ class FocusAccessibility : AccessibilityService() {
         if (found) {
             lastFoundAt = System.currentTimeMillis()
             if (!inShorts) startShorts(pkg)
-        }
-    }
-
-    /** Called by the root touch counter: one real swipe = one count. */
-    fun countSwipe() {
-        h.post {
-            if (inShorts) {
-                store.addShortsSwipe()
-                if (row >= 0) db.addCount(row, 1)
-            }
         }
     }
 

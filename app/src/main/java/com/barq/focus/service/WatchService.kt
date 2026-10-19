@@ -62,7 +62,6 @@ class WatchService : Service() {
     private var fgRow = -1L
     private var lastEventTs = 0L
     private var tick = 0
-    private var lastTouchTry = 0L
     private val allowedUntil = HashMap<String, Long>()
     private val blockPass = HashMap<String, Long>()
     private var always: Set<String> = emptySet()
@@ -125,7 +124,6 @@ class WatchService : Service() {
 
     override fun onDestroy() {
         Shared.watchAlive = false
-        TouchCounter.stop()
         h.removeCallbacksAndMessages(null)
         overlay.hide()
         val now = System.currentTimeMillis()
@@ -212,12 +210,6 @@ class WatchService : Service() {
 
         if (store.activeCardId != -1L) Alerter.check(this, store)
         Notifier.syncTimer(this, store)
-        if (store.preciseSwipes) {
-            if (!TouchCounter.running && now - lastTouchTry > 30_000L) {
-                lastTouchTry = now
-                TouchCounter.start { FocusAccessibility.instance?.countSwipe() }
-            }
-        } else if (TouchCounter.running) TouchCounter.stop()
         FocusWidgets.refresh(this)
         if (tick++ % 3 == 0) pollMusic(now)
         if (tick % 5 == 2 && Reminders.tickEvents(this)) Reminders.rescheduleEvents(this)

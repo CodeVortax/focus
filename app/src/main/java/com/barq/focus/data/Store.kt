@@ -548,10 +548,6 @@ class Store(ctx: Context) {
         get() = p.getBoolean("strict_shorts", false)
         set(v) { p.edit().putBoolean("strict_shorts", v).apply() }
 
-    var preciseSwipes: Boolean
-        get() = p.getBoolean("precise_swipes", false)
-        set(v) { p.edit().putBoolean("precise_swipes", v).apply() }
-
     var pdfReader: String                          // "episteme" or "builtin"
         get() = p.getString("pdf_reader", "episteme") ?: "episteme"
         set(v) { p.edit().putString("pdf_reader", v).apply() }

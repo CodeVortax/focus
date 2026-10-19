@@ -76,7 +76,6 @@ import com.barq.focus.data.Store
 import com.barq.focus.service.Episteme
 import com.barq.focus.service.Perms
 import com.barq.focus.service.Reminders
-import com.barq.focus.service.TouchCounter
 
 import com.barq.focus.data.EpLock
 import kotlinx.coroutines.Dispatchers
@@ -174,18 +173,6 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                         )
                     }
                     Switch(checked = strict, onCheckedChange = { strict = it; store.strictShorts = it })
-                }
-                var precise by remember { mutableStateOf(store.preciseSwipes) }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(tr("Precise swipe counting (root)"))
-                        Text(
-                            tr("Reads real touchscreen swipes with getevent, so each Short is counted once. Needs root; without it Focus keeps the scroll-based count."),
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                        if (precise && TouchCounter.status.isNotEmpty()) Text(tr(TouchCounter.status), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    }
-                    Switch(checked = precise, onCheckedChange = { precise = it; store.preciseSwipes = it })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {

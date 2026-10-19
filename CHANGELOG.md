@@ -12,6 +12,9 @@ Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
   - "Close it" backs out until the app is gone and closes it (never Home first, so no picture-in-picture).
 - **Optional gray screen** in strict mode: while a feed is open the system colour filter turns the screen gray, and it is restored when you leave. It needs one adb command, once: `adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS`. Without it nothing changes. If gray ever sticks, switch it off in Settings > Accessibility > Color correction.
 
+### Removed
+- **Precise swipe counting (root)** and its `getevent` touch reader. The new settle-then-compare counting from 0.21.1 made it unnecessary, so Focus no longer has any root code.
+
 ## 0.21.1-beta (version code 33)
 
 ### Fixed
