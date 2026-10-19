@@ -2,6 +2,14 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.23.1-beta (version code 40)
+
+### Added
+- **Dare Taker badge** (🎲): accept 5 cards from Challenge me (press Start timer in the challenge banner). 31 badges now.
+
+### Changed
+- **The app is now called Focus Study Gate** (launcher and accessibility settings). Package name `com.barq.focus` is unchanged, so updating keeps your data.
+
 ## 0.23.0-beta (version code 39)
 
 ### Added

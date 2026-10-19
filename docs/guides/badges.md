@@ -39,6 +39,7 @@ Level titles, in order: Couch Potato, Distracted Intern, Focus Apprentice, Task 
 | 🧠 | **Brain Dumper** | Park 5 thoughts instead of chasing them. |
 | 📚 | **Bookworm** | Add 3 PDFs or read 100 pages. |
 | 🌍 | **Polyglot** | Use Focus in another language. |
+| 🎲 | **Dare Taker** | Accept 5 challenges from the Challenge me button. |
 | 🍿 | **Treat Yourself** | Earn 40 minutes of treats in one day. |
 | 🔥 | **Comeback Kid** | Clear the whole plate after earning a shame badge. |
 

@@ -218,7 +218,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
                 running, paused, endAt, pausedLeft, card.minutes * 60_000L, nowState, col, compact,
                 onPlayPause = {
                     when {
-                        !running -> { store.startActive(card.id, System.currentTimeMillis() + card.minutes * 60_000L); refresh() }
+                        !running -> { store.startActive(card.id, System.currentTimeMillis() + card.minutes * 60_000L); store.challengeAccepted(); refresh() }
                         paused -> { store.resumeActive(); refresh() }
                         else -> { store.pauseActive(); refresh() }
                     }

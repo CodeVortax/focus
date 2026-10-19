@@ -1,4 +1,4 @@
-Barq Focus is built on one idea: finish your work first, then spend what you earned.
+Focus Study Gate is built on one idea: finish your work first, then spend what you earned.
 
 You split your day into subjects with task lists and timers. Finishing tasks fills a daily treat bank of minutes. You spend those minutes at the gate in front of distracting apps, on Shorts and Reels, or in the built-in player.
 
@@ -27,4 +27,4 @@ You split your day into subjects with task lists and timers. Finishing tasks fil
 • English, Arabic (full right-to-left), Russian, German and French, plus importable language packs
 • Free software under the AGPL-3.0
 
-Barq Focus needs the usage access, display over other apps and accessibility permissions to work. The accessibility service is limited to YouTube, Instagram, TikTok and the browsers you gate, and only counts and times are stored.
+Focus Study Gate needs the usage access, display over other apps and accessibility permissions to work. The accessibility service is limited to YouTube, Instagram, TikTok and the browsers you gate, and only counts and times are stored.

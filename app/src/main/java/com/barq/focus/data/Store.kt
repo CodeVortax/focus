@@ -530,6 +530,8 @@ class Store(ctx: Context) {
         val o = JSONObject(p.getString("badges", "{}") ?: "{}")
         if (!o.has(id)) { o.put(id, dayKey); p.edit().putString("badges", o.toString()).apply() }
     }
+    fun challengesAccepted() = p.getInt("challenges_accepted", 0)
+    fun challengeAccepted() { p.edit().putInt("challenges_accepted", challengesAccepted() + 1).apply() }
     fun flagSet(name: String) = p.getBoolean(name, false)
     fun setFlagNamed(name: String) { p.edit().putBoolean(name, true).apply() }
     val today: Int get() = day()

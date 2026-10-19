@@ -47,6 +47,7 @@ object Game {
         Badge("dumper", "🧠", K("Brain Dumper"), K("Park 5 thoughts instead of chasing them.")),
         Badge("worm", "📚", K("Bookworm"), K("Add 3 PDFs or read 100 pages.")),
         Badge("poly", "🌍", K("Polyglot"), K("Use Focus in another language.")),
+        Badge("dare", "🎲", K("Dare Taker"), K("Accept 5 challenges from the Challenge me button.")),
         Badge("treat", "🍿", K("Treat Yourself"), K("Earn 40 minutes of treats in one day.")),
         // hall of shame: hidden until you earn them
         Badge("goat_neglect", "🐐", K("Goat Neglecter"), K("3 days in a row with tasks on the plate and none done. Come back before it's too late."), shame = true),
@@ -168,6 +169,7 @@ object Game {
         if (pdfs.size >= 3 || pdfs.sumOf { it.lastPage } >= 100) unlock("worm")
         if (store.lang != "en") unlock("poly")
         if (treatDay) unlock("treat")
+        if (store.challengesAccepted() >= 5) unlock("dare")
 
         // shame: tasks were planned, nothing got done, three days running
         var idle = 0; var worstIdle = 0

@@ -8,20 +8,20 @@ SourceCode: https://github.com/CodeVortax/focus
 IssueTracker: https://github.com/CodeVortax/focus/issues
 Changelog: https://github.com/CodeVortax/focus/blob/HEAD/CHANGELOG.md
 
-AutoName: Barq Focus
+AutoName: Focus Study Gate
 
 RepoType: git
 Repo: https://github.com/CodeVortax/focus
 
 Builds:
-  - versionName: 0.23.0-beta
-    versionCode: 39
-    commit: v0.23.0-beta
+  - versionName: 0.23.1-beta
+    versionCode: 40
+    commit: v0.23.1-beta
     subdir: app
     gradle:
       - yes
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.23.0-beta
+CurrentVersion: 0.23.1-beta
 CurrentVersionCode: 39
