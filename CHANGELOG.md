@@ -2,6 +2,11 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.22.2-beta (version code 36)
+
+### Fixed
+- **Gate flicker** (the gate disappearing and showing again). An app pausing for a moment, for example during a screen transition, was read as "nothing in front", so the gate was removed and shown again a second later. The gate and the block screen now stay up for a 2.5 s grace when the foreground is momentarily empty. A different app really coming to the front still removes the gate at once. The Shorts gate had the same cause and is fixed the same way.
+
 ## 0.22.1-beta (version code 35)
 
 Lessons from the closed issues of the Nudge project (astraedus/nudge), checked against Focus.

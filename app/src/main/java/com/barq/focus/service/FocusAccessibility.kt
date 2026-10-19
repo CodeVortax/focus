@@ -183,7 +183,7 @@ class FocusAccessibility : AccessibilityService() {
             try {
                 val now = System.currentTimeMillis()
                 if (inShorts) {
-                    if (now - lastFoundAt > 4000L || (Shared.watchAlive && Shared.fg != shortsPkg)) endShorts()
+                    if (now - lastFoundAt > 4000L || (Shared.watchAlive && Shared.fg != null && Shared.fg != shortsPkg)) endShorts()
                     else if (now > allowedUntil && now > Shared.suppressUntil && !ov.showing) showShortsOverlay()
                     // keep the baseline fresh while nothing moves, so autoplay or a like is not mistaken for a swipe
                     if (inShorts && !burstPending && now - lastScrollAt > 800L) {

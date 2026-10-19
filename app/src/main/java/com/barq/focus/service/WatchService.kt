@@ -63,6 +63,7 @@ class WatchService : Service() {
     private var lastEventTs = 0L
     private var tick = 0
     private var deadSince = 0L
+    private var nullSince = 0L
     private var deadShown = false
     private val allowedUntil = HashMap<String, Long>()
     private val blockPass = HashMap<String, Long>()
@@ -199,15 +200,25 @@ class WatchService : Service() {
         val lockBlock = store.activeBlock()?.takeIf { it.lock }
         val blocked = lockBlock != null && cur != null && !isAllowed(lockBlock, cur)
 
-        if (blocked) {
-            if (!overlay.showing && now > Shared.suppressUntil && (blockPass[cur!!] ?: 0L) <= now) showBlock(lockBlock!!, cur)
-        } else {
-            if (overlay.showing && overlay.tag == "block") overlay.hide()
-            if (cur == null || cur !in gated) {
-                if (overlay.showing && overlay.tag == "gate") overlay.hide()
-            } else if (!overlay.showing && now > Shared.suppressUntil && (allowedUntil[cur] ?: 0L) <= now) {
-                showGate(cur)
+        // An app that merely pauses for a moment (a transition, the gate's own audio focus) reads as "nothing in front":
+        // keep the gate on screen for a short grace instead of hiding it and showing it again (the flicker).
+        if (cur != null || !overlay.showing) nullSince = 0L
+        val settling = cur == null && overlay.showing && (overlay.tag == "gate" || overlay.tag == "block") && run {
+            if (nullSince == 0L) nullSince = now
+            now - nullSince < 2500L
+        }
+        if (!settling) {
+            if (blocked) {
+                if (!overlay.showing && now > Shared.suppressUntil && (blockPass[cur!!] ?: 0L) <= now) showBlock(lockBlock!!, cur)
+            } else {
+                if (overlay.showing && overlay.tag == "block") overlay.hide()
+                if (cur == null || cur !in gated) {
+                    if (overlay.showing && overlay.tag == "gate") overlay.hide()
+                } else if (!overlay.showing && now > Shared.suppressUntil && (allowedUntil[cur] ?: 0L) <= now) {
+                    showGate(cur)
+                }
             }
+
         }
 
         if (store.activeCardId != -1L) Alerter.check(this, store)
