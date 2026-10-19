@@ -2,6 +2,18 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.22.3-beta (version code 37)
+
+Lessons from the closed issues of Nudge and Dechainer, applied to Focus.
+
+### Fixed
+- **Floating, pop-up and split-screen windows.** An app opened from an edge panel, Samsung pop-up view or split screen while another app has the focus used to slip past the gate, because Focus only watched one "foreground" app. The gate now also covers any gated app that has a window on screen. This needs the accessibility service to be on.
+- **Shorts in a floating window.** Detection, counting and the Shorts gate now read the Shorts app's own window, not just the focused one, and the Shorts gate no longer ends or flickers when another app takes the focus while Shorts is still on screen.
+- **Leaving an app that is not the focused window.** Pressing Back would hit the wrong window, so Focus now goes Home and closes the app instead.
+
+### Changed
+- The accessibility service now asks Android for the list of windows (`flagRetrieveInteractiveWindows`). Turn the service off and on once after updating if windows are not detected.
+
 ## 0.22.2-beta (version code 36)
 
 ### Fixed

@@ -27,6 +27,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import com.barq.focus.data.Config
 import com.barq.focus.data.Db
 import com.barq.focus.data.Store
@@ -116,8 +118,8 @@ class FocusAccessibility : AccessibilityService() {
     /** Runs once the page stopped moving: did the video really change, and by how many? */
     private val settle = Runnable {
         val pkg = shortsPkg
-        val root = try { rootInActiveWindow } catch (_: Exception) { null }
-        if (!inShorts || pkg == null || root == null || root.packageName?.toString() != pkg) {
+        val root = pkg?.let { rootFor(it) }
+        if (!inShorts || pkg == null || root == null) {
             burstIdx = -1; burstPending = false
             return@Runnable
         }
@@ -135,9 +137,34 @@ class FocusAccessibility : AccessibilityService() {
         repeat(steps) { store.addShortsSwipe(); if (row >= 0) db.addCount(row, 1) }
     }
 
+    /** Every app that has a window on screen right now: split screen, pop-up view, freeform and floating windows included. */
+    fun visiblePackages(): Set<String> {
+        val out = HashSet<String>()
+        try {
+            for (w in windows) {
+                if (w.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+                w.root?.packageName?.toString()?.let { out += it }
+            }
+        } catch (_: Exception) {}
+        return out
+    }
+
+    /** The window of [pkg], even when another app has the focus (the app may be in a floating window). */
+    private fun rootFor(pkg: String): AccessibilityNodeInfo? {
+        val active = try { rootInActiveWindow } catch (_: Exception) { null }
+        if (active?.packageName?.toString() == pkg) return active
+        try {
+            for (w in windows) {
+                if (w.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+                val r = w.root
+                if (r?.packageName?.toString() == pkg) return r
+            }
+        } catch (_: Exception) {}
+        return null
+    }
+
     private fun scan(pkg: String) {
-        val root = rootInActiveWindow ?: return
-        if (root.packageName?.toString() != pkg) return
+        val root = rootFor(pkg) ?: return
 
         val found = ShortsDetector.isShorts(pkg, root) || ShortsDetector.isPager(pkg, root, sw, sh)
 
@@ -158,7 +185,7 @@ class FocusAccessibility : AccessibilityService() {
         lastFoundAt = now
         if (store.strictShorts) Gray.on(this)
         lastIdx = -1; burstIdx = -1; burstPending = false
-        lastFp = try { rootInActiveWindow?.let { ShortsDetector.fingerprint(it) } ?: 0 } catch (_: Exception) { 0 }
+        lastFp = try { rootFor(pkg)?.let { ShortsDetector.fingerprint(it) } ?: 0 } catch (_: Exception) { 0 }
         // coming back within 90 s continues the same burst instead of starting a new row
         val last = db.lastRow("shorts", pkg)
         val end = last?.t1
@@ -183,11 +210,11 @@ class FocusAccessibility : AccessibilityService() {
             try {
                 val now = System.currentTimeMillis()
                 if (inShorts) {
-                    if (now - lastFoundAt > 4000L || (Shared.watchAlive && Shared.fg != null && Shared.fg != shortsPkg)) endShorts()
+                    if (now - lastFoundAt > 4000L || (Shared.watchAlive && Shared.fg != null && Shared.fg != shortsPkg && shortsPkg !in visiblePackages())) endShorts()
                     else if (now > allowedUntil && now > Shared.suppressUntil && !ov.showing) showShortsOverlay()
                     // keep the baseline fresh while nothing moves, so autoplay or a like is not mistaken for a swipe
                     if (inShorts && !burstPending && now - lastScrollAt > 800L) {
-                        rootInActiveWindow?.let { r -> if (r.packageName?.toString() == shortsPkg) lastFp = ShortsDetector.fingerprint(r) }
+                        shortsPkg?.let { p -> rootFor(p)?.let { r -> lastFp = ShortsDetector.fingerprint(r) } }
                     }
                 }
             } catch (_: Exception) {}
@@ -260,7 +287,12 @@ class FocusAccessibility : AccessibilityService() {
         val r = object : Runnable {
             override fun run() {
                 val cur = try { rootInActiveWindow?.packageName?.toString() } catch (_: Exception) { null }
-                if (cur != pkg) { Leaver.kill(this@FocusAccessibility, pkg, 500); return }
+                if (cur != pkg) {
+                    // not the focused window: if the app is still on screen (floating or split window), Back would hit the wrong window
+                    if (pkg in visiblePackages()) { Leaver.home(this@FocusAccessibility); Leaver.kill(this@FocusAccessibility, pkg, 900) }
+                    else Leaver.kill(this@FocusAccessibility, pkg, 500)
+                    return
+                }
                 if (n >= 8) {
                     Leaver.home(this@FocusAccessibility)
                     Leaver.kill(this@FocusAccessibility, pkg, 900)

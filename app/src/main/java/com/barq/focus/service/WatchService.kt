@@ -199,11 +199,13 @@ class WatchService : Service() {
         val gated = store.gated()
         val lockBlock = store.activeBlock()?.takeIf { it.lock }
         val blocked = lockBlock != null && cur != null && !isAllowed(lockBlock, cur)
+        // A gated app can also sit in a floating or split window while another app has the focus: gate that one too.
+        val gtarget = if (cur != null && cur in gated) cur else if (gated.isNotEmpty()) hiddenGated(gated, cur, now) else null
 
         // An app that merely pauses for a moment (a transition, the gate's own audio focus) reads as "nothing in front":
         // keep the gate on screen for a short grace instead of hiding it and showing it again (the flicker).
         if (cur != null || !overlay.showing) nullSince = 0L
-        val settling = cur == null && overlay.showing && (overlay.tag == "gate" || overlay.tag == "block") && run {
+        val settling = cur == null && gtarget == null && overlay.showing && (overlay.tag == "gate" || overlay.tag == "block") && run {
             if (nullSince == 0L) nullSince = now
             now - nullSince < 2500L
         }
@@ -212,13 +214,12 @@ class WatchService : Service() {
                 if (!overlay.showing && now > Shared.suppressUntil && (blockPass[cur!!] ?: 0L) <= now) showBlock(lockBlock!!, cur)
             } else {
                 if (overlay.showing && overlay.tag == "block") overlay.hide()
-                if (cur == null || cur !in gated) {
+                if (gtarget == null) {
                     if (overlay.showing && overlay.tag == "gate") overlay.hide()
-                } else if (!overlay.showing && now > Shared.suppressUntil && (allowedUntil[cur] ?: 0L) <= now) {
-                    showGate(cur)
+                } else if (!overlay.showing && now > Shared.suppressUntil && (allowedUntil[gtarget] ?: 0L) <= now) {
+                    showGate(gtarget)
                 }
             }
-
         }
 
         if (store.activeCardId != -1L) Alerter.check(this, store)
@@ -228,6 +229,12 @@ class WatchService : Service() {
         if (tick % 5 == 2 && Reminders.tickEvents(this)) Reminders.rescheduleEvents(this)
         if (tick % 30 == 1) refreshNotifs()
         if (tick % 10 == 3) checkAccessibility(now)
+    }
+
+    /** A gated app with a window on screen that is not the focused one (floating, pop-up or split window), and not currently allowed. */
+    private fun hiddenGated(gated: Set<String>, cur: String?, now: Long): String? {
+        val vis = FocusAccessibility.instance?.visiblePackages() ?: return null
+        return vis.firstOrNull { it != cur && it != packageName && it in gated && (allowedUntil[it] ?: 0L) <= now }
     }
 
     private fun isAllowed(b: Block, pkg: String) =

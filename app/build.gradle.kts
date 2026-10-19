@@ -15,10 +15,10 @@ android {
         applicationId = "com.barq.focus"
         minSdk = 26
         targetSdk = 34
-        versionCode = 36
+        versionCode = 37
         buildConfigField("String", "LICENSE_ID", "\"AGPL-3.0-only\"")
         buildConfigField("String", "LICENSE_NAME", "\"GNU Affero General Public License v3.0 only\"")
-        versionName = "0.22.2-beta"
+        versionName = "0.22.3-beta"
     }
 
     // Release signing: put your key details in keystore.properties (git-ignored, see docs/guides/signing.md).
