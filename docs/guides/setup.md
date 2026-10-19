@@ -48,6 +48,6 @@ Either add subjects by hand (**+ > New card**), or paste a plan from an AI: **+ 
 | Usage screen shows only a few apps | Grant Usage access; without it only the tracked apps are known |
 | Gate never appears | Check Usage access and Display over other apps; check the app is switched on under *Gate these apps*; set battery to Unrestricted |
 | Shorts are not counted | Accessibility service is off, or the app changed its UI. Collect IDs (see [Shorts detection](../architecture/shorts-detection.md#debugging-a-broken-detector)) |
-| Counts look too high | Enable root *Precise swipe counting*, or accept the scroll-based approximation |
+| Counts look wrong | Turn the accessibility service off and on once, then scroll a few videos. Counting waits for the page to settle and only counts when the video changed |
 | YouTube floats over the gate | Turn off its picture-in-picture |
 | Something crashed | **Setup > Copy last crash** and attach it to an issue |

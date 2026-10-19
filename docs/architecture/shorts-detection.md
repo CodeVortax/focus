@@ -41,10 +41,16 @@ Notes:
 
 ## Counting swipes
 
+Focus counts **video changes, not scroll events**. Every scroll event in the feed's pager (sideways scrolls and small views such as comment sheets are ignored) restarts a 250 ms timer. When the page has settled, one decision is made:
+
 | Mode | How |
 |---|---|
-| Default | Each `TYPE_VIEW_SCROLLED` event while in a feed counts once, with a 700 ms debounce. The video you land on counts as the first. |
-| Root (optional) | `TouchCounter` runs `su -c getevent` and counts real swipes. Turn it on under **Setup > Precise swipe counting (root)**. Needs root; without it Focus keeps the scroll count. |
+| Index | The pager reports which page is showing (`fromIndex == toIndex`). The change in that number is the number of videos skipped. A jump of more than 8 counts as 1 (a feed refresh). |
+| Fingerprint | If there is no usable index, a hash of the visible texts (numbers and times ignored) before and after is compared. A drag that returns to the same video leaves the hash unchanged and is not counted. Only the hash is kept. |
+
+The baseline hash is refreshed every second while nothing moves, so autoplay or a like is not mistaken for a swipe. The accessibility service uses `notificationTimeout=0` so Android does not merge close events. The video you land on counts as the first. The method comes from the SwipeTally test app (https://github.com/CodeVortax/swipe-tally).
+
+Floating, pop-up and split windows: the service asks for the window list (`flagRetrieveInteractiveWindows`), reads the Shorts app's own window even when another app has the focus, and the gate covers any gated app that has a window on screen.
 
 Counts are stored per day in `Store` and per visit in the `usage` row (`n`).
 

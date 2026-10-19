@@ -1,0 +1,1 @@
+Focus restarts after an update, and warns you when Android has stopped the accessibility service.

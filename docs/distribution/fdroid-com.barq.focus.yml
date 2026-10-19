@@ -1,0 +1,27 @@
+Categories:
+  - Time
+  - System
+License: AGPL-3.0-only
+AuthorName: MR.English2008
+WebSite: https://github.com/CodeVortax/focus
+SourceCode: https://github.com/CodeVortax/focus
+IssueTracker: https://github.com/CodeVortax/focus/issues
+Changelog: https://github.com/CodeVortax/focus/blob/HEAD/CHANGELOG.md
+
+AutoName: Focus
+
+RepoType: git
+Repo: https://github.com/CodeVortax/focus
+
+Builds:
+  - versionName: 0.22.3-beta
+    versionCode: 37
+    commit: v0.22.3-beta
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 0.22.3-beta
+CurrentVersionCode: 37

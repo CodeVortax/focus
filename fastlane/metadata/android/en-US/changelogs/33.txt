@@ -1,0 +1,1 @@
+Swipe counting rewritten: counts videos, not scroll events. Fast swipes count, comment sheets and carousels do not.

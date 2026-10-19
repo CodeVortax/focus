@@ -23,7 +23,7 @@ You can verify this: read `app/src/main/AndroidManifest.xml` and `app/build.grad
 - **Notification access:** used only to list active media sessions (which app is playing audio). Focus does not read the content of notifications.
 - **Microphone:** only while you record a voice note.
 - **Audio library:** read by the music player.
-- **Root (optional):** if you enable *Precise swipe counting* and have root, Focus reads raw touchscreen events with `getevent` to count swipes. Coordinates are not stored.
+- **Gray screen (optional):** if you grant `WRITE_SECURE_SETTINGS` yourself with adb, Strict Shorts mode can turn on the system colour filter while a feed is open. Nothing is read.
 
 ## Sharing and export
 

@@ -6,7 +6,7 @@
 
 A private, open-source Android app that turns your study plan into a reward system and puts a soft gate in front of the apps that eat your time.
 
-[![Version](https://img.shields.io/badge/version-0.18.1--beta-4285F4?style=flat-square)](#install)
+[![Version](https://img.shields.io/badge/version-0.22.3--beta-4285F4?style=flat-square)](#install)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-34A853?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#install)
 [![Internet](https://img.shields.io/badge/internet%20permission-none-2e8b57?style=flat-square)](PRIVACY.md)
@@ -48,7 +48,7 @@ Everything runs on your phone. There is no account, no server, and the manifest 
 | **Not-free blocks** | Scheduled time windows where only an allow-list of apps works. Optional strict mode removes the emergency override. |
 | **Shorts / Reels counting** | Detects YouTube Shorts, Instagram Reels and TikTok, counts swipes, and lets you leave. See [Shorts detection](docs/architecture/shorts-detection.md). |
 | **Safe leave** | **Leave** presses Back to exit most apps, but sends browsers Home so your tabs and history are kept. |
-| **Exact swipe count (root, optional)** | Reads raw touch events so each swipe counts once. |
+| **Strict Shorts mode** | Optional. The gate opens at once, with no "finish this one", and the only way on is a sentence you type by hand (paste is blocked). Can gray the screen while a feed is open. |
 | **Usage screen** | Digital Wellbeing-style screen time for every app: week chart, donut, per-app list, hourly strip and a day-by-day history. See [Usage screen](docs/guides/usage-screen.md). |
 
 ### Notes, reading and media
@@ -80,7 +80,7 @@ WatchService (foreground, polls UsageStats every second)
   -> inside a block? -> only allow-listed apps pass
 FocusAccessibility (YouTube, Instagram, TikTok only)
   -> ShortsDetector decides "is this a short-form feed?"
-  -> swipe counted (accessibility scroll events, or TouchCounter with root)
+  -> swipe counted (the page settles, then the video must really have changed)
 Usage screen -> SysUsage (system usage events) when allowed, else Db
 Widgets -> FocusWidgets.refresh(), called from the watcher loop
 Store (preferences) + Db (usage log) + NotesDb
@@ -91,7 +91,7 @@ The full picture is in [Architecture overview](docs/architecture/overview.md).
 
 ## Install
 
-> Focus is currently a **beta** (`0.18.1-beta`, version code 24). Requires **Android 8.0 (API 26)** or newer.
+> Focus is currently a **beta** (`0.22.3-beta`, version code 37). Requires **Android 8.0 (API 26)** or newer.
 
 ### Build from source
 
@@ -139,7 +139,7 @@ Focus guides you through three grants on the home screen ("Setup needed"): **Usa
 ```
 app/src/main/java/com/barq/focus/
   data/      Store, Db, NotesDb, Usage (system screen time), Foc (file formats), I18n, Game (XP, badges), Events, Music, Apps
-  service/   WatchService, Overlay, FocusAccessibility, ShortsDetector, TouchCounter,
+  service/   WatchService, Overlay, FocusAccessibility, ShortsDetector,
              Reminders, Alerts, Notifier, Music, Widgets, boot
   ui/        Compose screens: Home, Subject, Timer, Notes, Pdf, Music, Games, Trophies, Log (Usage), Setup, Import
   ui/theme/  Colour, type, theme

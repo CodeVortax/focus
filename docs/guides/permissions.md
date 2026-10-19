@@ -30,9 +30,9 @@ The accessibility service is restricted to four packages (see [Shorts detection]
 
 Focus asks Android which apps can handle camera, phone, clock, messages, browser, maps and launcher intents, to build the allow-list keywords for not-free blocks, to recognise browsers (so **Leave** sends them Home instead of pressing Back), and to show app names and icons on the Usage screen. It also checks whether Episteme Reader (`com.aryan.reader`, `com.aryan.reader.oss`) is installed.
 
-## Optional root
+## Optional: gray screen (adb)
 
-*Precise swipe counting* runs `su -c getevent`. It is off by default and does nothing if root is missing.
+*Strict Shorts mode* can turn the screen gray while a feed is open. This needs one command, once: `adb shell pm grant com.barq.focus android.permission.WRITE_SECURE_SETTINGS`. Without it nothing changes. If gray ever sticks, switch it off in Settings > Accessibility > Color correction.
 
 ## Backups
 

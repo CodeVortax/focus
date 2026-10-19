@@ -1,0 +1,1 @@
+Strict Shorts mode: instant gate, a sentence typed by hand (no paste), optional gray screen. The root touch counter is removed.

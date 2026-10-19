@@ -1,0 +1,1 @@
+The gate now covers apps in floating, pop-up and split-screen windows, and Shorts are detected in those windows too.
