@@ -20,6 +20,21 @@ A private, open-source Android app that turns your study plan into a reward syst
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="150" alt="Home with subjects and the treat bank">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="150" alt="The gate: What for?">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="150" alt="Strict Shorts mode">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="150" alt="A subject with its timer">
+</p>
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="150" alt="Tasks of a subject">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="150" alt="Usage screen">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.png" width="150" alt="Badges">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png" width="150" alt="Games for short breaks">
+</p>
+
 ## What is Focus?
 
 Barq Focus (package `com.barq.focus`, called just "Focus" inside the app) is built on one idea: **finish your work first, then spend what you earned.**
