@@ -1,12 +1,12 @@
 <div align="center">
 
-# Focus
+# Barq Focus
 
 **Study on purpose. Use your phone on purpose.**
 
 A private, open-source Android app that turns your study plan into a reward system and puts a soft gate in front of the apps that eat your time.
 
-[![Version](https://img.shields.io/badge/version-0.22.3--beta-4285F4?style=flat-square)](#install)
+[![Version](https://img.shields.io/badge/version-0.22.4--beta-4285F4?style=flat-square)](#install)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-34A853?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#install)
 [![Internet](https://img.shields.io/badge/internet%20permission-none-2e8b57?style=flat-square)](PRIVACY.md)
@@ -22,7 +22,7 @@ A private, open-source Android app that turns your study plan into a reward syst
 
 ## What is Focus?
 
-Focus is built on one idea: **finish your work first, then spend what you earned.**
+Barq Focus (package `com.barq.focus`, called just "Focus" inside the app) is built on one idea: **finish your work first, then spend what you earned.**
 
 You split your day into subjects with task lists and generous timers. Each subject carries a reward, and finishing tasks fills a daily **treat bank** of minutes. You spend those minutes at the **gate** in front of distracting apps, on Shorts/Reels, or on the built-in player. When the bank is empty, the gate offers short free passes behind a countdown, or lets you leave.
 
@@ -91,7 +91,7 @@ The full picture is in [Architecture overview](docs/architecture/overview.md).
 
 ## Install
 
-> Focus is currently a **beta** (`0.22.3-beta`, version code 37). Requires **Android 8.0 (API 26)** or newer.
+> Focus is currently a **beta** (`0.22.4-beta`, version code 38). Requires **Android 8.0 (API 26)** or newer.
 
 ### Build from source
 

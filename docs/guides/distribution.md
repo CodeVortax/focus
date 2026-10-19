@@ -5,7 +5,7 @@ Where Focus can be published and what each place needs. The store texts live in 
 ## Before any store
 
 1. Add the images to `fastlane/metadata/android/en-US/images/`: `icon.png` (512x512) and 4 to 8 phone screenshots in `phoneScreenshots/`. See the README in that folder.
-2. Tag every release (`v0.22.3-beta`) and attach the release-signed APK to the GitHub release. The tag must match `versionName`.
+2. Tag every release (`v0.22.4-beta`) and attach the release-signed APK to the GitHub release. The tag must match `versionName`.
 3. Add a changelog file for each new version code: `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, 500 characters at most.
 
 ## GitHub and Obtainium
@@ -27,7 +27,7 @@ F-Droid signs with its own key unless the build is reproducible, so the F-Droid 
 
 ## Google Play
 
-Needs a developer account. Apps that use an accessibility service get extra review and a declaration of why it is needed. Check the current Play Console policy before submitting.
+Skipped on purpose: it needs a paid developer account, and apps that use an accessibility service get extra review.
 
 ## Developer verification
 

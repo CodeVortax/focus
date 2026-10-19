@@ -2,6 +2,12 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.22.4-beta (version code 38)
+
+### Changed
+- **The app is now called Barq Focus** (launcher and accessibility settings). The package name `com.barq.focus` is unchanged, so updating keeps all your data. The name makes the app easy to find in stores.
+- Store listing: icon, feature graphic, English and Arabic texts and an F-Droid recipe (`fastlane/`, `docs/distribution/`). See [Distribution](docs/guides/distribution.md).
+
 ## 0.22.3-beta (version code 37)
 
 Lessons from the closed issues of Nudge and Dechainer, applied to Focus.

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Focus</string>
+    <string name="app_name">Barq Focus</string>
     <string name="a11y_desc">Focus reads the YouTube / Instagram screen only to notice Shorts and Reels, count them, and close the app when you choose Leave. Nothing leaves your phone.</string>
     <string name="widget_treat_name">Focus · Treat bank</string>
     <string name="widget_treat_desc">Treat bank minutes and your work streak</string>
