@@ -1,0 +1,1 @@
+New "Challenge me" button: it picks a subject with open tasks, opens it and picks a task for you.

@@ -30,6 +30,7 @@ object Shared {
     @Volatile var inShorts = false
     @Volatile var suppressUntil = 0L   // don't pop an overlay until then (we're closing an app)
     @Volatile var watchAlive = false
+    @Volatile var challengeCard = -1L   // "Challenge me" picked this subject: open it and pick a task
 
     // a .foc file opened with / text shared to Focus, waiting for the import screen
     var pendingUri: Uri? = null

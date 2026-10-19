@@ -856,6 +856,11 @@
   "Type the sentence above, letter by letter": "Tippe den Satz oben Buchstabe für Buchstabe",
   "Close it": "Schließen",
   "Focus stopped counting Shorts": "Focus zählt keine Shorts mehr",
-  "Android switched the accessibility service off in the background. Open Accessibility settings and turn Focus off and on.": "Android hat den Bedienungshilfen-Dienst im Hintergrund beendet. Öffne die Einstellungen und schalte Focus aus und wieder ein."
+  "Android switched the accessibility service off in the background. Open Accessibility settings and turn Focus off and on.": "Android hat den Bedienungshilfen-Dienst im Hintergrund beendet. Öffne die Einstellungen und schalte Focus aus und wieder ein.",
+  "Challenge me": "Fordere mich heraus",
+  "Your challenge": "Deine Herausforderung",
+  "Another one": "Eine andere",
+  "Start timer": "Timer starten",
+  "Dismiss": "Schließen"
  }
 }

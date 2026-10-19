@@ -77,6 +77,8 @@ import androidx.compose.ui.geometry.Size
 import com.barq.focus.data.tr
 import com.barq.focus.data.trf
 import com.barq.focus.service.Notifier
+import com.barq.focus.service.Shared
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.barq.focus.service.TimerAlarm
 import com.barq.focus.ui.theme.CardSwatches
 import androidx.compose.ui.graphics.toArgb
@@ -105,6 +107,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
     var groupMenu by remember { mutableStateOf(false) }
     var groupDlg by remember { mutableStateOf<GroupDlg?>(null) }
     var recordFor by remember { mutableIntStateOf(-1) }
+    var challenge by remember { mutableIntStateOf(-1) }     // index of the task "Challenge me" picked, -1 = none
 
     var running by remember { mutableStateOf(false) }
     var paused by remember { mutableStateOf(false) }
@@ -154,6 +157,16 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
         commit(card.items.toMutableList().also { it[i] = x.copy(subs = l) })
         if (l.isNotEmpty() && l.all { it.done } && !x.done) setDone(i, true)          // last step ticked: the task is done
         else if (x.done && l.any { !it.done }) commit(card.items.toMutableList().also { it[i] = it[i].copy(done = false) })
+    }
+
+    /** A random open task, preferring today's tasks over planned ones, and not [not] when there is another. */
+    fun pickChallenge(not: Int): Int {
+        val open = card.items.indices.filter { !card.items[it].done && !card.items[it].weekly }
+            .ifEmpty { card.items.indices.filter { !card.items[it].done } }
+        return open.filter { it != not }.ifEmpty { open }.randomOrNull() ?: -1
+    }
+    LaunchedEffect(Unit) {
+        if (Shared.challengeCard == initial.id) { Shared.challengeCard = -1L; challenge = pickChallenge(-1) }
     }
 
     fun moveTo(i: Int, g: String) = commit(card.items.toMutableList().also { l -> l[i] = l[i].copy(group = g) })
@@ -311,9 +324,27 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(), color = col, trackColor = col.copy(alpha = 0.2f)
             )
 
+            val ch = challenge
+            if (ch in card.items.indices && !card.items[ch].done) {
+                Card(colors = CardDefaults.cardColors(containerColor = col.copy(alpha = 0.18f)), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(tr("Your challenge"), style = MaterialTheme.typography.labelLarge, color = col)
+                        Text(card.items[ch].text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Row {
+                            TextButton(onClick = { challenge = pickChallenge(ch) }) { Text(tr("Another one")) }
+                            if (!running) TextButton(onClick = {
+                                store.startActive(card.id, System.currentTimeMillis() + card.minutes * 60_000L); refresh()
+                            }) { Text(tr("Start timer")) }
+                            TextButton(onClick = { challenge = -1 }) { Text(tr("Dismiss")) }
+                        }
+                    }
+                }
+            }
+
             @Composable
             fun RowFor(i: Int) {
                 val x = card.items[i]
+                Box(if (i == ch && !x.done) Modifier.border(2.dp, col, RoundedCornerShape(16.dp)) else Modifier) {
                 TaskRow(
                     item = x, seed = i, color = col, groups = card.groups,
                     onToggle = { v -> setDone(i, v) },
@@ -333,6 +364,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
                         commit(card.items.toMutableList().also { l -> l[i] = x.copy(voice = "", voiceMs = 0L) })
                     }
                 )
+                }
             }
 
             val weekIdx = card.items.indices.filter { card.items[it].weekly }

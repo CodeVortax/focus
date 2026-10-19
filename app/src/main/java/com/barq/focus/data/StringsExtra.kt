@@ -21,6 +21,11 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "Challenge me" to "تحدَّني",
+    "Your challenge" to "تحدّيك",
+    "Another one" to "مهمة أخرى",
+    "Start timer" to "ابدأ المؤقت",
+    "Dismiss" to "إغلاق",
     "Focus stopped counting Shorts" to "توقّف Focus عن عدّ الشورتس",
     "Android switched the accessibility service off in the background. Open Accessibility settings and turn Focus off and on." to "أوقف أندرويد خدمة إمكانية الوصول في الخلفية. افتح إعدادات إمكانية الوصول وأطفئ Focus ثم شغّله.",
     "Strict Shorts mode" to "وضع الشورتس الصارم",

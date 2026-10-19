@@ -62,6 +62,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Casino
+import kotlinx.coroutines.delay
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Event
 import com.barq.focus.data.Weekly
@@ -89,6 +91,7 @@ import com.barq.focus.data.Item
 import com.barq.focus.data.Store
 import com.barq.focus.data.startOfDay
 import com.barq.focus.service.Perms
+import com.barq.focus.service.Shared
 import com.barq.focus.ui.theme.CardSwatches
 import com.barq.focus.ui.theme.FocusBrandFont
 
@@ -138,6 +141,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
         else onOpen(c)
     }
     var showEnd by remember { mutableStateOf(false) }
+    var rolling by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<FocusCard?>(null) }
     var cardMenu by remember { mutableStateOf<FocusCard?>(null) }
     var editing by remember { mutableStateOf<FocusCard?>(null) }
@@ -233,7 +237,13 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                         style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary
                     )
                     if (total > 0 && done < total) {
-                        TextButton(onClick = { showEnd = true }, contentPadding = PaddingValues(0.dp)) { Text(tr("End day")) }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { showEnd = true }, contentPadding = PaddingValues(0.dp)) { Text(tr("End day")) }
+                            Spacer(Modifier.weight(1f))
+                            FilledTonalButton(onClick = { rolling = true }) {
+                                Icon(Icons.Default.Casino, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(tr("Challenge me"))
+                            }
+                        }
                     }
                 }
             }
@@ -257,6 +267,27 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
         }
     }
 
+    if (rolling) {
+        // "Challenge me": spin through the subjects that still have tasks, land on one, open it (it then picks a task)
+        val cand = cards.filter { it.type == CardType.STUDY && it.dayItems.any { i -> !i.done } }
+        var shown by remember { mutableStateOf("") }
+        LaunchedEffect(Unit) {
+            if (cand.isEmpty()) { rolling = false; return@LaunchedEffect }
+            val pick = cand.random()
+            repeat(10) { shown = cand.random().title; delay(90) }
+            shown = pick.title
+            delay(600)
+            rolling = false
+            Shared.challengeCard = pick.id
+            open(pick)
+        }
+        AlertDialog(
+            onDismissRequest = { rolling = false },
+            title = { Text(tr("Your challenge")) },
+            text = { Text(shown, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
+            confirmButton = {}
+        )
+    }
     if (fresh.isNotEmpty()) AlertDialog(
         onDismissRequest = { fresh = emptyList() },
         title = { Text(tr("Badge unlocked!")) },

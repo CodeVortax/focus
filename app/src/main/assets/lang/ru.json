@@ -856,6 +856,11 @@
   "Type the sentence above, letter by letter": "Наберите фразу выше, буква за буквой",
   "Close it": "Закрыть",
   "Focus stopped counting Shorts": "Focus перестал считать Shorts",
-  "Android switched the accessibility service off in the background. Open Accessibility settings and turn Focus off and on.": "Android отключил службу специальных возможностей в фоне. Откройте настройки и выключите, затем включите Focus."
+  "Android switched the accessibility service off in the background. Open Accessibility settings and turn Focus off and on.": "Android отключил службу специальных возможностей в фоне. Откройте настройки и выключите, затем включите Focus.",
+  "Challenge me": "Брось мне вызов",
+  "Your challenge": "Твой вызов",
+  "Another one": "Другую",
+  "Start timer": "Запустить таймер",
+  "Dismiss": "Закрыть"
  }
 }

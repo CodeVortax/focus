@@ -2,6 +2,11 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.23.0-beta (version code 39)
+
+### Added
+- **Challenge me.** A button on the home card (next to End day) spins through the subjects that still have open tasks, lands on one and opens it. Inside, it picks a random open task for you (today's tasks first, planned ones only if nothing else is left), shows it in a banner and outlines it in the list. **Another one** picks a different task, **Start timer** starts the subject's timer, **Dismiss** hides the banner. The banner goes away when you tick the task.
+
 ## 0.22.4-beta (version code 38)
 
 ### Changed
