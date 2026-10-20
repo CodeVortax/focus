@@ -104,6 +104,7 @@ import com.barq.focus.data.Store
 import com.barq.focus.data.tr
 import com.barq.focus.data.trf
 import com.barq.focus.service.Music
+import com.barq.focus.service.Eq
 import com.barq.focus.ui.theme.FocusBrandFont
 import com.barq.focus.ui.theme.FocusNoteFont
 import kotlinx.coroutines.Dispatchers
@@ -115,7 +116,10 @@ private enum class MTab { QUEUE, NOW, FOLDERS, ALBUMS, ARTISTS, PLAYLISTS, SEARC
 
 private class Album(val id: Long, val name: String, val artist: String, val songs: List<Song>)
 
-private val artCache = object : LruCache<Long, Bitmap>((Runtime.getRuntime().maxMemory() / 16).toInt()) {
+/** Drops the cover-art bitmaps (called when the app leaves the screen, so a background player stays small). */
+fun trimMusicArt() = artCache.evictAll()
+
+private val artCache = object : LruCache<Long, Bitmap>((Runtime.getRuntime().maxMemory() / 32).toInt()) {
     override fun sizeOf(key: Long, value: Bitmap) = value.byteCount
 }
 
@@ -199,8 +203,11 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
+    var showEq by remember { mutableStateOf(false) }
     var newPlaylist by remember { mutableStateOf(false) }
     BackHandler(enabled = sub != null) { sub = null }
+    // any page goes back to the main player first; one more back leaves the music screen
+    BackHandler(enabled = sub == null && tab != MTab.NOW) { tab = MTab.NOW }
 
     fun toast(s: String) = Toast.makeText(ctx, s, Toast.LENGTH_SHORT).show()
     fun play(list: List<Song>, i: Int) { Music.playSongs(ctx, list, i); tab = MTab.NOW; sub = null }
@@ -220,7 +227,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                 )
                 MusicBar(
                     tab, { tab = it; sub = null },
-                    { reload++ }, { showSleep = true }, { openEqualizer(ctx) },
+                    { reload++ }, { showSleep = true }, { showEq = true },
                     { Music.stopAll(ctx); toast(tr("Player closed")) }
                 )
             }
@@ -261,7 +268,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                             p.shuffleModeEnabled = !p.shuffleModeEnabled
                             toast(tr(if (p.shuffleModeEnabled) "Shuffle mode is on" else "Shuffle mode is off"))
                         },
-                        { showVolume = true }, { openEqualizer(ctx) }, onBack, { tab = MTab.FOLDERS }
+                        { showVolume = true }, { showEq = true }, onBack, { tab = MTab.FOLDERS }
                     )
                     MTab.QUEUE -> QueuePage(byId)
                     MTab.FOLDERS -> {
@@ -393,7 +400,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                 HorizontalDivider()
                 ActionRow(Icons.Default.Share, tr("Share song")) { showMore = false; shareSong(ctx, current) }
                 ActionRow(Icons.Default.Info, tr("Song info")) { showMore = false; infoOf = current }
-                ActionRow(Icons.Default.Equalizer, tr("Equalizer")) { showMore = false; openEqualizer(ctx) }
+                ActionRow(Icons.Default.Equalizer, tr("Equalizer")) { showMore = false; showEq = true }
             }
         }
     )
@@ -542,6 +549,8 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
         confirmButton = { TextButton(onClick = { showSleep = false }) { Text(tr("Done")) } },
         dismissButton = { TextButton(onClick = { Music.setSleep(0); showSleep = false }) { Text(tr("Turn off")) } }
     )
+
+    if (showEq) EqualizerDialog(onClose = { showEq = false }, onSystem = { openEqualizer(ctx) })
 
     if (showVolume) {
         val am = remember { ctx.getSystemService(AudioManager::class.java) }
@@ -823,4 +832,47 @@ private fun MiniNow(song: Song, fav: Boolean, onOpen: () -> Unit, onFav: () -> U
             }
         }
     }
+}
+
+
+@Composable
+private fun EqualizerDialog(onClose: () -> Unit, onSystem: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(tr("Equalizer")) },
+        text = {
+            if (!Eq.available) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr("Start a song first, then open the equalizer."))
+                    TextButton(onClick = onSystem) { Text(tr("Open the system equalizer")) }
+                }
+            } else Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Equalizer on"), Modifier.weight(1f))
+                    Switch(Eq.on, { Eq.setOn(it) })
+                }
+                if (Eq.presets.isNotEmpty()) {
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(Eq.presets.size) { i ->
+                            FilterChip(Eq.preset == i, { Eq.usePreset(i) }, label = { Text(Eq.presets[i]) })
+                        }
+                    }
+                }
+                Eq.levels.forEachIndexed { b, v ->
+                    val hz = Eq.freqs.getOrNull(b) ?: 0
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (hz >= 1000) "%.1f kHz".format(hz / 1000f) else "$hz Hz", Modifier.width(66.dp), style = MaterialTheme.typography.labelMedium)
+                        Slider(v.toFloat(), { Eq.setBand(b, it.roundToInt()) }, Modifier.weight(1f), enabled = Eq.on, valueRange = Eq.minLevel.toFloat()..Eq.maxLevel.toFloat())
+                        Text("%+d".format(v / 100), Modifier.width(30.dp), style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Bass boost"), Modifier.width(66.dp), style = MaterialTheme.typography.labelMedium, maxLines = 2)
+                    Slider(Eq.bass.toFloat(), { Eq.setBass(it.roundToInt()) }, Modifier.weight(1f), enabled = Eq.on, valueRange = 0f..1000f)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text(tr("Done")) } },
+        dismissButton = { if (Eq.available) TextButton(onClick = { Eq.reset() }) { Text(tr("Reset")) } }
+    )
 }

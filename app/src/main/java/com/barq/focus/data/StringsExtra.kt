@@ -21,6 +21,10 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "Start a song first, then open the equalizer." to "ابدأ أغنية أولاً ثم افتح المعادل.",
+    "Open the system equalizer" to "افتح معادل النظام",
+    "Equalizer on" to "تشغيل المعادل",
+    "Bass boost" to "تعزيز الجهير",
     "Challenge me" to "تحدَّني",
     "Your challenge" to "تحدّيك",
     "Another one" to "مهمة أخرى",

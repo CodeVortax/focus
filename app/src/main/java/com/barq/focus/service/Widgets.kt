@@ -52,8 +52,9 @@ object FocusWidgets {
         intArrayOf(R.id.b4, R.id.b4_bg, R.id.b4_name, R.id.b4_count, R.id.b4_bar),
     )
 
-    private fun open(ctx: Context) = PendingIntent.getActivity(
-        ctx, 0, Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    private fun open(ctx: Context, go: String? = null) = PendingIntent.getActivity(
+        ctx, if (go == null) 0 else 200 + go.hashCode(),
+        Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP).also { if (go != null) it.putExtra("go", go) },
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
     )
 
@@ -69,7 +70,7 @@ object FocusWidgets {
         v.setTextViewText(R.id.w_small, tr("min"))
         v.setTextViewText(R.id.w_line, "\uD83D\uDD25 " + days(Game.workStreak(s)))
         v.setTextColor(R.id.w_big, accent(s))
-        v.setOnClickPendingIntent(R.id.w_root, open(ctx))
+        v.setOnClickPendingIntent(R.id.w_root, open(ctx, "home"))
         return v
     }
 
@@ -81,7 +82,7 @@ object FocusWidgets {
         v.setTextViewText(R.id.w_small, tr("work-day streak"))
         v.setTextViewText(R.id.w_line, tr("Light Shorts") + ": " + days(Game.lightStreak(s)))
         v.setTextColor(R.id.w_big, accent(s))
-        v.setOnClickPendingIntent(R.id.w_root, open(ctx))
+        v.setOnClickPendingIntent(R.id.w_root, open(ctx, "trophies"))
         return v
     }
 
@@ -94,7 +95,7 @@ object FocusWidgets {
         v.setTextViewText(R.id.w_small, tr("swiped today"))
         v.setTextViewText(R.id.w_line, "$mins min")
         v.setTextColor(R.id.w_big, if (s.shortsSwipes() <= 50) accent(s) else 0xFFEA4335.toInt())
-        v.setOnClickPendingIntent(R.id.w_root, open(ctx))
+        v.setOnClickPendingIntent(R.id.w_root, open(ctx, "log"))
         return v
     }
 
@@ -128,6 +129,7 @@ object FocusWidgets {
             val t = c.dayItems.size
             val d = c.dayItems.count { it.done }
             v.setViewVisibility(ids[0], android.view.View.VISIBLE)
+            v.setOnClickPendingIntent(ids[0], open(ctx, "card:${c.id}"))
             v.setInt(ids[1], "setColorFilter", c.color)
             v.setInt(ids[1], "setImageAlpha", 60)
             v.setTextViewText(ids[2], c.title)

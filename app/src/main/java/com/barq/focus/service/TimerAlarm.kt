@@ -45,9 +45,11 @@ object TimerAlarm {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-    fun openApp(ctx: Context): PendingIntent =
+    /** Opens Focus, optionally on a screen ("music", "trophies", "card:<id>", "card:active"). Each target needs its own request code. */
+    fun openApp(ctx: Context, go: String? = null): PendingIntent =
         PendingIntent.getActivity(
-            ctx, 1, Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            ctx, if (go == null) 1 else 100 + go.hashCode(),
+            Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP).also { if (go != null) it.putExtra("go", go) },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 

@@ -22,11 +22,13 @@
 package com.barq.focus.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -170,7 +172,8 @@ fun HoldButton(
 
 @Composable
 fun GamesScreen(store: Store, onBack: () -> Unit) {
-    var game by remember { mutableStateOf<String?>(null) }
+    var game by rememberSaveable { mutableStateOf<String?>(null) }
+    val hubList = rememberLazyListState()          // survives playing a game, so the list comes back where you left it
     BackHandler(enabled = game != null) { game = null }
     when (game) {
         "tetris" -> TetrisGame(store) { game = null }
@@ -190,7 +193,7 @@ fun GamesScreen(store: Store, onBack: () -> Unit) {
         "schulte" -> SchulteGame(store) { game = null }
         "nback" -> NBackGame(store) { game = null }
         "react" -> ReactionGame(store) { game = null }
-        else -> GamesHub(store, onBack) { game = it }
+        else -> GamesHub(store, hubList, onBack) { game = it }
     }
 }
 
@@ -200,12 +203,13 @@ private fun bestOf(store: Store, key: String): String {
 }
 
 @Composable
-private fun GamesHub(store: Store, onBack: () -> Unit, onPick: (String) -> Unit) {
+private fun GamesHub(store: Store, listState: androidx.compose.foundation.lazy.LazyListState, onBack: () -> Unit, onPick: (String) -> Unit) {
     // show the record of the hardest Sudoku level played (beginner times would always look "best")
     val sudokuBest = listOf(2, 1, 0, 3).map { store.getLong("sudoku_best_$it") }.firstOrNull { it > 0L }
     GameScaffold(title = tr("Games"), onBack = onBack) { pad ->
         LazyColumn(
             Modifier.padding(pad).fillMaxSize(),
+            state = listState,
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {

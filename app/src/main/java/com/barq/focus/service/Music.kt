@@ -100,6 +100,11 @@ object Music {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
         p.addListener(listener)
+        val app = ctx.applicationContext
+        p.addListener(object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) { Eq.attach(app, audioSessionId) }
+        })
+        Eq.attach(app, p.audioSessionId)
         player = p
         return p
     }
@@ -137,6 +142,7 @@ object Music {
 
     fun release() {
         h.removeCallbacks(tick)
+        Eq.release()
         player?.run { removeListener(listener); release() }
         player = null
         isPlaying = false; currentId = -1L
@@ -191,7 +197,7 @@ class MusicService : MediaSessionService() {
                 .also { it.setSmallIcon(com.barq.focus.R.drawable.ic_music_note) }
         )
         val player = Music.get(this)
-        session = MediaSession.Builder(this, player).setSessionActivity(TimerAlarm.openApp(this))
+        session = MediaSession.Builder(this, player).setSessionActivity(TimerAlarm.openApp(this, "music"))
             .setCallback(object : MediaSession.Callback {
                 override fun onConnect(s: MediaSession, c: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
                     MediaSession.ConnectionResult.AcceptedResultBuilder(s)

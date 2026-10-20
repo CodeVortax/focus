@@ -36,4 +36,6 @@ object Shared {
     var pendingUri: Uri? = null
     var pendingText: String? = null
     var pendingTick by mutableIntStateOf(0)
+    @Volatile var pendingGo: String? = null       // a notification or widget asked to open a screen: "music", "card:12" ...
+    var goTick by mutableIntStateOf(0)
 }

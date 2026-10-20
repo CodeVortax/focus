@@ -863,6 +863,10 @@
   "Start timer": "Timer starten",
   "Dismiss": "Schließen",
   "Dare Taker": "Mutprobe",
-  "Accept 5 challenges from the Challenge me button.": "Nimm 5 Herausforderungen über den Button „Fordere mich heraus“ an."
+  "Accept 5 challenges from the Challenge me button.": "Nimm 5 Herausforderungen über den Button „Fordere mich heraus“ an.",
+  "Start a song first, then open the equalizer.": "Starte zuerst ein Lied und öffne dann den Equalizer.",
+  "Open the system equalizer": "System-Equalizer öffnen",
+  "Equalizer on": "Equalizer an",
+  "Bass boost": "Bassverstärkung"
  }
 }

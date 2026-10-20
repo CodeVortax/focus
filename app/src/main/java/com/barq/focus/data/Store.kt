@@ -541,6 +541,19 @@ class Store(ctx: Context) {
         get() = p.getString("notif_btns", "shuffle,repeat") ?: "shuffle,repeat"
         set(v) { p.edit().putString("notif_btns", v).apply() }
 
+    var eqOn: Boolean
+        get() = p.getBoolean("eq_on", false)
+        set(v) { p.edit().putBoolean("eq_on", v).apply() }
+    var eqLevels: String
+        get() = p.getString("eq_levels", "") ?: ""
+        set(v) { p.edit().putString("eq_levels", v).apply() }
+    var eqBass: Int
+        get() = p.getInt("eq_bass", 0)
+        set(v) { p.edit().putInt("eq_bass", v).apply() }
+    var eqPreset: Int
+        get() = p.getInt("eq_preset", -1)
+        set(v) { p.edit().putInt("eq_preset", v).apply() }
+
     var accent: Int
         get() = p.getInt("accent", 0)
         set(v) { p.edit().putInt("accent", v).apply() }

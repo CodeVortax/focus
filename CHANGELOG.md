@@ -2,6 +2,18 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.24.0-beta (version code 41)
+
+### Added
+- **Page transitions.** Screens slide and fade in and out, and Back returns to the page you came from (a real back stack).
+- **Each page remembers its scroll position.** Leaving the Games list to play and coming back puts you where you were; the same goes for Home, notes, and the rest.
+- **In-app equalizer** for the music player: on/off, the phone's presets, a slider per band and a bass boost. Settings are remembered. The system equalizer is still offered if the player has not started.
+- **Notifications and widgets open the right place.** The music notification opens the player; the timer notification and the Today widget's subject blocks open that card; the Streak widget opens Trophies, the Shorts widget opens the log, event reminders open Events.
+
+### Changed
+- **Music Back order.** From any music page, Back goes to the main player, and one more Back leaves the music screen.
+- **Less memory in the background.** Cover-art and image caches are released when the app is hidden, and the art cache is halved.
+
 ## 0.23.1-beta (version code 40)
 
 ### Added

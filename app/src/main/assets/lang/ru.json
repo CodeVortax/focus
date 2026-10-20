@@ -863,6 +863,10 @@
   "Start timer": "Запустить таймер",
   "Dismiss": "Закрыть",
   "Dare Taker": "Взявший вызов",
-  "Accept 5 challenges from the Challenge me button.": "Примите 5 вызовов кнопкой «Бросьте мне вызов»."
+  "Accept 5 challenges from the Challenge me button.": "Примите 5 вызовов кнопкой «Бросьте мне вызов».",
+  "Start a song first, then open the equalizer.": "Сначала включите песню, затем откройте эквалайзер.",
+  "Open the system equalizer": "Открыть системный эквалайзер",
+  "Equalizer on": "Эквалайзер включён",
+  "Bass boost": "Усиление баса"
  }
 }

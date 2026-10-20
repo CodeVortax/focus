@@ -135,7 +135,7 @@ object Reminders {
                     .setAutoCancel(true)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_REMINDER)
-                    .setContentIntent(TimerAlarm.openApp(c))
+                    .setContentIntent(TimerAlarm.openApp(c, "events"))
                     .addAction(0, tr("Done"), pending(c, ACTION_DONE, e.id))
                     .build()
             )
@@ -155,7 +155,7 @@ object Reminders {
                     .setOngoing(true)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setCategory(NotificationCompat.CATEGORY_ALARM)
-                    .setContentIntent(TimerAlarm.openApp(c))
+                    .setContentIntent(TimerAlarm.openApp(c, "events"))
                     .addAction(0, tr("Done"), pending(c, ACTION_DONE, e.id))
                     .addAction(0, trf("Snooze %d min", (EventRules.SNOOZE / EventRules.M).toInt()), pending(c, ACTION_SNOOZE, e.id))
                     .build()
@@ -175,7 +175,7 @@ object Reminders {
                     .setContentTitle(trf("Missed: %s", e.title))
                     .setContentText(trf("It was set for %s.", clock(e.at)))
                     .setAutoCancel(true)
-                    .setContentIntent(TimerAlarm.openApp(c))
+                    .setContentIntent(TimerAlarm.openApp(c, "events"))
                     .build()
             )
         } catch (_: Exception) {}
@@ -206,7 +206,7 @@ object Reminders {
             val at = EventStore.get(c).all().mapNotNull { EventRules.nextFire(it, now) }.minOrNull() ?: return
             val t = maxOf(at, now + 1000L)
             try {
-                am.setAlarmClock(AlarmManager.AlarmClockInfo(t, TimerAlarm.openApp(c)), pi)
+                am.setAlarmClock(AlarmManager.AlarmClockInfo(t, TimerAlarm.openApp(c, "events")), pi)
             } catch (_: Exception) {
                 try { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, t, pi) } catch (_: Exception) {}
             }

@@ -165,7 +165,7 @@ object Alerter {
                     .setAutoCancel(true)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_ALARM)
-                    .setContentIntent(TimerAlarm.openApp(c))
+                    .setContentIntent(TimerAlarm.openApp(c, "card:active"))
                     .addAction(0, tr("+10 min"), TimerAlarm.broadcast(c, TimerAlarm.ACTION_ADD))
                     .addAction(0, tr("Hush"), TimerAlarm.broadcast(c, TimerAlarm.ACTION_STOP))
                     .build()

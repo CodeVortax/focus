@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity() {
 
     // a .foc file opened with Focus, or text shared to it from an AI app
     private fun handleIntent(i: Intent?) {
+        i?.getStringExtra("go")?.let { Shared.pendingGo = it; Shared.goTick++ }
         when (i?.action) {
             Intent.ACTION_VIEW -> i.data?.let { Shared.pendingUri = it; Shared.pendingTick++ }
             Intent.ACTION_SEND -> i.getStringExtra(Intent.EXTRA_TEXT)?.let { Shared.pendingText = it; Shared.pendingTick++ }

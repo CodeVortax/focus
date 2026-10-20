@@ -156,7 +156,7 @@ object Notifier {
             .setContentTitle(iso(card.title))
             .setOngoing(true).setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            .setContentIntent(TimerAlarm.openApp(ctx))
+            .setContentIntent(TimerAlarm.openApp(ctx, "card:active"))
         when {
             paused -> b.setContentText(trf("Paused  ·  %s left", fmt(store.activeRemaining)))
             over -> b.setContentText(tr("Over budget")).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(false).setWhen(end)
