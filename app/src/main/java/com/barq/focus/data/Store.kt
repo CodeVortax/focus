@@ -556,6 +556,17 @@ class Store(ctx: Context) {
         get() = p.getInt("eq_preset", -1)
         set(v) { p.edit().putInt("eq_preset", v).apply() }
 
+    /** The last music queue, so the player is ready where you left it. Ids of songs, the current one, and the position in ms. */
+    var musicQueue: String
+        get() = p.getString("music_q", "") ?: ""
+        set(v) { p.edit().putString("music_q", v).apply() }
+    var musicCurrent: Long
+        get() = p.getLong("music_cur", -1L)
+        set(v) { p.edit().putLong("music_cur", v).apply() }
+    var musicPos: Long
+        get() = p.getLong("music_pos", 0L)
+        set(v) { p.edit().putLong("music_pos", v).apply() }
+
     var accent: Int
         get() = p.getInt("accent", 0)
         set(v) { p.edit().putInt("accent", v).apply() }

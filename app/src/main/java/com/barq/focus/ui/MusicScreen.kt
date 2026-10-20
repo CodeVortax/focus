@@ -188,6 +188,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
         if (granted) { loading = true; songs = withContext(Dispatchers.IO) { MusicLibrary.load(ctx) }; loading = false }
     }
     val byId = remember(songs) { songs.associateBy { it.id } }
+    LaunchedEffect(songs) { if (songs.isNotEmpty()) Music.restore(ctx, byId) }     // the last song is ready and paused, right where you left it
     val current = byId[Music.currentId]
 
     var tab by remember { mutableStateOf(MTab.NOW) }

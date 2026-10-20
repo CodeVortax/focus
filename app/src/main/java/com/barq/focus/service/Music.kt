@@ -65,13 +65,46 @@ object Music {
     var abB by mutableLongStateOf(-1L)
     var sleepAt by mutableLongStateOf(0L)
     private val h = Handler(Looper.getMainLooper())
+    private var app: Context? = null
+
+    /** Remember what is queued and where you are, so the player can come back exactly there. */
+    fun saveState() {
+        val p = player ?: return
+        val c = app ?: return
+        if (p.mediaItemCount == 0) return
+        val s = Store(c)
+        s.musicQueue = (0 until minOf(p.mediaItemCount, 3000)).joinToString(",") { p.getMediaItemAt(it).mediaId }
+        s.musicCurrent = p.currentMediaItem?.mediaId?.toLongOrNull() ?: -1L
+        s.musicPos = p.currentPosition.coerceAtLeast(0L)
+    }
+
+    private val saver = object : Runnable {
+        override fun run() { saveState(); if (isPlaying) h.postDelayed(this, 10_000L) }
+    }
+
+    /** Puts the last queue back, paused and ready to play. Does nothing if something is already loaded. */
+    fun restore(ctx: Context, byId: Map<Long, Song>) {
+        val p = get(ctx)
+        if (p.mediaItemCount > 0) return
+        val s = Store(ctx.applicationContext)
+        val songs = s.musicQueue.split(",").mapNotNull { it.toLongOrNull() }.mapNotNull { byId[it] }
+        if (songs.isEmpty()) return
+        val idx = songs.indexOfFirst { it.id == s.musicCurrent }.coerceAtLeast(0)
+        val pos = if (songs[idx].id == s.musicCurrent) s.musicPos else 0L
+        p.setMediaItems(songs.map { item(it) }, idx, pos)
+        p.prepare()
+    }
 
     private val listener = object : Player.Listener {
-        override fun onIsPlayingChanged(isPlaying: Boolean) { Music.isPlaying = isPlaying; version++ }
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            Music.isPlaying = isPlaying; version++
+            if (isPlaying) { app?.let { ensureService(it) }; h.removeCallbacks(saver); h.postDelayed(saver, 10_000L) } else saveState()
+        }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             currentId = mediaItem?.mediaId?.toLongOrNull() ?: -1L
             abA = -1L; abB = -1L
             version++
+            saveState()
         }
         override fun onTimelineChanged(timeline: Timeline, reason: Int) { version++ }
         override fun onRepeatModeChanged(repeatMode: Int) { Music.repeatMode = repeatMode }
@@ -102,6 +135,7 @@ object Music {
             .build()
         p.addListener(listener)
         val app = ctx.applicationContext
+        this.app = app
         p.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) { Eq.attach(app, audioSessionId) }
         })
@@ -143,6 +177,7 @@ object Music {
 
     fun release() {
         h.removeCallbacks(tick)
+        saveState()
         Eq.release()
         player?.run { removeListener(listener); release() }
         player = null
