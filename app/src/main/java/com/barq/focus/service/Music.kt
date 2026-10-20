@@ -41,6 +41,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionCommands
 import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
@@ -151,7 +152,7 @@ object Music {
 
 class MusicService : MediaSessionService() {
     private var session: MediaSession? = null
-    private val cmds = listOf("shuffle", "repeat", "heart", "back10", "fwd10", "close").associateWith { SessionCommand("focus.$it", Bundle.EMPTY) }
+    private val cmds = listOf("shuffle", "repeat", "heart", "back10", "fwd10", "sleep", "speed", "close").associateWith { SessionCommand("focus.$it", Bundle.EMPTY) }
 
     private fun button(id: String): CommandButton? {
         val p = Music.get(this)
@@ -168,19 +169,41 @@ class MusicService : MediaSessionService() {
                 (if (Store(this).favorites().contains(Music.currentId)) com.barq.focus.R.drawable.ic_heart_on else com.barq.focus.R.drawable.ic_heart_off)
             "back10" -> com.barq.focus.R.string.music_back10 to com.barq.focus.R.drawable.ic_back10
             "fwd10" -> com.barq.focus.R.string.music_fwd10 to com.barq.focus.R.drawable.ic_fwd10
+            "sleep" -> com.barq.focus.R.string.music_sleep to com.barq.focus.R.drawable.ic_sleep
+            "speed" -> com.barq.focus.R.string.music_speed to com.barq.focus.R.drawable.ic_speed
             else -> com.barq.focus.R.string.music_close to com.barq.focus.R.drawable.ic_close
         }
         return CommandButton.Builder().setDisplayName(getString(name)).setIconResId(icon).setSessionCommand(c).build()
     }
 
-    /** The extra buttons beside previous / play / next: the two you chose in Settings (Android shows five in total). */
+    /** The extra buttons you chose in Settings. Previous and next are player commands, so they are shown or hidden below. */
     private fun layout(): ImmutableList<CommandButton> =
-        ImmutableList.copyOf(Store(this).notifBtns.split(",").mapNotNull { button(it.trim()) }.take(2))
+        ImmutableList.copyOf(Store(this).notifBtns.split(",").map { it.trim() }.filter { it != "prev" && it != "next" }.mapNotNull { button(it) }.take(4))
+
+    private fun sessionCommands(): SessionCommands =
+        MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().also { b -> cmds.values.forEach { b.add(it) } }.build()
+
+    /** What the notification may show: previous and next only when you picked them. Other apps (Bluetooth, lock screen) keep everything. */
+    private fun notificationCommands(): Player.Commands {
+        val ids = Store(this).notifBtns.split(",").map { it.trim() }
+        val b = Player.Commands.Builder().addAllCommands()
+        if ("prev" !in ids) b.remove(Player.COMMAND_SEEK_TO_PREVIOUS).remove(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+        if ("next" !in ids) b.remove(Player.COMMAND_SEEK_TO_NEXT).remove(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+        return b.build()
+    }
+
+    private fun applyButtons() {
+        val s = session ?: return
+        s.setCustomLayout(layout())
+        try {
+            s.connectedControllers.filter { it.packageName == packageName }.forEach { s.setAvailableCommands(it, sessionCommands(), notificationCommands()) }
+        } catch (_: Exception) {}
+    }
 
     companion object {
         @Volatile private var live: MusicService? = null
         /** Rebuild the extra buttons (after the favourite or the setting changed). */
-        fun refresh() { live?.let { it.session?.setCustomLayout(it.layout()) } }
+        fun refresh() { live?.applyButtons() }
     }
 
     private val modeListener = object : Player.Listener {
@@ -201,9 +224,8 @@ class MusicService : MediaSessionService() {
             .setCallback(object : MediaSession.Callback {
                 override fun onConnect(s: MediaSession, c: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
                     MediaSession.ConnectionResult.AcceptedResultBuilder(s)
-                        .setAvailableSessionCommands(
-                            MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().also { b -> cmds.values.forEach { b.add(it) } }.build()
-                        )
+                        .setAvailableSessionCommands(sessionCommands())
+                        .also { if (c.packageName == packageName) it.setAvailablePlayerCommands(notificationCommands()) }
                         .setCustomLayout(layout())
                         .build()
 
@@ -219,6 +241,17 @@ class MusicService : MediaSessionService() {
                         "focus.heart" -> if (Music.currentId >= 0L) Store(this@MusicService).toggleFavorite(Music.currentId)
                         "focus.back10" -> pl.seekTo((pl.currentPosition - 10_000L).coerceAtLeast(0L))
                         "focus.fwd10" -> pl.seekTo(pl.currentPosition + 10_000L)
+                        "focus.sleep" -> Music.setSleep(when {
+                            Music.sleepAt <= 0L -> 15
+                            else -> when (((Music.sleepAt - System.currentTimeMillis()) / 60_000L).toInt()) { in 0..15 -> 30; in 16..30 -> 60; else -> 0 }
+                        })
+                        "focus.speed" -> pl.setPlaybackSpeed(when {
+                            pl.playbackParameters.speed < 0.9f -> 1f
+                            pl.playbackParameters.speed < 1.1f -> 1.25f
+                            pl.playbackParameters.speed < 1.4f -> 1.5f
+                            pl.playbackParameters.speed < 1.9f -> 2f
+                            else -> 0.75f
+                        })
                         "focus.close" -> Music.stopAll(this@MusicService)
                     }
                     try { s.setCustomLayout(layout()) } catch (_: Exception) {}

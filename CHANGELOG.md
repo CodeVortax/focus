@@ -10,6 +10,8 @@ Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 - **In-app equalizer** for the music player: on/off, the phone's presets, a slider per band and a bass boost. Settings are remembered. The system equalizer is still offered if the player has not started.
 - **Notifications and widgets open the right place.** The music notification opens the player; the timer notification and the Today widget's subject blocks open that card; the Streak widget opens Trophies, the Shorts widget opens the log, event reminders open Events.
 
+- **Music notification buttons.** Settings → Music now lets you choose which buttons the notification shows, with a live preview: previous, next, shuffle, repeat, favourite, back 10 s, forward 10 s, sleep timer (15/30/60 min/off), speed (0.75x to 2x) and close. Play/pause is always there, and Android allows up to four more.
+
 ### Changed
 - **Game controls and music buttons no longer flip in Arabic.** Left stays left and right stays right in every game, and the player's previous/next, seek bar and transport buttons keep their order.
 - **Music Back order.** From any music page, Back goes to the main player, and one more Back leaves the music screen.

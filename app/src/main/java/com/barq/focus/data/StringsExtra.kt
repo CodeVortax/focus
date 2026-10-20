@@ -21,6 +21,11 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "Notification player buttons" to "أزرار مشغّل الإشعار",
+    "Previous" to "السابق",
+    "Speed" to "السرعة",
+    "%d of 4 buttons" to "%d من 4 أزرار",
+    "Android shows at most five buttons in total: play/pause is always there, plus up to four of these. Picking a fifth replaces the oldest." to "يعرض أندرويد خمسة أزرار كحد أقصى: زر التشغيل/الإيقاف موجود دائمًا، مع أربعة من هذه الأزرار. اختيار زر خامس يستبدل الأقدم.",
     "Start a song first, then open the equalizer." to "ابدأ أغنية أولاً ثم افتح المعادل.",
     "Open the system equalizer" to "افتح معادل النظام",
     "Equalizer on" to "تشغيل المعادل",

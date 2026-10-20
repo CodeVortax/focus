@@ -1,1 +1,1 @@
-Page transitions, scroll position remembered, in-app equalizer, music Back goes to the player first, notifications and widgets open the right card. Lower memory in the background.
+Page transitions, scroll position remembered, in-app equalizer, music Back goes to the player first, notifications and widgets open the right card, choose your music notification buttons. Lower memory in the background.

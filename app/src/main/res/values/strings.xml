@@ -16,5 +16,7 @@
     <string name="music_love">Favorite</string>
     <string name="music_back10">Back 10 s</string>
     <string name="music_fwd10">Forward 10 s</string>
+    <string name="music_sleep">Sleep timer</string>
+    <string name="music_speed">Speed</string>
     <string name="music_close">Close player</string>
 </resources>

@@ -867,6 +867,11 @@
   "Start a song first, then open the equalizer.": "Сначала включите песню, затем откройте эквалайзер.",
   "Open the system equalizer": "Открыть системный эквалайзер",
   "Equalizer on": "Эквалайзер включён",
-  "Bass boost": "Усиление баса"
+  "Bass boost": "Усиление баса",
+  "Notification player buttons": "Кнопки плеера в уведомлении",
+  "Previous": "Назад",
+  "Speed": "Скорость",
+  "%d of 4 buttons": "%d из 4 кнопок",
+  "Android shows at most five buttons in total: play/pause is always there, plus up to four of these. Picking a fifth replaces the oldest.": "Android показывает не больше пяти кнопок: пауза/воспроизведение всегда есть, плюс до четырёх из этих. Пятая заменяет самую старую."
  }
 }

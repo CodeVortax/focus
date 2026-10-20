@@ -31,6 +31,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.*
+import com.barq.focus.data.trf
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -95,6 +99,7 @@ private fun whitelistPhone(): Boolean {
 }
 
 /** How to make the music notification and the phone's mini capsule appear. Shown in Settings and in the first-run guide. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun MusicCapsuleHelp() {
     val ctx = LocalContext.current
@@ -108,21 +113,47 @@ fun MusicCapsuleHelp() {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val store = remember { com.barq.focus.data.Store(ctx) }
         var picked by remember { mutableStateOf(store.notifBtns.split(",").filter { it.isNotBlank() }) }
-        Text(tr("Extra buttons in the notification player (pick two)"), fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-        Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("shuffle" to "Shuffle", "repeat" to "Repeat", "heart" to "Favorite", "back10" to "Back 10 s", "fwd10" to "Forward 10 s", "close" to "Close").forEach { (id, label) ->
+        val all = listOf(
+            Triple("prev", "Previous", androidx.compose.material.icons.Icons.Default.SkipPrevious),
+            Triple("next", "Next", androidx.compose.material.icons.Icons.Default.SkipNext),
+            Triple("shuffle", "Shuffle", androidx.compose.material.icons.Icons.Default.Shuffle),
+            Triple("repeat", "Repeat", androidx.compose.material.icons.Icons.Default.Repeat),
+            Triple("heart", "Favorite", androidx.compose.material.icons.Icons.Default.Favorite),
+            Triple("back10", "Back 10 s", androidx.compose.material.icons.Icons.Default.Replay10),
+            Triple("fwd10", "Forward 10 s", androidx.compose.material.icons.Icons.Default.Forward10),
+            Triple("sleep", "Sleep timer", androidx.compose.material.icons.Icons.Default.Bedtime),
+            Triple("speed", "Speed", androidx.compose.material.icons.Icons.Default.Speed),
+            Triple("close", "Close player", androidx.compose.material.icons.Icons.Default.Close),
+        )
+        fun save(v: List<String>) { picked = v; store.notifBtns = v.joinToString(","); com.barq.focus.service.MusicService.refresh() }
+        Text(tr("Notification player buttons"), fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        // live preview of what the notification will show: play/pause is always there
+        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                val order = all.map { it.first }
+                val shown = picked.sortedBy { order.indexOf(it) }
+                val (before, after) = shown.partition { it == "prev" }
+                (before + listOf("play") + after.filter { it == "next" } + after.filter { it != "next" }).forEach { id ->
+                    val icon = if (id == "play") androidx.compose.material.icons.Icons.Default.PlayArrow else all.first { it.first == id }.third
+                    Icon(icon, null, tint = if (id == "play") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            all.forEach { (id, label, icon) ->
                 FilterChip(
                     selected = id in picked,
-                    onClick = {
-                        picked = if (id in picked) picked - id else (picked + id).takeLast(2)
-                        store.notifBtns = picked.joinToString(",")
-                        com.barq.focus.service.MusicService.refresh()
-                    },
-                    label = { Text(tr(label)) }
+                    onClick = { save(if (id in picked) picked - id else (picked + id).takeLast(4)) },
+                    label = { Text(tr(label)) },
+                    leadingIcon = { Icon(icon, null, Modifier.size(18.dp)) }
                 )
             }
         }
-        Text(tr("Android shows at most five buttons: previous, play/pause, next and these two."), style = MaterialTheme.typography.bodyMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(trf("%d of 4 buttons", picked.size), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+            TextButton(onClick = { save(listOf("prev", "next", "shuffle", "repeat")) }) { Text(tr("Reset")) }
+        }
+        Text(tr("Android shows at most five buttons in total: play/pause is always there, plus up to four of these. Picking a fifth replaces the oldest."), style = MaterialTheme.typography.bodyMedium)
         Text(
             tr("Music and audio from Focus show as a media notification with play, pause and a seek bar. Phones with a status-bar capsule (Realme Mini Capsule, Samsung Now Bar, Xiaomi Dynamic Island, Pixel) show it there too."),
             style = MaterialTheme.typography.bodyMedium

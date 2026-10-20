@@ -867,6 +867,11 @@
   "Start a song first, then open the equalizer.": "Lance d'abord un morceau, puis ouvre l'égaliseur.",
   "Open the system equalizer": "Ouvrir l'égaliseur du système",
   "Equalizer on": "Égaliseur activé",
-  "Bass boost": "Boost des basses"
+  "Bass boost": "Boost des basses",
+  "Notification player buttons": "Boutons du lecteur dans la notification",
+  "Previous": "Précédent",
+  "Speed": "Vitesse",
+  "%d of 4 buttons": "%d boutons sur 4",
+  "Android shows at most five buttons in total: play/pause is always there, plus up to four of these. Picking a fifth replaces the oldest.": "Android affiche cinq boutons au maximum : lecture/pause est toujours là, plus quatre de ceux-ci au plus. En choisir un cinquième remplace le plus ancien."
  }
 }

@@ -867,6 +867,11 @@
   "Start a song first, then open the equalizer.": "Starte zuerst ein Lied und öffne dann den Equalizer.",
   "Open the system equalizer": "System-Equalizer öffnen",
   "Equalizer on": "Equalizer an",
-  "Bass boost": "Bassverstärkung"
+  "Bass boost": "Bassverstärkung",
+  "Notification player buttons": "Tasten im Benachrichtigungs-Player",
+  "Previous": "Zurück",
+  "Speed": "Tempo",
+  "%d of 4 buttons": "%d von 4 Tasten",
+  "Android shows at most five buttons in total: play/pause is always there, plus up to four of these. Picking a fifth replaces the oldest.": "Android zeigt höchstens fünf Tasten: Wiedergabe/Pause ist immer dabei, dazu bis zu vier dieser Tasten. Eine fünfte ersetzt die älteste."
  }
 }

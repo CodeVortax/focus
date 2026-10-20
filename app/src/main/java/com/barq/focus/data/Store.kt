@@ -537,9 +537,11 @@ class Store(ctx: Context) {
     val today: Int get() = day()
 
     /** The two extra buttons in the music notification / Quick Settings player (ids: shuffle, repeat, heart, back10, fwd10, close). */
+    /** Buttons in the music notification, in order (play/pause is always there): prev, next, shuffle, repeat, heart, back10, fwd10, sleep, speed, close. At most 4. */
     var notifBtns: String
-        get() = p.getString("notif_btns", "shuffle,repeat") ?: "shuffle,repeat"
-        set(v) { p.edit().putString("notif_btns", v).apply() }
+        get() = p.getString("notif_btns2", null)
+            ?: ("prev,next," + (p.getString("notif_btns", "shuffle,repeat") ?: "shuffle,repeat"))   // older versions kept only the two extras
+        set(v) { p.edit().putString("notif_btns2", v).apply() }
 
     var eqOn: Boolean
         get() = p.getBoolean("eq_on", false)
