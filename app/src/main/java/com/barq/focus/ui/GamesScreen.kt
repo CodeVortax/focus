@@ -175,6 +175,7 @@ fun GamesScreen(store: Store, onBack: () -> Unit) {
     var game by rememberSaveable { mutableStateOf<String?>(null) }
     val hubList = rememberLazyListState()          // survives playing a game, so the list comes back where you left it
     BackHandler(enabled = game != null) { game = null }
+    if (game == null) GamesHub(store, hubList, onBack) { game = it } else Ltr {
     when (game) {
         "tetris" -> TetrisGame(store) { game = null }
         "dash" -> DashGame(store) { game = null }
@@ -193,7 +194,8 @@ fun GamesScreen(store: Store, onBack: () -> Unit) {
         "schulte" -> SchulteGame(store) { game = null }
         "nback" -> NBackGame(store) { game = null }
         "react" -> ReactionGame(store) { game = null }
-        else -> GamesHub(store, hubList, onBack) { game = it }
+        else -> {}
+    }
     }
 }
 

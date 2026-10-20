@@ -11,6 +11,7 @@ Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 - **Notifications and widgets open the right place.** The music notification opens the player; the timer notification and the Today widget's subject blocks open that card; the Streak widget opens Trophies, the Shorts widget opens the log, event reminders open Events.
 
 ### Changed
+- **Game controls and music buttons no longer flip in Arabic.** Left stays left and right stays right in every game, and the player's previous/next, seek bar and transport buttons keep their order.
 - **Music Back order.** From any music page, Back goes to the main player, and one more Back leaves the music screen.
 - **Less memory in the background.** Cover-art and image caches are released when the app is hidden, and the art cache is halved.
 

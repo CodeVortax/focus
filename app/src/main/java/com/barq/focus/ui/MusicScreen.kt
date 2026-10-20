@@ -752,7 +752,7 @@ private fun NowPage(
         if (current == null) TextButton(onClick = onLibrary) { Text(tr("Pick something to play")) }
 
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        LtrRow(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onFav, enabled = current != null) { Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", Modifier.size(30.dp), tint = if (fav) primary else dim) }
             IconButton(onClick = onInfo, enabled = current != null) { Icon(Icons.Default.Info, "Info", tint = dim) }
             IconButton(onClick = onAddPlaylist, enabled = current != null) { Icon(Icons.Default.PlaylistAdd, "Playlist", tint = dim) }
@@ -767,7 +767,7 @@ private fun NowPage(
             IconButton(onClick = onShuffle) { Icon(Icons.Default.Shuffle, "Shuffle", tint = if (Music.shuffle) primary else dim.copy(alpha = 0.6f)) }
         }
 
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        LtrRow(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(mmss(drag?.toLong() ?: pos), style = MaterialTheme.typography.labelLarge, color = dim)
             Slider(
                 drag ?: pos.toFloat().coerceAtMost(dur.coerceAtLeast(1L).toFloat()),
@@ -779,7 +779,7 @@ private fun NowPage(
             Text(mmss(dur), style = MaterialTheme.typography.labelLarge, color = dim)
         }
 
-        Row(Modifier.fillMaxWidth().padding(bottom = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        LtrRow(Modifier.fillMaxWidth().padding(bottom = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { Music.player?.seekToPreviousMediaItem() }) { Icon(Icons.Default.SkipPrevious, "Previous", Modifier.size(32.dp)) }
             IconButton(onClick = { Music.player?.let { it.seekTo((it.currentPosition - 10_000L).coerceAtLeast(0L)) } }) { Icon(Icons.Default.FastRewind, "Back 10 s") }
             FilledIconButton(onClick = { Music.player?.let { if (it.isPlaying) it.pause() else it.play() } }, Modifier.size(84.dp)) {
@@ -821,6 +821,7 @@ private fun MiniNow(song: Song, fav: Boolean, onOpen: () -> Unit, onFav: () -> U
                         Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+                LtrRow {
                 IconButton(onClick = onFav) {
                     Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", tint = if (fav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -829,6 +830,7 @@ private fun MiniNow(song: Song, fav: Boolean, onOpen: () -> Unit, onFav: () -> U
                     Icon(if (Music.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(30.dp))
                 }
                 IconButton(onClick = { Music.player?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Next") }
+                }
             }
         }
     }
@@ -876,3 +878,11 @@ private fun EqualizerDialog(onClose: () -> Unit, onSystem: () -> Unit) {
         dismissButton = { if (Eq.available) TextButton(onClick = { Eq.reset() }) { Text(tr("Reset")) } }
     )
 }
+
+@Composable
+private fun LtrRow(
+    modifier: Modifier = Modifier,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    verticalAlignment: Alignment.Vertical = Alignment.Top,
+    content: @Composable RowScope.() -> Unit
+) = Ltr { Row(modifier, horizontalArrangement, verticalAlignment, content = content) }

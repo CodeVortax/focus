@@ -181,3 +181,11 @@ fun FocusApp() {
         }
     }
 }
+
+/** Game controls and player buttons keep their physical left/right, even in Arabic, so "left" always means left. */
+@Composable
+fun Ltr(content: @Composable () -> Unit) {
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr, content = content
+    )
+}
