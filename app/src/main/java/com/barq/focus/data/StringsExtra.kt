@@ -21,6 +21,15 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "One episode costs its length from the bank. You then get that episode, with up to 1.5 times its length to watch and seek back. Barely started it? Return it and get the minutes back." to "الحلقة تكلّف مدّتها من البنك. تحصل عليها مع ما يصل إلى ضعف ونصف مدّتها للمشاهدة والتقديم والرجوع. لم تبدأها تقريبًا؟ أعدها واسترجع دقائقك.",
+    "Spend %d min of the bank on this episode? You get up to 1.5 times its length to watch and seek back." to "إنفاق %d دقيقة من البنك على هذه الحلقة؟ تحصل على ما يصل إلى ضعف ونصف مدّتها للمشاهدة والرجوع.",
+    "Stopped at %s of %s" to "توقفت عند %s من %s",
+    "Return" to "إرجاع",
+    "Return it" to "أعدها",
+    "Keep it" to "أبقِها",
+    "You used %d%% of it. Return it and get %d min back in the bank?" to "استخدمت %d%% منها. أعدها واسترجع %d دقيقة إلى البنك؟",
+    "You already used %d%% of it. Only episodes you barely started (up to %d%%) can be returned." to "استخدمت %d%% منها بالفعل. يمكن إرجاع الحلقات التي بالكاد بدأتها فقط (حتى %d%%).",
+    "Returned: %d min are back in the bank" to "تم الإرجاع: عادت %d دقيقة إلى البنك",
     "Notification player buttons" to "أزرار مشغّل الإشعار",
     "Previous" to "السابق",
     "Speed" to "السرعة",

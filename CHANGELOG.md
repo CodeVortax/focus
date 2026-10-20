@@ -11,9 +11,12 @@ Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 - **Notifications and widgets open the right place.** The music notification opens the player; the timer notification and the Today widget's subject blocks open that card; the Streak widget opens Trophies, the Shorts widget opens the log, event reminders open Events.
 
 - **The music player remembers where you stopped.** Open Music and the last queue is loaded, paused on the same song at the same second, ready to play. The position is saved every 10 seconds while playing, when you pause, and on every song change.
+- **Treat series: return an episode.** Tap **Return** on an episode you bought but barely watched (up to 20% of it) and all its minutes go back to the treat bank. Past 20% it can't be returned.
+- **Treat series: where you stopped.** Each started episode shows a progress bar and "Stopped at 12:30 of 45:00".
 - **Music notification buttons.** Settings → Music now lets you choose which buttons the notification shows, with a live preview: previous, next, shuffle, repeat, favourite, back 10 s, forward 10 s, sleep timer (15/30/60 min/off), speed (0.75x to 2x) and close. Play/pause is always there, and Android allows up to four more.
 
 ### Changed
+- **A bought episode now lasts 1.5 times its length** (it used to be its length plus 5 minutes), so you can seek back and rewatch. Episodes bought before this update keep the old allowance.
 - **Game controls and music buttons no longer flip in Arabic.** Left stays left and right stays right in every game, and the player's previous/next, seek bar and transport buttons keep their order.
 - **Music Back order.** From any music page, Back goes to the main player, and one more Back leaves the music screen.
 - **Less memory in the background.** Cover-art and image caches are released when the app is hidden, and the art cache is halved.

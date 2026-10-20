@@ -402,6 +402,25 @@ class Store(ctx: Context) {
     /** Seconds of watching left on this episode's token (its length plus the free rewind minutes). */
     fun token(cardId: Long, idx: Int): Int = p.getInt("tok_${cardId}_$idx", 0)
     fun setToken(cardId: Long, idx: Int, sec: Int) { p.edit().putInt("tok_${cardId}_$idx", sec.coerceAtLeast(0)).apply() }
+    /** Seconds the token was bought with, and the bank seconds it cost: needed to return an episode you barely watched. */
+    fun tokenTotal(cardId: Long, idx: Int): Int = p.getInt("toktot_${cardId}_$idx", 0)
+    fun tokenCost(cardId: Long, idx: Int): Int = p.getInt("tokcost_${cardId}_$idx", 0)
+
+    /** Pays [costSec] from the bank and opens a token of [totalSec] seconds of watching. */
+    fun buyToken(cardId: Long, idx: Int, totalSec: Int, costSec: Int) {
+        spendSec(costSec)
+        p.edit().putInt("tok_${cardId}_$idx", totalSec).putInt("toktot_${cardId}_$idx", totalSec).putInt("tokcost_${cardId}_$idx", costSec).apply()
+    }
+
+    /** Gives an unfinished episode back: the bank gets its cost again and the token is gone. Returns the seconds refunded. */
+    fun refundToken(cardId: Long, idx: Int, fallbackCostSec: Int): Int {
+        val cost = tokenCost(cardId, idx).takeIf { it > 0 } ?: fallbackCostSec
+        p.edit().putInt("spentS_${day()}", (spentSec() - cost).coerceAtLeast(0))
+            .remove("tok_${cardId}_$idx").remove("toktot_${cardId}_$idx").remove("tokcost_${cardId}_$idx")
+            .remove("media_pos_${cardId}_$idx").apply()
+        return cost
+    }
+
     fun markEpisodeDone(cardId: Long, idx: Int) {
         val c = cards().firstOrNull { it.id == cardId } ?: return
         if (idx !in c.eps.indices) return

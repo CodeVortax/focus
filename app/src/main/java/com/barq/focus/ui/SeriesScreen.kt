@@ -57,9 +57,16 @@ import kotlinx.coroutines.withContext
 /** Minutes of bank one episode costs: its length rounded up (40 if the length is unknown). */
 private fun costMin(e: Episode): Int = if (e.ms > 0L) ((e.ms + 59_999L) / 60_000L).toInt().coerceAtLeast(1) else 40
 
-const val REWIND_SEC = 300      // the free 5 minutes for seeking back
+const val REWIND_SEC = 300          // tokens bought before 0.24 had this many extra seconds
+const val WATCH_FACTOR = 1.5f       // a token now lasts 1.5 times the episode, so you can seek back and rewatch
+const val REFUND_MAX = 0.20f        // an episode can be returned only while you have used at most this share of it
 
-/** The episodes of a series: one token (the episode's length from the bank) = one episode, plus 5 free minutes to rewind. */
+private fun hms(ms: Long): String {
+    val s = (ms / 1000).coerceAtLeast(0)
+    return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
+}
+
+/** The episodes of a series: one token (the episode's length from the bank) = one episode, with 1.5 times its length to watch and rewind. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeriesScreen(store: Store, card0: FocusCard, onBack: () -> Unit, onPlay: (Int) -> Unit) {
@@ -71,6 +78,7 @@ fun SeriesScreen(store: Store, card0: FocusCard, onBack: () -> Unit, onPlay: (In
     var menu by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var confirm by remember { mutableIntStateOf(-1) }
+    var giveBack by remember { mutableIntStateOf(-1) }
     val next = card.eps.indexOfFirst { !it.done }
 
     fun toast(s: String) = Toast.makeText(ctx, s, Toast.LENGTH_SHORT).show()
@@ -125,7 +133,7 @@ fun SeriesScreen(store: Store, card0: FocusCard, onBack: () -> Unit, onPlay: (In
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(trf("Treat bank: %s min", minText(bankSec)), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        tr("One episode costs its length from the bank. You then get that episode only, plus 5 free minutes to seek back."),
+                        tr("One episode costs its length from the bank. You then get that episode, with up to 1.5 times its length to watch and seek back. Barely started it? Return it and get the minutes back."),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -154,13 +162,49 @@ fun SeriesScreen(store: Store, card0: FocusCard, onBack: () -> Unit, onPlay: (In
                                     },
                                     style = MaterialTheme.typography.labelMedium
                                 )
+                                val posMs = store.getLong("media_pos_${card.id}_$i")
+                                if (!e.done && posMs > 0L && e.ms > 0L) {
+                                    LinearProgressIndicator(progress = { (posMs.toFloat() / e.ms).coerceIn(0f, 1f) }, Modifier.fillMaxWidth().padding(top = 6.dp))
+                                    Text(trf("Stopped at %s of %s", hms(posMs), hms(e.ms)), style = MaterialTheme.typography.labelSmall)
+                                }
                             }
+                            if (left > 0 && !e.done) TextButton(onClick = { giveBack = i }) { Text(tr("Return")) }
                             Text(if (e.done) "✓" else if (e.locked) "🔒" else if (left > 0) "▶" else "", style = MaterialTheme.typography.titleLarge)
                         }
                     }
                 }
             }
         }
+    }
+
+    if (giveBack >= 0) {
+        val i = giveBack
+        val e = card.eps[i]
+        val lenSec = if (e.ms > 0L) (e.ms / 1000L).toInt() else costMin(e) * 60
+        val total = store.tokenTotal(card.id, i).takeIf { it > 0 } ?: (lenSec + REWIND_SEC)
+        val used = (total - store.token(card.id, i)).coerceAtLeast(0)
+        val pct = (used * 100f / lenSec).toInt()
+        val ok = used <= lenSec * REFUND_MAX
+        val back = store.tokenCost(card.id, i).takeIf { it > 0 } ?: (costMin(e) * 60)
+        AlertDialog(
+            onDismissRequest = { giveBack = -1 },
+            title = { Text(e.name, maxLines = 2) },
+            text = {
+                Text(
+                    if (ok) trf("You used %d%% of it. Return it and get %d min back in the bank?", pct, back / 60)
+                    else trf("You already used %d%% of it. Only episodes you barely started (up to %d%%) can be returned.", pct, (REFUND_MAX * 100).toInt())
+                )
+            },
+            confirmButton = {
+                if (ok) TextButton(onClick = {
+                    giveBack = -1
+                    val sec = store.refundToken(card.id, i, costMin(e) * 60)
+                    rev++
+                    toast(trf("Returned: %d min are back in the bank", sec / 60))
+                }) { Text(tr("Return it")) }
+            },
+            dismissButton = { TextButton(onClick = { giveBack = -1 }) { Text(tr(if (ok) "Keep it" else "OK")) } }
+        )
     }
 
     if (confirm >= 0) {
@@ -172,7 +216,7 @@ fun SeriesScreen(store: Store, card0: FocusCard, onBack: () -> Unit, onPlay: (In
             title = { Text(e.name, maxLines = 2) },
             text = {
                 Text(
-                    if (enough) trf("Spend %d min of the bank on this episode? You can watch it once, with 5 free minutes to seek back.", need)
+                    if (enough) trf("Spend %d min of the bank on this episode? You get up to 1.5 times its length to watch and seek back.", need)
                     else trf("You need %d min in the bank for this episode and have %s. Finish more tasks first.", need, minText(bankSec))
                 )
             },
@@ -180,8 +224,8 @@ fun SeriesScreen(store: Store, card0: FocusCard, onBack: () -> Unit, onPlay: (In
                 if (enough) TextButton(onClick = {
                     val i = confirm
                     confirm = -1
-                    store.spendSec(need * 60)
-                    store.setToken(card.id, i, (if (e.ms > 0L) (e.ms / 1000L).toInt() else need * 60) + REWIND_SEC)
+                    val lenSec = if (e.ms > 0L) (e.ms / 1000L).toInt() else need * 60
+                    store.buyToken(card.id, i, (lenSec * WATCH_FACTOR).toInt(), need * 60)
                     onPlay(i)
                 }) { Text(tr("Watch it")) }
             },

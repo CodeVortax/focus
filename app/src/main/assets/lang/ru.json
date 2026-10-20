@@ -480,7 +480,6 @@
   "Off": "Выкл.",
   "Off the hook": "Сорвался с крючка",
   "One UI shows playing audio on the lock screen and, on newer versions, in the Now Bar. Check Settings > Lock screen and AOD, and take Focus out of Battery > Background usage limits > Sleeping apps.": "One UI показывает воспроизводимое аудио на экране блокировки, а в новых версиях — и в Now Bar. Проверьте Настройки > Экран блокировки и AOD и уберите Focus из Батарея > Ограничения работы в фоне > Спящие приложения.",
-  "One episode costs its length from the bank. You then get that episode only, plus 5 free minutes to seek back.": "Серия стоит из банка столько минут, сколько длится. Вы получаете только эту серию плюс 5 бесплатных минут на перемотку назад.",
   "One reminder, 1 hour before.": "Одно напоминание за 1 час.",
   "One single Shorts visit of an hour or more.": "Один визит в Shorts на час или дольше.",
   "One video or audio file": "Один видео- или аудиофайл",
@@ -650,7 +649,6 @@
   "Speed  %s×": "Скорость  %s×",
   "Speedrunner": "Спидраннер",
   "Spend": "Потратить",
-  "Spend %d min of the bank on this episode? You can watch it once, with 5 free minutes to seek back.": "Потратить %d мин из банка на эту серию? Вы сможете посмотреть её один раз, с 5 бесплатными минутами на перемотку назад.",
   "Splat!": "Шлёп!",
   "Stack Tower": "Башня из блоков",
   "Stacked out!": "Конец башни!",
@@ -872,6 +870,15 @@
   "Previous": "Назад",
   "Speed": "Скорость",
   "%d of 4 buttons": "%d из 4 кнопок",
-  "Android shows at most five buttons in total: play/pause is always there, plus up to four of these. Picking a fifth replaces the oldest.": "Android показывает не больше пяти кнопок: пауза/воспроизведение всегда есть, плюс до четырёх из этих. Пятая заменяет самую старую."
+  "Android shows at most five buttons in total: play/pause is always there, plus up to four of these. Picking a fifth replaces the oldest.": "Android показывает не больше пяти кнопок: пауза/воспроизведение всегда есть, плюс до четырёх из этих. Пятая заменяет самую старую.",
+  "One episode costs its length from the bank. You then get that episode, with up to 1.5 times its length to watch and seek back. Barely started it? Return it and get the minutes back.": "Серия стоит из банка её длину. Вы получаете её с запасом до 1,5 её длины, чтобы смотреть и перематывать. Почти не начали? Верните и получите минуты назад.",
+  "Spend %d min of the bank on this episode? You get up to 1.5 times its length to watch and seek back.": "Потратить %d мин из банка на эту серию? Вы получите до 1,5 её длины, чтобы смотреть и перематывать.",
+  "Stopped at %s of %s": "Остановились на %s из %s",
+  "Return": "Вернуть",
+  "Return it": "Вернуть",
+  "Keep it": "Оставить",
+  "You used %d%% of it. Return it and get %d min back in the bank?": "Вы использовали %d%%. Вернуть и получить %d мин обратно в банк?",
+  "You already used %d%% of it. Only episodes you barely started (up to %d%%) can be returned.": "Вы уже использовали %d%%. Вернуть можно только почти не начатые серии (до %d%%).",
+  "Returned: %d min are back in the bank": "Возвращено: %d мин снова в банке"
  }
 }

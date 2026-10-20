@@ -480,7 +480,6 @@
   "Off": "Aus",
   "Off the hook": "Vom Haken",
   "One UI shows playing audio on the lock screen and, on newer versions, in the Now Bar. Check Settings > Lock screen and AOD, and take Focus out of Battery > Background usage limits > Sleeping apps.": "One UI zeigt wiedergegebenes Audio auf dem Sperrbildschirm und in neueren Versionen in der Now Bar. Prüfe Einstellungen > Sperrbildschirm und AOD und nimm Focus aus Akku > Hintergrundnutzungsbeschränkungen > Schlafende Apps heraus.",
-  "One episode costs its length from the bank. You then get that episode only, plus 5 free minutes to seek back.": "Eine Folge kostet ihre Länge von der Bank. Du bekommst dann nur diese Folge, plus 5 freie Minuten zum Zurückspulen.",
   "One reminder, 1 hour before.": "Eine Erinnerung, 1 Stunde vorher.",
   "One single Shorts visit of an hour or more.": "Ein einziger Shorts-Besuch von einer Stunde oder mehr.",
   "One video or audio file": "Eine Video- oder Audiodatei",
@@ -650,7 +649,6 @@
   "Speed  %s×": "Tempo  %s×",
   "Speedrunner": "Speedrunner",
   "Spend": "Ausgeben",
-  "Spend %d min of the bank on this episode? You can watch it once, with 5 free minutes to seek back.": "%d Min. der Bank für diese Folge ausgeben? Du kannst sie einmal ansehen, mit 5 freien Minuten zum Zurückspulen.",
   "Splat!": "Platsch!",
   "Stack Tower": "Stapelturm",
   "Stacked out!": "Ausgestapelt!",
@@ -872,6 +870,15 @@
   "Previous": "Zurück",
   "Speed": "Tempo",
   "%d of 4 buttons": "%d von 4 Tasten",
-  "Android shows at most five buttons in total: play/pause is always there, plus up to four of these. Picking a fifth replaces the oldest.": "Android zeigt höchstens fünf Tasten: Wiedergabe/Pause ist immer dabei, dazu bis zu vier dieser Tasten. Eine fünfte ersetzt die älteste."
+  "Android shows at most five buttons in total: play/pause is always there, plus up to four of these. Picking a fifth replaces the oldest.": "Android zeigt höchstens fünf Tasten: Wiedergabe/Pause ist immer dabei, dazu bis zu vier dieser Tasten. Eine fünfte ersetzt die älteste.",
+  "One episode costs its length from the bank. You then get that episode, with up to 1.5 times its length to watch and seek back. Barely started it? Return it and get the minutes back.": "Eine Folge kostet ihre Länge aus der Bank. Du bekommst sie mit bis zum 1,5-Fachen ihrer Länge zum Schauen und Zurückspulen. Kaum angefangen? Gib sie zurück und bekomme die Minuten wieder.",
+  "Spend %d min of the bank on this episode? You get up to 1.5 times its length to watch and seek back.": "%d Min. der Bank für diese Folge ausgeben? Du bekommst bis zum 1,5-Fachen ihrer Länge zum Schauen und Zurückspulen.",
+  "Stopped at %s of %s": "Gestoppt bei %s von %s",
+  "Return": "Zurückgeben",
+  "Return it": "Zurückgeben",
+  "Keep it": "Behalten",
+  "You used %d%% of it. Return it and get %d min back in the bank?": "Du hast %d%% genutzt. Zurückgeben und %d Min. zurück in die Bank bekommen?",
+  "You already used %d%% of it. Only episodes you barely started (up to %d%%) can be returned.": "Du hast schon %d%% genutzt. Nur kaum begonnene Folgen (bis %d%%) können zurückgegeben werden.",
+  "Returned: %d min are back in the bank": "Zurückgegeben: %d Min. sind wieder in der Bank"
  }
 }
