@@ -852,7 +852,7 @@ private fun EqualizerDialog(onClose: () -> Unit, onSystem: () -> Unit) {
             } else Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(tr("Equalizer on"), Modifier.weight(1f))
-                    Switch(Eq.on, { Eq.setOn(it) })
+                    Switch(Eq.on, { Eq.turnOn(it) })
                 }
                 if (Eq.presets.isNotEmpty()) {
                     androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -871,7 +871,7 @@ private fun EqualizerDialog(onClose: () -> Unit, onSystem: () -> Unit) {
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(tr("Bass boost"), Modifier.width(66.dp), style = MaterialTheme.typography.labelMedium, maxLines = 2)
-                    Slider(Eq.bass.toFloat(), { Eq.setBass(it.roundToInt()) }, Modifier.weight(1f), enabled = Eq.on, valueRange = 0f..1000f)
+                    Slider(Eq.bass.toFloat(), { Eq.changeBass(it.roundToInt()) }, Modifier.weight(1f), enabled = Eq.on, valueRange = 0f..1000f)
                 }
             }
         },

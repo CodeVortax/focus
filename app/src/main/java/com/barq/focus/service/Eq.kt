@@ -75,9 +75,9 @@ object Eq {
         store?.let { it.eqOn = on; it.eqLevels = levels.joinToString(","); it.eqBass = bass; it.eqPreset = preset }
     }
 
-    fun setOn(v: Boolean) { on = v; apply() }
+    fun turnOn(v: Boolean) { on = v; apply() }
     fun setBand(b: Int, v: Int) { levels[b] = v.coerceIn(minLevel, maxLevel); preset = -1; apply() }
-    fun setBass(v: Int) { bass = v.coerceIn(0, 1000); apply() }
+    fun changeBass(v: Int) { bass = v.coerceIn(0, 1000); apply() }
     fun usePreset(i: Int) {
         val e = eq ?: return
         try {
