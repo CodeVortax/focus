@@ -40,6 +40,14 @@ Level titles, in order: Couch Potato, Distracted Intern, Focus Apprentice, Task 
 | 📚 | **Bookworm** | Add 3 PDFs or read 100 pages. |
 | 🌍 | **Polyglot** | Use Focus in another language. |
 | 🎲 | **Dare Taker** | Accept 5 challenges from the Challenge me button. |
+| 🐷 | **Piggy Banker** | Save 60 minutes of treat time in the piggy bank. |
+| 🐋 | **Savings Whale** | Hold 300 minutes in the piggy bank at once. |
+| 💰 | **Payday** | Get your first piggy bank payout. |
+| 📈 | **Compound Interest** | Earn 30 minutes of interest from the piggy bank. |
+| 🧪 | **Side Quest** | Spend 10 minutes in a project session. |
+| 🛠️ | **Maker Mode** | Spend 10 hours in project sessions. |
+| 🧰 | **Project Collector** | Keep 3 projects at once. |
+| 🏜️ | **Squeezed Dry** | Use up your whole treat bank in a project session. |
 | 🍿 | **Treat Yourself** | Earn 40 minutes of treats in one day. |
 | 🔥 | **Comeback Kid** | Clear the whole plate after earning a shame badge. |
 

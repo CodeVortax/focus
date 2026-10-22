@@ -64,6 +64,12 @@ class WatchService : Service() {
     private var tick = 0
     private var deadSince = 0L
     private var nullSince = 0L
+    // project session bookkeeping
+    private var projLast = 0L
+    private var projCarry = 0L
+    private var projId = -1L
+    private var warned5 = false
+    private var warned3 = false
     private var deadShown = false
     private val allowedUntil = HashMap<String, Long>()
     private val blockPass = HashMap<String, Long>()
@@ -196,7 +202,8 @@ class WatchService : Service() {
         }
 
         val cur = fg
-        val gated = store.gated()
+        projectTick(now, cur)
+        val gated = store.gated() - store.projectApps()          // the apps of a running project session skip the gate
         val lockBlock = store.activeBlock()?.takeIf { it.lock }
         val blocked = lockBlock != null && cur != null && !isAllowed(lockBlock, cur)
         // A gated app can also sit in a floating or split window while another app has the focus: gate that one too.
@@ -229,6 +236,39 @@ class WatchService : Service() {
         if (tick % 5 == 2 && Reminders.tickEvents(this)) Reminders.rescheduleEvents(this)
         if (tick % 30 == 1) refreshNotifs()
         if (tick % 10 == 3) checkAccessibility(now)
+        if (tick % 30 == 7) com.barq.focus.data.Vault.process(this, store)
+    }
+
+    /**
+     * A project session spends the treat bank, second by second, while one of the project's apps is on screen.
+     * It warns at 5 and at 3 minutes left, and ends when the bank is empty (then the normal gate is back).
+     */
+    private fun projectTick(now: Long, cur: String?) {
+        val id = store.activeProject
+        if (id == -1L) { projId = -1L; projLast = 0L; projCarry = 0L; return }
+        val pr = store.projects().firstOrNull { it.id == id }
+        if (pr == null) { store.stopProject(); return }
+        if (id != projId) { projId = id; warned5 = false; warned3 = false; projLast = now; projCarry = 0L }
+        val dt = (now - projLast).coerceIn(0L, 3000L)
+        projLast = now
+        if (cur != null && cur in pr.apps) {
+            projCarry += dt
+            val s = (projCarry / 1000L).toInt()
+            projCarry %= 1000L
+            if (s > 0) {
+                val take = minOf(s, store.bankSec())
+                if (take > 0) { store.spendSec(take); store.addProjectSec(id, take.toLong()) }
+            }
+        }
+        val left = store.bankSec()
+        when {
+            left <= 0 -> {
+                store.setFlagNamed("proj_dry"); store.stopProject(); projId = -1L
+                Notifier.projectLeft(this, pr.name, 0)
+            }
+            left <= 180 && !warned3 -> { warned3 = true; warned5 = true; Notifier.projectLeft(this, pr.name, 3) }
+            left <= 300 && !warned5 -> { warned5 = true; Notifier.projectLeft(this, pr.name, 5) }
+        }
     }
 
     /** A gated app with a window on screen that is not the focused one (floating, pop-up or split window), and not currently allowed. */

@@ -59,6 +59,9 @@ data class FocusCard(
     val folder: String = ""                 // treat cards: the folder (tree uri) the episodes live in, for locking
 )
 
+/** A project: a name and the apps you will use for it. */
+data class Project(val id: Long, val name: String, val apps: List<String>)
+
 data class Block(
     val id: Long, val name: String, val startMin: Int, val endMin: Int,
     val lock: Boolean = false,                 // true: only the allowed apps work during this block
@@ -254,12 +257,14 @@ class Store(ctx: Context) {
     private fun setFlag(n: String) { p.edit().putBoolean("${n}_${day()}", true).apply() }
 
     private fun earnedSec() = p.getInt("earnedS_${day()}", 0)
+    private fun bonusSec() = p.getInt("bonusS_${day()}", 0)       // piggy-bank payouts: spendable today, but not "earned" (no XP)
+    fun addBonusSec(s: Int) { p.edit().putInt("bonusS_${day()}", bonusSec() + s).apply() }
     private fun spentSec() = p.getInt("spentS_${day()}", 0)
     fun earnSec(s: Int) { p.edit().putInt("earnedS_${day()}", earnedSec() + s).apply() }
     fun spendSec(s: Int) { p.edit().putInt("spentS_${day()}", spentSec() + s).apply() }
     fun earn(min: Int) = earnSec(min * 60)
     fun spend(min: Int) = spendSec(min * 60)
-    fun bankSec() = (earnedSec() - spentSec()).coerceAtLeast(0)
+    fun bankSec() = (earnedSec() + bonusSec() - spentSec()).coerceAtLeast(0)
     fun bank() = bankSec() / 60                    // whole minutes (what the gate can sell you)
     fun bankText() = minText(bankSec())
 
@@ -349,6 +354,75 @@ class Store(ctx: Context) {
         if (id != -1L && !activePaused && System.currentTimeMillis() - activeEnd >= 30 * 60_000L) setFlagNamed("overtime30")
         if (id != -1L && !activePaused) addSpent(id, (System.currentTimeMillis() - activeStart).coerceAtLeast(0L))
         p.edit().remove("act_id").remove("act_end").remove("act_start").remove("act_paused").remove("act_left").apply()
+    }
+
+    // ---- projects: a named list of apps; a session spends the treat bank while one of them is on screen ----
+    fun projects(): List<Project> {
+        val s = p.getString("projects", null) ?: return emptyList()
+        return try {
+            val a = JSONArray(s)
+            (0 until a.length()).map {
+                val o = a.getJSONObject(it)
+                Project(o.getLong("id"), o.getString("name"), o.optJSONArray("apps")?.let { x -> (0 until x.length()).map { i -> x.getString(i) } } ?: emptyList())
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+    fun saveProjects(l: List<Project>) {
+        val a = JSONArray()
+        l.forEach { pr -> a.put(JSONObject().put("id", pr.id).put("name", pr.name).put("apps", JSONArray(pr.apps))) }
+        p.edit().putString("projects", a.toString()).apply()
+    }
+    var activeProject: Long
+        get() = p.getLong("proj_active", -1L)
+        set(v) { p.edit().putLong("proj_active", v).apply() }
+    fun projectSec(id: Long): Long = p.getLong("proj_sec_$id", 0L)
+    fun projectTotalSec(): Long = projects().sumOf { projectSec(it.id) }
+    fun addProjectSec(id: Long, s: Long) { p.edit().putLong("proj_sec_$id", projectSec(id) + s).apply() }
+    /** The apps of the running project session: they skip the gate while it runs. */
+    fun projectApps(): Set<String> {
+        val id = activeProject
+        if (id == -1L) return emptySet()
+        return projects().firstOrNull { it.id == id }?.apps?.toSet() ?: emptySet()
+    }
+    fun startProject(id: Long): Boolean {
+        if (bankSec() <= 0) return false
+        activeProject = id
+        return true
+    }
+    fun stopProject() { activeProject = -1L }
+
+    // ---- piggy bank: unused treat time is saved each day and paid out a week later, with a little interest ----
+    var vaultOn: Boolean
+        get() = p.getBoolean("vault_on", true)
+        set(v) { p.edit().putBoolean("vault_on", v).apply() }
+    var vaultLast: Int                           // the last day key that was settled
+        get() = p.getInt("vault_last", 0)
+        set(v) { p.edit().putInt("vault_last", v).apply() }
+    var vaultLots: String
+        get() = p.getString("vault_lots", "[]") ?: "[]"
+        set(v) { p.edit().putString("vault_lots", v).apply() }
+    var vaultLedger: String
+        get() = p.getString("vault_ledger", "[]") ?: "[]"
+        set(v) { p.edit().putString("vault_ledger", v).apply() }
+    var vaultDepositedSec: Long
+        get() = p.getLong("vault_dep_total", 0L)
+        set(v) { p.edit().putLong("vault_dep_total", v).apply() }
+    var vaultInterestSec: Long
+        get() = p.getLong("vault_int_total", 0L)
+        set(v) { p.edit().putLong("vault_int_total", v).apply() }
+    var vaultPayouts: Int
+        get() = p.getInt("vault_payouts", 0)
+        set(v) { p.edit().putInt("vault_payouts", v).apply() }
+    var vaultFines: Int
+        get() = p.getInt("vault_fines", 0)
+        set(v) { p.edit().putInt("vault_fines", v).apply() }
+    var vaultPeakSec: Long
+        get() = p.getLong("vault_peak", 0L)
+        set(v) { p.edit().putLong("vault_peak", v).apply() }
+    /** What was left unspent on a finished day. Piggy-bank payouts are spent first, so interest is never saved again. */
+    fun unusedSecOn(dayKey: Int): Int {
+        val earned = p.getInt("earnedS_$dayKey", 0); val bonus = p.getInt("bonusS_$dayKey", 0); val spent = p.getInt("spentS_$dayKey", 0)
+        return (earned - (spent - bonus).coerceAtLeast(0)).coerceAtLeast(0)
     }
 
     // ---- reminders ----

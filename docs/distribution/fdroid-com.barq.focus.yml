@@ -14,14 +14,14 @@ RepoType: git
 Repo: https://github.com/CodeVortax/focus
 
 Builds:
-  - versionName: 0.24.0-beta
-    versionCode: 41
-    commit: v0.24.0-beta
+  - versionName: 0.25.0-beta
+    versionCode: 42
+    commit: v0.25.0-beta
     subdir: app
     gradle:
       - yes
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.24.0-beta
+CurrentVersion: 0.25.0-beta
 CurrentVersionCode: 39

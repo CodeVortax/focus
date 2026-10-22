@@ -5,7 +5,7 @@ Where Focus can be published and what each place needs. The store texts live in 
 ## Before any store
 
 1. Add the images to `fastlane/metadata/android/en-US/images/`: `icon.png` (512x512) and 4 to 8 phone screenshots in `phoneScreenshots/`. See the README in that folder.
-2. Tag every release (`v0.24.0-beta`) and attach the release-signed APK to the GitHub release. The tag must match `versionName`.
+2. Tag every release (`v0.25.0-beta`) and attach the release-signed APK to the GitHub release. The tag must match `versionName`.
 3. Add a changelog file for each new version code: `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, 500 characters at most.
 
 ## GitHub and Obtainium

@@ -34,6 +34,8 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Savings
 import com.barq.focus.data.Badge
 import com.barq.focus.data.Game
 import kotlinx.coroutines.Dispatchers
@@ -159,6 +161,14 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                             DropdownMenuItem(
                                 text = { Text(tr("Music")) }, leadingIcon = { Icon(Icons.Default.LibraryMusic, null) },
                                 onClick = { menu = false; go("music") }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(tr("Projects")) }, leadingIcon = { Icon(Icons.Default.Build, null) },
+                                onClick = { menu = false; go("projects") }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(tr("Piggy bank")) }, leadingIcon = { Icon(Icons.Default.Savings, null) },
+                                onClick = { menu = false; go("piggy") }
                             )
                             DropdownMenuItem(
                                 text = { Text(tr("Games")) }, leadingIcon = { Icon(Icons.Default.SportsEsports, null) },

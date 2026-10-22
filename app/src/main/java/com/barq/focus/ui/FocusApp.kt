@@ -69,7 +69,7 @@ private data class Dest(
 fun FocusApp() {
     val ctx = LocalContext.current
     val fresh = remember { Store(ctx).isFresh() }      // asked before rollover() writes the first cards
-    val store = remember { Store(ctx).also { it.rollover() } }
+    val store = remember { Store(ctx).also { it.rollover(); com.barq.focus.data.Vault.process(ctx, it) } }
     val db = remember { Db.get(ctx) }
 
     // a real back stack: back returns to where you were, and each screen remembers its scroll position
@@ -167,6 +167,8 @@ fun FocusApp() {
                         "pdf" -> d.pdf?.let { PdfReaderScreen(store, it) { pop() } }
                         "import" -> ImportScreen(back)
                         "music" -> MusicScreen(store, back)
+                        "projects" -> ProjectsScreen(store, back)
+                        "piggy" -> PiggyScreen(store, back)
                         "games" -> GamesScreen(store, back)
                         "trophies" -> TrophiesScreen(store, back)
                         "log" -> LogScreen(db, back)

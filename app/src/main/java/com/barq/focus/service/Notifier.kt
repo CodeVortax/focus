@@ -42,6 +42,8 @@ object Notifier {
     const val STATUS_ID = 1
     const val TIMER_ID = 4
     const val HEALTH_ID = 5
+    const val PIGGY_ID = 6
+    const val PROJECT_ID = 7
     private const val CH_HEALTH = "focus_health"
     const val CH_STATUS = "focus_watch"
     const val CH_REMIND = "focus_remind"
@@ -132,6 +134,32 @@ object Notifier {
                 android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
                 android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT))
         try { nm.notify(HEALTH_ID, b.build()) } catch (_: SecurityException) {}
+    }
+
+    /** Piggy bank news: a payout, or a (funny) fine. */
+    fun piggy(ctx: Context, title: String, text: String) {
+        ensureChannels(ctx)
+        val b = NotificationCompat.Builder(ctx, CH_REMIND)
+            .setSmallIcon(android.R.drawable.ic_menu_agenda)
+            .setContentTitle(tr(title)).setContentText(tr(text))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(tr(text)))
+            .setAutoCancel(true)
+            .setContentIntent(TimerAlarm.openApp(ctx, "piggy"))
+        try { ctx.getSystemService(NotificationManager::class.java).notify(PIGGY_ID, b.build()) } catch (_: SecurityException) {}
+    }
+
+    /** Heads-up for a running project session: the treat bank is nearly empty. */
+    fun projectLeft(ctx: Context, name: String, minutes: Int) {
+        ensureChannels(ctx)
+        val text = if (minutes <= 0) trf("Your treat bank is empty. The %s session is over.", name)
+        else trf("%d min of treat left. Wrap up %s.", minutes, name)
+        val b = NotificationCompat.Builder(ctx, CH_REMIND)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle(tr(if (minutes <= 0) "Session over" else "Almost out of treat time"))
+            .setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(TimerAlarm.openApp(ctx, "projects"))
+        try { ctx.getSystemService(NotificationManager::class.java).notify(PROJECT_ID, b.build()) } catch (_: SecurityException) {}
     }
 
     fun syncTimer(ctx: Context, store: Store) {

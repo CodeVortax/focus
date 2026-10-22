@@ -48,6 +48,14 @@ object Game {
         Badge("worm", "📚", K("Bookworm"), K("Add 3 PDFs or read 100 pages.")),
         Badge("poly", "🌍", K("Polyglot"), K("Use Focus in another language.")),
         Badge("dare", "🎲", K("Dare Taker"), K("Accept 5 challenges from the Challenge me button.")),
+        Badge("piggy", "🐷", K("Piggy Banker"), K("Save 60 minutes of treat time in the piggy bank.")),
+        Badge("whale", "🐋", K("Savings Whale"), K("Hold 300 minutes in the piggy bank at once.")),
+        Badge("payday", "💰", K("Payday"), K("Get your first piggy bank payout.")),
+        Badge("interest", "📈", K("Compound Interest"), K("Earn 30 minutes of interest from the piggy bank.")),
+        Badge("side", "🧪", K("Side Quest"), K("Spend 10 minutes in a project session.")),
+        Badge("maker", "🛠️", K("Maker Mode"), K("Spend 10 hours in project sessions.")),
+        Badge("collector", "🧰", K("Project Collector"), K("Keep 3 projects at once.")),
+        Badge("dry", "🏜️", K("Squeezed Dry"), K("Use up your whole treat bank in a project session.")),
         Badge("treat", "🍿", K("Treat Yourself"), K("Earn 40 minutes of treats in one day.")),
         // hall of shame: hidden until you earn them
         Badge("goat_neglect", "🐐", K("Goat Neglecter"), K("3 days in a row with tasks on the plate and none done. Come back before it's too late."), shame = true),
@@ -60,6 +68,9 @@ object Game {
         Badge("hoarder", "🍽️", K("Plate Hoarder"), K("Let 30 or more unfinished tasks pile up."), shame = true),
         Badge("ghosted", "👻", K("Ghosted"), K("Disappear from Focus for 3 days in a row."), shame = true),
         Badge("funeral", "⚰️", K("Streak Funeral"), K("Lose a work streak of 7 days or more."), shame = true),
+        Badge("ticket", "🚓", K("Speeding Ticket"), K("Get your first fine from the piggy bank."), shame = true),
+        Badge("repeat", "🚔", K("Repeat Offender"), K("Get 5 fines from the piggy bank."), shame = true),
+        Badge("pity", "🪙", K("Broke Pity"), K("Get fined while the piggy bank is empty."), shame = true),
         Badge("comeback", "🔥", K("Comeback Kid"), K("Clear the whole plate after earning a shame badge.")),
     )
 
@@ -170,6 +181,18 @@ object Game {
         if (store.lang != "en") unlock("poly")
         if (treatDay) unlock("treat")
         if (store.challengesAccepted() >= 5) unlock("dare")
+        if (store.vaultDepositedSec >= 3600) unlock("piggy")
+        if (store.vaultPeakSec >= 18000) unlock("whale")
+        if (store.vaultPayouts >= 1) unlock("payday")
+        if (store.vaultInterestSec >= 1800) unlock("interest")
+        val projSec = store.projectTotalSec()
+        if (projSec >= 600) unlock("side")
+        if (projSec >= 36000) unlock("maker")
+        if (store.projects().size >= 3) unlock("collector")
+        if (store.flagSet("proj_dry")) unlock("dry")
+        if (store.vaultFines >= 1) unlock("ticket")
+        if (store.vaultFines >= 5) unlock("repeat")
+        if (store.flagSet("fine_empty")) unlock("pity")
 
         // shame: tasks were planned, nothing got done, three days running
         var idle = 0; var worstIdle = 0

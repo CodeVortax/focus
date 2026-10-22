@@ -144,11 +144,11 @@ fun ScheduleScreen(store: Store, onBack: () -> Unit) {
 }
 
 @Composable
-private fun AppPickerDialog(apps: List<AppInfo>, initial: Set<String>, onDone: (Set<String>) -> Unit, onDismiss: () -> Unit) {
+internal fun AppPickerDialog(apps: List<AppInfo>, initial: Set<String>, onDone: (Set<String>) -> Unit, onDismiss: () -> Unit, title: String = tr("Allowed apps")) {
     var sel by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(tr("Allowed apps")) },
+        title = { Text(title) },
         text = {
             LazyColumn(Modifier.heightIn(max = 420.dp)) {
                 items(apps, key = { it.pkg }) { a ->

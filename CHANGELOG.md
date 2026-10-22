@@ -2,6 +2,13 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.25.0-beta (version code 42)
+
+### Added
+- **Projects.** Name a project and the apps you will use for it (Chrome, Termux, YouTube...). A session lets those apps skip the gate and spends the treat bank second by second, only while one of them is on screen. Warnings at 5 and 3 minutes left; the session ends when the bank is empty. Home menu → Projects. See [Projects and the piggy bank](docs/guides/projects-and-piggy.md).
+- **Piggy bank.** Unused treat time is saved every night and paid into your bank a week later with 10% interest. Days with planned tasks and none done cost a funny fine (speeding ticket, parking ticket, goat tax...) from the piggy. Notifications for payouts and fines. Home menu → Piggy bank.
+- **11 new badges** (42 in total, 13 hidden): Piggy Banker, Savings Whale, Payday, Compound Interest, Side Quest, Maker Mode, Project Collector, Squeezed Dry, and the hidden Speeding Ticket, Repeat Offender and Broke Pity.
+
 ## 0.24.0-beta (version code 41)
 
 ### Added
