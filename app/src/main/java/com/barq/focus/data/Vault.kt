@@ -91,11 +91,50 @@ object Vault {
     /** Days until a lot is paid out (0 = today). */
     fun daysLeft(l: Lot): Int = (l.release - LocalDate.now().toEpochDay()).toInt().coerceAtLeast(0)
 
-    fun process(ctx: Context, s: Store) {
+    val RULE_FINES = listOf(
+        Fine(K("Homework evasion notice"), K("The plate was not empty when new work arrived. The teacher has been informed, and so has your piggy bank."), 5),
+        Fine(K("Unpaid homework invoice"), K("Your unfinished tasks were billed to you. Interest applies."), 5),
+        Fine(K("Class-day jaywalking"), K("You walked into class with a full plate. That is jaywalking."), 6),
+        Fine(K("Procrastination levy"), K("Delay is a lifestyle, and lifestyles are taxed."), 5),
+        Fine(K("Late slip"), K("The tasks arrived late to their own party. Sign here."), 4),
+    )
+
+    /** Misses recorded at the daily rollover (a class day with open tasks, or a task past its due day) become fines. */
+    private fun ruleFines(ctx: Context, s: Store, now: Long) {
+        val arr = try { JSONArray(s.ruleMissPending) } catch (_: Exception) { return }
+        if (arr.length() == 0) return
+        s.ruleMissPending = "[]"
         if (!s.vaultOn) return
+        var lots = lots(s)
+        val entries = ArrayList(ledger(s))
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val n = o.optInt("n", 1); val title = o.optString("c", "")
+            val f = RULE_FINES[((o.optInt("d", 0) + i) % RULE_FINES.size + RULE_FINES.size) % RULE_FINES.size]
+            var due = minOf(f.min * maxOf(n, 1), 20) * 60
+            val kept = ArrayList<Lot>()
+            for (l in lots.sortedBy { it.release }) {
+                if (due <= 0) { kept.add(l); continue }
+                val take = minOf(due, l.sec); due -= take
+                if (l.sec - take > 0) kept.add(Lot(l.release, l.sec - take, l.dep))
+            }
+            val total = minOf(f.min * maxOf(n, 1), 20) * 60
+            val paid = total - due
+            lots = kept
+            val text = "$title: " + tr(f.text)
+            if (paid > 0) { s.vaultFines = s.vaultFines + 1; entries.add(Entry(now, "fine", -paid, f.title, text)) }
+            else { s.setFlagNamed("fine_empty"); entries.add(Entry(now, "warn", 0, K("Warning"), text)) }
+            Notifier.piggy(ctx, tr(f.title), text)
+        }
+        saveLots(s, lots); saveLedger(s, entries)
+    }
+
+    fun process(ctx: Context, s: Store) {
         val now = System.currentTimeMillis()
         if (now - lastRun < 30_000L) return
         lastRun = now
+        try { ruleFines(ctx, s, now) } catch (_: Exception) {}
+        if (!s.vaultOn) return
         try { settle(ctx, s, now) } catch (_: Exception) {}
     }
 

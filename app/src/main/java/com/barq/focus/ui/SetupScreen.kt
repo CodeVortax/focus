@@ -24,6 +24,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.graphics.Color
+import com.barq.focus.service.Shared
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -102,6 +105,19 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
     var taps by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val missing = listOf(usage, overlay, a11y).count { !it }
+    val focusSound = remember { Shared.settingsFocus?.takeIf { it.startsWith("sound:") }?.removePrefix("sound:")?.toLongOrNull().also { Shared.settingsFocus = null } }
+    val soundBring = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    var soundCards by remember { mutableStateOf(store.cards()) }
+    var pickFor by remember { mutableStateOf(-1L) }
+    val soundPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == android.app.Activity.RESULT_OK) {
+            @Suppress("DEPRECATION")
+            val u = r.data?.getParcelableExtra<Uri>(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            soundCards.firstOrNull { it.id == pickFor }?.let { c -> store.updateCard(c.copy(sound = u?.toString() ?: "silent")) }
+            soundCards = store.cards()
+        }
+    }
+    LaunchedEffect(focusSound) { if (focusSound != null) { kotlinx.coroutines.delay(350); soundBring.bringIntoView() } }
 
     val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { u: Uri? ->
         if (u != null) {
@@ -163,6 +179,24 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                         })
                     }
                 }
+                var shortsLim by remember { mutableStateOf(store.shortsLimit) }
+                Column {
+                    Text(tr("Daily Shorts limit"), fontWeight = FontWeight.SemiBold)
+                    Text(
+                        tr("How many Shorts/Reels you allow yourself per day. At the gate you pick how many to watch, up to what is left. 0 means no limit."),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = { shortsLim = (shortsLim - 5).coerceAtLeast(0); store.shortsLimit = shortsLim }) { Text("−5") }
+                        Text(
+                            if (shortsLim == 0) tr("No limit") else shortsLim.toString(),
+                            Modifier.weight(1f).padding(horizontal = 8.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        OutlinedButton(onClick = { shortsLim = (shortsLim + 5).coerceAtMost(500); store.shortsLimit = shortsLim }) { Text("+5") }
+                    }
+                }
                 var strict by remember { mutableStateOf(store.strictShorts) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -185,6 +219,41 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                             ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:com.google.android.youtube")))
                         }
                     }) { Text(tr("Open")) }
+                }
+            }
+
+            Group(
+                "sound", Icons.Default.MusicNote, "Timer sound per subject", "Which sound rings when each subject's time is up",
+                open = focusSound != null, modifier = Modifier.bringIntoViewRequester(soundBring), highlight = focusSound != null
+            ) {
+                soundCards.filter { it.type == com.barq.focus.data.CardType.STUDY }.forEach { c ->
+                    val name = when (c.sound) {
+                        "" -> tr("Default alarm")
+                        "silent" -> tr("Silent")
+                        else -> try { android.media.RingtoneManager.getRingtone(ctx, Uri.parse(c.sound))?.getTitle(ctx) ?: "Custom" } catch (_: Exception) { "Custom" }
+                    }
+                    val hot = c.id == focusSound
+                    Row(
+                        Modifier.fillMaxWidth().then(if (hot) Modifier.background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.RoundedCornerShape(10.dp)) else Modifier).padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(Modifier.size(10.dp).background(Color(c.color), androidx.compose.foundation.shape.CircleShape))
+                        Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                            Text(c.title, style = MaterialTheme.typography.titleSmall)
+                            Text(name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        TextButton(onClick = {
+                            pickFor = c.id
+                            soundPicker.launch(Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_ALARM or android.media.RingtoneManager.TYPE_NOTIFICATION)
+                                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "Timer sound")
+                                val cur: Uri? = if (c.sound.isEmpty() || c.sound == "silent") null else Uri.parse(c.sound)
+                                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, cur)
+                            })
+                        }) { Text(tr("Change")) }
+                    }
                 }
             }
 
@@ -393,9 +462,9 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
 
 /** One collapsible block of settings. Opens by itself when [open] (e.g. a permission is missing). */
 @Composable
-private fun Group(id: String, icon: ImageVector, title: String, subtitle: String, open: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
-    var expanded by rememberSaveable(id) { mutableStateOf(open) }
-    Card(Modifier.fillMaxWidth()) {
+private fun Group(id: String, icon: ImageVector, title: String, subtitle: String, open: Boolean = false, modifier: Modifier = Modifier, highlight: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    var expanded by rememberSaveable(id, open) { mutableStateOf(open) }
+    Card(modifier.fillMaxWidth(), border = if (highlight) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null) {
         Column {
             Row(
                 Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(16.dp),

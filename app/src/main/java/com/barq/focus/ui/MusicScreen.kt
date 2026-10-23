@@ -82,6 +82,10 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -178,6 +182,7 @@ private fun shareSong(ctx: Context, s: Song) {
 @Composable
 fun MusicScreen(store: Store, onBack: () -> Unit) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     val perm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
     var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(ctx, perm) == PackageManager.PERMISSION_GRANTED) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
@@ -191,8 +196,19 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
     LaunchedEffect(songs) { if (songs.isNotEmpty()) Music.restore(ctx, byId) }     // the last song is ready and paused, right where you left it
     val current = byId[Music.currentId]
 
-    var tab by remember { mutableStateOf(MTab.NOW) }
-    var sub by remember { mutableStateOf<Pair<String, List<Song>>?>(null) }
+    // where you were (tab, opened list, scroll positions) survives leaving the music screen and coming back
+    var tab by rememberSaveable { mutableStateOf(MTab.NOW) }
+    var subTitle by rememberSaveable { mutableStateOf<String?>(null) }
+    var subIds by rememberSaveable { mutableStateOf<List<Long>>(ArrayList()) }
+    val sub: Pair<String, List<Song>>? = subTitle?.let { t -> t to subIds.mapNotNull { byId[it] } }
+    fun openSub(title: String, list: List<Song>) { subTitle = title; subIds = ArrayList(list.map { it.id }) }
+    fun closeSub() { subTitle = null }
+    val foldersState = rememberLazyListState()
+    val artistsState = rememberLazyListState()
+    val playlistsState = rememberLazyListState()
+    val albumsState = rememberLazyGridState()
+    val subState = rememberLazyListState()
+    val searchState = rememberLazyListState()
     var favs by remember { mutableStateOf(store.favorites()) }
     var playlists by remember { mutableStateOf(store.playlists()) }
     var menuSong by remember { mutableStateOf<Song?>(null) }
@@ -206,12 +222,12 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
     var showMore by remember { mutableStateOf(false) }
     var showEq by remember { mutableStateOf(false) }
     var newPlaylist by remember { mutableStateOf(false) }
-    BackHandler(enabled = sub != null) { sub = null }
+    BackHandler(enabled = sub != null) { closeSub() }
     // any page goes back to the main player first; one more back leaves the music screen
     BackHandler(enabled = sub == null && tab != MTab.NOW) { tab = MTab.NOW }
 
     fun toast(s: String) = Toast.makeText(ctx, s, Toast.LENGTH_SHORT).show()
-    fun play(list: List<Song>, i: Int) { Music.playSongs(ctx, list, i); tab = MTab.NOW; sub = null }
+    fun play(list: List<Song>, i: Int) { Music.playSongs(ctx, list, i); tab = MTab.NOW; closeSub() }
     fun withPlaylist(name: String, ids: (List<Long>) -> List<Long>) {
         val m = LinkedHashMap(store.playlists())
         m[name] = ids(m[name] ?: emptyList())
@@ -223,11 +239,11 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
             Column {
                 if (current != null && (tab != MTab.NOW || sub != null)) MiniNow(
                     current, favs.contains(current.id),
-                    onOpen = { tab = MTab.NOW; sub = null },
+                    onOpen = { tab = MTab.NOW; closeSub() },
                     onFav = { favs = store.toggleFavorite(current.id); com.barq.focus.service.MusicService.refresh() }
                 )
                 MusicBar(
-                    tab, { tab = it; sub = null },
+                    tab, { tab = it; closeSub() },
                     { reload++ }, { showSleep = true }, { showEq = true },
                     { Music.stopAll(ctx); toast(tr("Player closed")) }
                 )
@@ -250,8 +266,9 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                     val (title, list) = sub!!
                     SongList(
                         list, favs, { play(list, it) }, { menuSong = it },
+                        state = subState,
                         header = {
-                            SubHeader(title, list.size, { sub = null }, { play(list, 0) }, {
+                            SubHeader(title, list.size, { closeSub() }, { play(list, 0) }, {
                                 Music.get(ctx).shuffleModeEnabled = true; play(list.shuffled(), 0)
                             })
                         }
@@ -274,11 +291,11 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                     MTab.QUEUE -> QueuePage(byId)
                     MTab.FOLDERS -> {
                         val groups = remember(songs) { songs.groupBy { it.folder }.entries.sortedBy { it.key.lowercase() } }
-                        LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
+                        LazyColumn(state = foldersState, contentPadding = PaddingValues(bottom = 12.dp)) {
                             item { PageTitle(tr("Folders")) }
                             items(groups, key = { it.key }) { g ->
                                 ListRow(Icons.Default.Folder, g.key.substringAfterLast('/').ifBlank { "/" }, g.key + "  ·  " + trf("%d songs", g.value.size)) {
-                                    sub = g.key.substringAfterLast('/') to g.value
+                                    openSub(g.key.substringAfterLast('/'), g.value); scope.launch { subState.scrollToItem(0) }
                                 }
                             }
                         }
@@ -289,11 +306,11 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                                 .sortedBy { it.name.lowercase() }
                         }
                         LazyVerticalGrid(
-                            GridCells.Fixed(2), contentPadding = PaddingValues(12.dp),
+                            GridCells.Fixed(2), state = albumsState, contentPadding = PaddingValues(12.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(albums, key = { it.id }) { a ->
-                                Column(Modifier.clip(RoundedCornerShape(16.dp)).clickable { sub = a.name to a.songs }) {
+                                Column(Modifier.clip(RoundedCornerShape(16.dp)).clickable { openSub(a.name, a.songs); scope.launch { subState.scrollToItem(0) } }) {
                                     Art(a.songs.first(), Modifier.fillMaxWidth().aspectRatio(1f), 400, 16.dp)
                                     Text(a.name, Modifier.padding(top = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
                                     Text(a.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
@@ -303,18 +320,18 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                     }
                     MTab.ARTISTS -> {
                         val artists = remember(songs) { songs.groupBy { it.artist }.entries.sortedBy { it.key.lowercase() } }
-                        LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
+                        LazyColumn(state = artistsState, contentPadding = PaddingValues(bottom = 12.dp)) {
                             item { PageTitle(tr("Artists")) }
                             items(artists, key = { it.key }) { a ->
-                                ListRow(Icons.Default.Person, a.key, trf("%d songs", a.value.size)) { sub = a.key to a.value }
+                                ListRow(Icons.Default.Person, a.key, trf("%d songs", a.value.size)) { openSub(a.key, a.value); scope.launch { subState.scrollToItem(0) } }
                             }
                         }
                     }
-                    MTab.PLAYLISTS -> LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
+                    MTab.PLAYLISTS -> LazyColumn(state = playlistsState, contentPadding = PaddingValues(bottom = 12.dp)) {
                         item { PageTitle(tr("Playlists")) }
                         item {
                             ListRow(Icons.Default.Favorite, tr("Favorites"), trf("%d songs", favs.size)) {
-                                sub = tr("Favorites") to songs.filter { it.id in favs }
+                                openSub(tr("Favorites"), songs.filter { it.id in favs }); scope.launch { subState.scrollToItem(0) }
                             }
                         }
                         items(playlists.entries.toList(), key = { it.key }) { e ->
@@ -325,7 +342,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                                         val m = LinkedHashMap(playlists); m.remove(e.key); store.savePlaylists(m); playlists = m
                                     }) { Icon(Icons.Default.Delete, "Delete") }
                                 }
-                            ) { sub = e.key to e.value.mapNotNull { byId[it] } }
+                            ) { openSub(e.key, e.value.mapNotNull { byId[it] }); scope.launch { subState.scrollToItem(0) } }
                         }
                         item {
                             OutlinedButton(onClick = { newPlaylist = true }, Modifier.padding(16.dp)) {
@@ -334,7 +351,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                         }
                     }
                     MTab.SEARCH -> {
-                        var q by remember { mutableStateOf("") }
+                        var q by rememberSaveable { mutableStateOf("") }
                         val hits = remember(q, songs) {
                             val t = q.trim().lowercase()
                             if (t.isEmpty()) emptyList() else songs.filter {
@@ -343,6 +360,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                         }
                         SongList(
                             hits, favs, { play(hits, it) }, { menuSong = it },
+                            state = searchState,
                             header = {
                                 OutlinedTextField(
                                     q, { q = it }, Modifier.fillMaxWidth().padding(12.dp), singleLine = true,
@@ -352,6 +370,14 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                             }
                         )
                     }
+                }
+            }
+            if (granted && (sub != null || tab == MTab.FOLDERS || tab == MTab.ALBUMS || tab == MTab.ARTISTS || tab == MTab.PLAYLISTS)) {
+                Surface(
+                    Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp), shape = CircleShape,
+                    tonalElevation = 6.dp, shadowElevation = 2.dp
+                ) {
+                    IconButton(onClick = { closeSub(); tab = MTab.SEARCH }) { Icon(Icons.Default.Search, tr("Search songs")) }
                 }
             }
         }
@@ -654,8 +680,8 @@ private fun InfoRow(label: String, value: String) {
 }
 
 @Composable
-private fun SongList(list: List<Song>, favs: Set<Long>, onPlay: (Int) -> Unit, onMenu: (Song) -> Unit, header: @Composable () -> Unit) {
-    LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
+private fun SongList(list: List<Song>, favs: Set<Long>, onPlay: (Int) -> Unit, onMenu: (Song) -> Unit, state: androidx.compose.foundation.lazy.LazyListState = rememberLazyListState(), header: @Composable () -> Unit) {
+    LazyColumn(state = state, contentPadding = PaddingValues(bottom = 12.dp)) {
         item { header() }
         itemsIndexed(list, key = { _, s -> s.id }) { i, s ->
             val playing = Music.currentId == s.id

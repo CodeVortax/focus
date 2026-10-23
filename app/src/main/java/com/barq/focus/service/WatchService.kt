@@ -223,7 +223,7 @@ class WatchService : Service() {
                 if (overlay.showing && overlay.tag == "block") overlay.hide()
                 if (gtarget == null) {
                     if (overlay.showing && overlay.tag == "gate") overlay.hide()
-                } else if (!overlay.showing && now > Shared.suppressUntil && (allowedUntil[gtarget] ?: 0L) <= now) {
+                } else if (!overlay.showing && now > Shared.suppressUntil && (allowedUntil[gtarget] ?: 0L) <= now && now >= Shared.treatUntil) {
                     showGate(gtarget)
                 }
             }
@@ -274,7 +274,7 @@ class WatchService : Service() {
     /** A gated app with a window on screen that is not the focused one (floating, pop-up or split window), and not currently allowed. */
     private fun hiddenGated(gated: Set<String>, cur: String?, now: Long): String? {
         val vis = FocusAccessibility.instance?.visiblePackages() ?: return null
-        return vis.firstOrNull { it != cur && it != packageName && it in gated && (allowedUntil[it] ?: 0L) <= now }
+        return vis.firstOrNull { it != cur && it != packageName && it in gated && (allowedUntil[it] ?: 0L) <= now && now >= Shared.treatUntil }
     }
 
     private fun isAllowed(b: Block, pkg: String) =
@@ -310,6 +310,9 @@ class WatchService : Service() {
         return db.open(kind, pkg, ts)
     }
 
+    /** A treat is one pool of minutes for every gate: the Shorts gate must not ask again for time you already paid. */
+    private fun treated(minutes: Int) { Shared.treatUntil = System.currentTimeMillis() + minutes * 60_000L }
+
     private fun grant(pkg: String, reason: String, minutes: Int) {
         allowedUntil[pkg] = System.currentTimeMillis() + minutes * 60_000L
         if (fgRow >= 0) db.setReason(fgRow, reason)
@@ -323,10 +326,10 @@ class WatchService : Service() {
         ch += Choice(trf("A link  ·  %d min", Config.LINK_MINUTES), 0xFF4285F4.toInt(), icon = "\uD83D\uDD17") { grant(cur, "A link", Config.LINK_MINUTES) }
         if (bank >= Config.TREAT_STEP) {
             ch += Choice(trf("Treat  ·  %d min  (bank %d)", Config.TREAT_STEP, bank), 0xFF34A853.toInt(), icon = "\uD83C\uDF7F") {
-                store.spend(Config.TREAT_STEP); grant(cur, "Treat", Config.TREAT_STEP)
+                store.spend(Config.TREAT_STEP); grant(cur, "Treat", Config.TREAT_STEP); treated(Config.TREAT_STEP)
             }
             if (bank > Config.TREAT_STEP) ch += Choice(trf("Use all  ·  %d min", bank), 0xFF34A853.toInt(), icon = "\uD83C\uDF89") {
-                store.spend(bank); grant(cur, "Treat (all)", bank)
+                store.spend(bank); grant(cur, "Treat (all)", bank); treated(bank)
             }
         } else {
             ch += Choice(tr("Treat bank empty: finish tasks to earn"), 0xFF555866.toInt(), enabled = false) {}

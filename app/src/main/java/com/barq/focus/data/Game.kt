@@ -48,6 +48,8 @@ object Game {
         Badge("worm", "📚", K("Bookworm"), K("Add 3 PDFs or read 100 pages.")),
         Badge("poly", "🌍", K("Polyglot"), K("Use Focus in another language.")),
         Badge("dare", "🎲", K("Dare Taker"), K("Accept 5 challenges from the Challenge me button.")),
+        Badge("classy", "🎒", K("Ready for Class"), K("Arrive at a class day with an empty plate.")),
+        Badge("prepared", "🎓", K("Always Prepared"), K("Arrive at 5 class days with an empty plate.")),
         Badge("piggy", "🐷", K("Piggy Banker"), K("Save 60 minutes of treat time in the piggy bank.")),
         Badge("whale", "🐋", K("Savings Whale"), K("Hold 300 minutes in the piggy bank at once.")),
         Badge("payday", "💰", K("Payday"), K("Get your first piggy bank payout.")),
@@ -71,6 +73,8 @@ object Game {
         Badge("ticket", "🚓", K("Speeding Ticket"), K("Get your first fine from the piggy bank."), shame = true),
         Badge("repeat", "🚔", K("Repeat Offender"), K("Get 5 fines from the piggy bank."), shame = true),
         Badge("pity", "🪙", K("Broke Pity"), K("Get fined while the piggy bank is empty."), shame = true),
+        Badge("overdue", "📚", K("Overdue Homework"), K("Let a subject's tasks pile past a class day or a due day."), shame = true),
+        Badge("dodger", "🏃", K("Deadline Dodger"), K("Miss 5 class days or due days."), shame = true),
         Badge("comeback", "🔥", K("Comeback Kid"), K("Clear the whole plate after earning a shame badge.")),
     )
 
@@ -193,6 +197,10 @@ object Game {
         if (store.vaultFines >= 1) unlock("ticket")
         if (store.vaultFines >= 5) unlock("repeat")
         if (store.flagSet("fine_empty")) unlock("pity")
+        if (store.ruleMissTotal >= 1) unlock("overdue")
+        if (store.ruleMissTotal >= 5) unlock("dodger")
+        if (store.ruleCleanTotal >= 1) unlock("classy")
+        if (store.ruleCleanTotal >= 5) unlock("prepared")
 
         // shame: tasks were planned, nothing got done, three days running
         var idle = 0; var worstIdle = 0

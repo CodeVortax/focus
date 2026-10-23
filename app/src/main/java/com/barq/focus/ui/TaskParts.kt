@@ -97,6 +97,14 @@ fun TaskRow(
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            if (!item.weekly && !item.done && item.deadline > 0L) {
+                val now = System.currentTimeMillis()
+                Text(
+                    if (now > item.deadline) tr("late") else trf("Due %s", java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(item.deadline - 1L))),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (now > item.deadline) MaterialTheme.colorScheme.error else color
+                )
+            }
             if (item.subs.isNotEmpty()) {
                 val d = item.subs.count { it.done }
                 Row(Modifier.clickable { open = !open }.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {

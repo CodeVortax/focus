@@ -48,6 +48,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -88,14 +89,16 @@ import kotlinx.coroutines.delay
 /** One subject: today's checklist + an extendable, pausable timer with its own alarm sound. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
+fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettings: () -> Unit = {}) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val addRequester = remember { BringIntoViewRequester() }
     var card by remember { mutableStateOf(initial) }
     var msg by remember { mutableStateOf("") }
     var newItem by remember { mutableStateOf("") }
-    var budgetText by remember { mutableStateOf(initial.minutes.toString()) }
+    var menu by remember { mutableStateOf(false) }
+    var classDlg by remember { mutableStateOf(false) }
+    var daysDlg by remember { mutableStateOf(false) }
     var showPark by remember { mutableStateOf(false) }
     var rewardText by remember { mutableStateOf(initial.reward.toString()) }
     var compact by remember { mutableStateOf(store.timerCompact) }
@@ -179,23 +182,6 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
         } else {
             card = card.copy(minutes = card.minutes + m)
             store.updateCard(card)
-            budgetText = card.minutes.toString()
-        }
-    }
-
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        if (r.resultCode == Activity.RESULT_OK) {
-            @Suppress("DEPRECATION")
-            val u = r.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-            card = card.copy(sound = u?.toString() ?: "silent")
-            store.updateCard(card)
-        }
-    }
-    val soundName = remember(card.sound) {
-        when (card.sound) {
-            "" -> tr("Default alarm")
-            "silent" -> tr("Silent")
-            else -> try { RingtoneManager.getRingtone(ctx, Uri.parse(card.sound))?.getTitle(ctx) ?: "Custom" } catch (_: Exception) { "Custom" }
         }
     }
 
@@ -207,7 +193,17 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
     Scaffold(topBar = {
         TopAppBar(
             title = { Text(card.title) },
-            navigationIcon = { IconButton(onClick = onExit) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
+            navigationIcon = { IconButton(onClick = onExit) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+            actions = {
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, tr("More")) }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text(tr("Timer sound settings")) }, onClick = { menu = false; onSettings() })
+                        DropdownMenuItem(text = { Text(tr("Class days…")) }, onClick = { menu = false; classDlg = true })
+                        DropdownMenuItem(text = { Text(tr("Make open tasks last N days…")) }, onClick = { menu = false; daysDlg = true })
+                    }
+                }
+            }
         )
     }, contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime)) { pad ->
         Column(
@@ -234,17 +230,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
                     }
                     if (!running) {
                         Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            budgetText,
-                            { s ->
-                                budgetText = s.filter(Char::isDigit).take(3)
-                                val v = budgetText.toIntOrNull()
-                                if (v != null && v > 0) { card = card.copy(minutes = v); store.updateCard(card) }
-                            },
-                            Modifier.width(170.dp),
-                            label = { Text(tr("Budget (min)")) }, singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
+                        MinutesDial(card.minutes, col, { v -> card = card.copy(minutes = v); store.updateCard(card) })
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             rewardText,
@@ -263,24 +249,10 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
                 }
             }
 
-            Card(Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(tr("Timer sound"), style = MaterialTheme.typography.titleMedium)
-                        Text(soundName + "  ·  " + tr("rings + notifies when time is up"), style = MaterialTheme.typography.bodyMedium)
-                    }
-                    TextButton(onClick = {
-                        picker.launch(Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM or RingtoneManager.TYPE_NOTIFICATION)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Timer sound")
-                            val cur: Uri? = if (card.sound.isEmpty() || card.sound == "silent") null else Uri.parse(card.sound)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, cur)
-                        })
-                    }) { Text(tr("Change")) }
-                }
-            }
+            if (card.classDays != 0) Text(
+                trf("Class days: %s. Keep the plate empty before them.", dayNames(card.classDays)),
+                style = MaterialTheme.typography.bodyMedium, color = col
+            )
 
             TextButton(onClick = { showPark = true }, contentPadding = PaddingValues(0.dp)) { Text(tr("Park a thought (saves to Notes)")) }
             if (showPark) {
@@ -479,6 +451,49 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
             }
         )
     }
+    if (classDlg) {
+        var bits by remember { mutableIntStateOf(card.classDays) }
+        val names = remember { java.text.DateFormatSymbols.getInstance().shortWeekdays }   // 1 = Sunday
+        AlertDialog(
+            onDismissRequest = { classDlg = false },
+            title = { Text(tr("Class days")) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr("New work for this subject arrives on these days. Have the plate empty before them, or the piggy bank pays a funny fine."), style = MaterialTheme.typography.bodyMedium)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for (d in 0..6) FilterChip(
+                            selected = bits and (1 shl d) != 0,
+                            onClick = { bits = bits xor (1 shl d) },
+                            label = { Text(names[(d + 1) % 7 + 1]) }
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { card = card.copy(classDays = bits); store.updateCard(card); classDlg = false }) { Text(tr("Save")) } },
+            dismissButton = { TextButton(onClick = { classDlg = false }) { Text(tr("Cancel")) } }
+        )
+    }
+    if (daysDlg) AlertDialog(
+        onDismissRequest = { daysDlg = false },
+        title = { Text(tr("Make open tasks last")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(tr("Every open day task (not the shaded, finished ones) gets this many days. Past that, it counts as late."), style = MaterialTheme.typography.bodyMedium)
+                listOf(1, 2, 3, 5, 7).forEach { n ->
+                    TextButton(onClick = {
+                        val due = Weekly.endOfDay(System.currentTimeMillis() + (n - 1) * 86_400_000L)
+                        commit(card.items.map { if (!it.weekly && !it.done) it.copy(deadline = due) else it })
+                        daysDlg = false
+                    }) { Text(if (n == 1) tr("Today only") else trf("%d days", n)) }
+                }
+                TextButton(onClick = {
+                    commit(card.items.map { if (!it.weekly && !it.done) it.copy(deadline = 0L) else it }); daysDlg = false
+                }) { Text(tr("No limit")) }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = { daysDlg = false }) { Text(tr("Cancel")) } }
+    )
     groupDlg?.let { dlg ->
         val e = dlg.edit
         GroupDialog(
@@ -514,6 +529,12 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit) {
             commit(card.items.toMutableList().also { l -> l[i] = l[i].copy(voice = f, voiceMs = ms) })
         } else Voices.delete(ctx, f)
     }
+}
+
+/** "Mon, Tue" from the class-day bitmask (bit 0 = Monday). */
+internal fun dayNames(bits: Int): String {
+    val n = java.text.DateFormatSymbols.getInstance().shortWeekdays
+    return (0..6).filter { bits and (1 shl it) != 0 }.joinToString(", ") { n[(it + 1) % 7 + 1] }
 }
 
 private data class GroupDlg(val edit: TaskGroup?, val moveIndex: Int)

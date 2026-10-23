@@ -62,8 +62,11 @@ class Db private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationCon
         val out = ArrayList<Row>()
         readableDatabase.rawQuery("SELECT id,kind,pkg,t0,t1,reason,COALESCE(n,0) FROM usage ORDER BY t0 DESC LIMIT $limit", null).use { c ->
             while (c.moveToNext()) {
-                out.add(Row(c.getLong(0), c.getString(1), c.getString(2), c.getLong(3),
-                    if (c.isNull(4)) null else c.getLong(4), if (c.isNull(5)) null else c.getString(5), c.getInt(6)))
+                val k = c.getString(1); val t0 = c.getLong(3)
+                var t1: Long? = if (c.isNull(4)) null else c.getLong(4)
+                // a row a dead service left open must not keep growing for ever
+                if (t1 == null && System.currentTimeMillis() - t0 > staleCap(k)) t1 = t0 + staleCap(k)
+                out.add(Row(c.getLong(0), k, c.getString(2), t0, t1, if (c.isNull(5)) null else c.getString(5), c.getInt(6)))
             }
         }
         return out
@@ -96,15 +99,28 @@ class Db private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationCon
         return total
     }
 
+    /**
+     * Time per package since [since]. Rows are clipped to [since, now] (a visit over midnight counts only its part
+     * of today), and a row that is still open counts at most 3 hours: a service that died leaves rows open forever.
+     */
     fun totalsSince(kind: String, since: Long): Map<String, Long> {
         val now = System.currentTimeMillis()
         val out = LinkedHashMap<String, Long>()
         readableDatabase.rawQuery(
-            "SELECT pkg, SUM(COALESCE(t1, $now) - t0) AS s FROM usage WHERE kind=? AND t0>=$since GROUP BY pkg ORDER BY s DESC",
+            "SELECT pkg, t0, t1 FROM usage WHERE kind=? AND (t1 IS NULL OR t1>$since) AND t0<$now",
             arrayOf(kind)
-        ).use { c -> while (c.moveToNext()) out[c.getString(0)] = c.getLong(1) }
-        return out
+        ).use { c ->
+            while (c.moveToNext()) {
+                val t0 = c.getLong(1)
+                val t1 = if (c.isNull(2)) minOf(now, t0 + staleCap(kind)) else c.getLong(2)
+                val d = minOf(t1, now) - maxOf(t0, since)
+                if (d > 0) out[c.getString(0)] = (out[c.getString(0)] ?: 0L) + d
+            }
+        }
+        return out.entries.sortedByDescending { it.value }.associate { it.key to it.value }
     }
+
+    private fun staleCap(kind: String) = if (kind == "music") 12 * 3_600_000L else 3 * 3_600_000L
 
     companion object {
         @Volatile private var inst: Db? = null

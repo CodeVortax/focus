@@ -48,10 +48,12 @@ Level titles, in order: Couch Potato, Distracted Intern, Focus Apprentice, Task 
 | 🛠️ | **Maker Mode** | Spend 10 hours in project sessions. |
 | 🧰 | **Project Collector** | Keep 3 projects at once. |
 | 🏜️ | **Squeezed Dry** | Use up your whole treat bank in a project session. |
+| 🎒 | **Ready for Class** | Arrive at a class day with an empty plate. |
+| 🎓 | **Always Prepared** | Arrive at 5 class days with an empty plate. |
 | 🍿 | **Treat Yourself** | Earn 40 minutes of treats in one day. |
 | 🔥 | **Comeback Kid** | Clear the whole plate after earning a shame badge. |
 
-## Hall of Shame (10, hidden until earned)
+## Hall of Shame (15, hidden until earned)
 
 These are honest, not punishing: they never remove XP or treats.
 
@@ -67,5 +69,10 @@ These are honest, not punishing: they never remove XP or treats.
 | 🍽️ | **Plate Hoarder** | Let 30 or more unfinished tasks pile up. |
 | 👻 | **Ghosted** | Disappear from Focus for 3 days in a row. |
 | ⚰️ | **Streak Funeral** | Lose a work streak of 7 days or more. |
+| 📚 | **Overdue Homework** | Let a subject's tasks pile past a class day or a due day. |
+| 🚓 | **Speeding Ticket** | Get your first fine from the piggy bank. |
+| 🚔 | **Repeat Offender** | Get 5 fines from the piggy bank. |
+| 🪙 | **Broke Pity** | Get fined while the piggy bank is empty. |
+| 🏃 | **Deadline Dodger** | Miss 5 class days or due days. |
 
 Clearing the whole plate after earning a shame badge awards **Comeback Kid**.

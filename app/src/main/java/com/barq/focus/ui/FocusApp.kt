@@ -141,7 +141,7 @@ fun FocusApp() {
                 val back = { pop() }
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                     when (d.name) {
-                        "subject" -> d.card?.let { SubjectScreen(store, it, back) }
+                        "subject" -> d.card?.let { c -> SubjectScreen(store, c, back, onSettings = { Shared.settingsFocus = "sound:${c.id}"; push("setup") }) }
                         "timer" -> d.card?.let { TimerScreen(store, it, back) }
                         "notes" -> NotesScreen(store, onOpen = { id, type -> push(Dest("note", noteId = id, noteType = type)) }, onBack = back)
                         "note" -> NoteEditorScreen(store, d.noteId, d.noteType, onOpenNote = { n -> replaceTop(Dest("note", noteId = n)) }) { pop() }

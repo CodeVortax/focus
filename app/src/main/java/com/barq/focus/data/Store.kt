@@ -56,7 +56,8 @@ data class FocusCard(
     val media: String = "",           // treat cards: uri of the video/audio to play in the app
     val groups: List<TaskGroup> = emptyList(),
     val eps: List<Episode> = emptyList(),   // treat cards: a series, one episode per token
-    val folder: String = ""                 // treat cards: the folder (tree uri) the episodes live in, for locking
+    val folder: String = "",                // treat cards: the folder (tree uri) the episodes live in, for locking
+    val classDays: Int = 0                  // study cards: bit 0 = Monday .. bit 6 = Sunday; new work arrives on those days
 )
 
 /** A project: a name and the apps you will use for it. */
@@ -153,7 +154,7 @@ class Store(ctx: Context) {
                     }
                 }
             } ?: emptyList()
-            FocusCard(o.getLong("id"), o.getString("title"), CardType.valueOf(o.getString("type")), o.getInt("color"), o.getInt("minutes"), items, o.optString("sound", ""), o.optInt("reward", 10), o.optString("media", ""), groups, eps, o.optString("folder", ""))
+            FocusCard(o.getLong("id"), o.getString("title"), CardType.valueOf(o.getString("type")), o.getInt("color"), o.getInt("minutes"), items, o.optString("sound", ""), o.optInt("reward", 10), o.optString("media", ""), groups, eps, o.optString("folder", ""), o.optInt("cd", 0))
         }
     }
 
@@ -172,7 +173,7 @@ class Store(ctx: Context) {
             c.groups.forEach { groups.put(JSONObject().put("n", it.name).put("c", it.color).put("x", it.collapsed)) }
             a.put(JSONObject().put("id", c.id).put("title", c.title).put("type", c.type.name)
                 .put("color", c.color).put("minutes", c.minutes).put("items", items).put("sound", c.sound).put("reward", c.reward).put("media", c.media).put("groups", groups)
-                .put("folder", c.folder).put("eps", JSONArray().also { ea ->
+                .put("folder", c.folder).put("cd", c.classDays).put("eps", JSONArray().also { ea ->
                     c.eps.forEach { e -> ea.put(JSONObject().put("u", e.uri).put("n", e.name).put("ms", e.ms).put("d", e.done).put("l", e.locked).put("o", e.orig)) }
                 }))
         }
@@ -192,16 +193,48 @@ class Store(ctx: Context) {
         )
     }
 
-    /** New day: finished tasks disappear, unfinished ones carry over. */
+    /**
+     * New day: finished tasks disappear, unfinished ones carry over. A subject with class days that still has open
+     * tasks when new work arrives, or a task past its own due day, counts as a miss (a funny fine, settled by the Vault).
+     */
     fun rollover() {
         touchDay()
         val d = day()
-        if (p.getInt("last_day", 0) != d) {
+        val last = p.getInt("last_day", 0)
+        if (last != d) {
             p.edit().putInt("last_day", d).apply()
-            saveCards(cards().map { c -> c.copy(items = c.items.filter { !it.done }) })
+            val dow = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7      // Monday = 0
+            val todayStart = startOfDay()
+            val pend = try { org.json.JSONArray(ruleMissPending) } catch (_: Exception) { org.json.JSONArray() }
+            var misses = 0; var clean = 0
+            val out = cards().map { c ->
+                val open = c.dayItems.filter { !it.done }
+                val classToday = c.classDays and (1 shl dow) != 0
+                val late = open.count { it.deadline in 1..todayStart }
+                val missed = if (classToday) open.size else late
+                if (last != 0) {
+                    if (missed > 0) { misses++; pend.put(org.json.JSONObject().put("c", c.title).put("n", missed).put("d", d)) }
+                    else if (classToday && c.dayItems.isNotEmpty()) clean++
+                }
+                c.copy(items = c.items.filter { !it.done }.map { if (!it.weekly && it.deadline in 1..todayStart) it.copy(deadline = 0L) else it })
+            }
+            saveCards(out)
+            if (misses > 0) { ruleMissPending = pend.toString(); ruleMissTotal += misses }
+            if (clean > 0) ruleCleanTotal += clean
         }
         notePlanned(cards())
     }
+
+    /** Class-day misses waiting for the Vault to fine them, and lifetime counts for the badges. */
+    var ruleMissPending: String
+        get() = p.getString("rule_miss_pending", "[]") ?: "[]"
+        set(v) { p.edit().putString("rule_miss_pending", v).apply() }
+    var ruleMissTotal: Int
+        get() = p.getInt("rule_miss_total", 0)
+        set(v) { p.edit().putInt("rule_miss_total", v).apply() }
+    var ruleCleanTotal: Int
+        get() = p.getInt("rule_clean_total", 0)
+        set(v) { p.edit().putInt("rule_clean_total", v).apply() }
 
     /** Remembers the biggest plate you had today. */
     fun notePlanned(cards: List<FocusCard>) {
@@ -471,6 +504,13 @@ class Store(ctx: Context) {
     // ---- shorts counter ----
     fun shortsSwipes() = p.getInt("shorts_${day()}", 0)
     fun addShortsSwipe() { p.edit().putInt("shorts_${day()}", shortsSwipes() + 1).apply() }
+    /** Daily Shorts limit in videos (0 = no limit). */
+    var shortsLimit: Int
+        get() = p.getInt("shorts_limit", 30)
+        set(v) { p.edit().putInt("shorts_limit", v.coerceIn(0, 500)).apply() }
+    /** The swipe count up to which Shorts are allowed today (-1 = the gate has not been passed yet). */
+    fun shortsAllow() = p.getInt("shorts_allow_${day()}", -1)
+    fun setShortsAllow(n: Int) { p.edit().putInt("shorts_allow_${day()}", n).apply() }
 
     // ---- treat series: one episode = one token ----
     /** Seconds of watching left on this episode's token (its length plus the free rewind minutes). */

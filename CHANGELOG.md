@@ -2,6 +2,21 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.26.0-beta (version code 43)
+
+### Added
+- **Shorts by number.** Settings → Gate and Shorts has a daily Shorts limit. At the Shorts gate you pick how many to watch (3, 5, 10, 20, up to what is left today) instead of "2 minutes". At the limit only a treat or leaving gets you on.
+- **Circle dial for minutes.** In a subject, draw circles on the dial: clockwise raises the minutes, one full turn is 30. The budget box is gone; the reward is still typed.
+- **Timer sounds live in Settings** (one row per subject). The subject's 3-dots menu has "Timer sound settings", which opens Settings on that block and highlights it.
+- **Class days.** Give a subject class days (say Physics on Monday and Tuesday). When one arrives and the plate still has open tasks, the piggy bank pays a funny fine. 4 new badges: Overdue Homework, Deadline Dodger (hidden) and Ready for Class, Always Prepared (46 in total, 15 hidden).
+- **Make open tasks last N days.** One button gives every open day task (not the finished ones) a 1, 2, 3, 5 or 7 day limit. Past it the task is late and counts as a miss.
+- **Music search button** on the folders, albums, artists and playlists pages and inside any opened list.
+- **Music remembers where you were:** the tab, the opened list, its scroll position and the search text.
+
+### Fixed
+- **A treat bought at one gate now covers the other.** Before, a treat paid at the app gate could still leave the Shorts gate asking again (and the reverse), which felt like paying and still having no time.
+- **History and usage totals.** Visits over midnight count only today's part, and a row left open by a killed service no longer keeps growing (capped at 3 hours, 12 for music).
+
 ## 0.25.0-beta (version code 42)
 
 ### Added

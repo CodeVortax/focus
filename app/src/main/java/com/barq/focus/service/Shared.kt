@@ -30,12 +30,14 @@ object Shared {
     @Volatile var inShorts = false
     @Volatile var suppressUntil = 0L   // don't pop an overlay until then (we're closing an app)
     @Volatile var watchAlive = false
+    @Volatile var treatUntil = 0L      // a bought treat is good in EVERY gate (app gate and Shorts gate) until then
     @Volatile var challengeCard = -1L   // "Challenge me" picked this subject: open it and pick a task
 
     // a .foc file opened with / text shared to Focus, waiting for the import screen
     var pendingUri: Uri? = null
     var pendingText: String? = null
     var pendingTick by mutableIntStateOf(0)
+    @Volatile var settingsFocus: String? = null     // "sound:<cardId>": Settings opens that block and highlights the row
     @Volatile var pendingGo: String? = null       // a notification or widget asked to open a screen: "music", "card:12" ...
     var goTick by mutableIntStateOf(0)
 }

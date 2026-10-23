@@ -6,7 +6,7 @@
 
 A private, open-source Android app that turns your study plan into a reward system and puts a soft gate in front of the apps that eat your time.
 
-[![Version](https://img.shields.io/badge/version-0.25.0--beta-4285F4?style=flat-square)](#install)
+[![Version](https://img.shields.io/badge/version-0.26.0--beta-4285F4?style=flat-square)](#install)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-34A853?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#install)
 [![Internet](https://img.shields.io/badge/internet%20permission-none-2e8b57?style=flat-square)](PRIVACY.md)
@@ -75,7 +75,7 @@ Everything runs on your phone. There is no account, no server, and the manifest 
 ### Motivation
 
 - Streaks, XP and levels.
-- 42 badges, including 13 hidden "Hall of Shame" ones. See [Badges and XP](docs/guides/badges.md).
+- 46 badges, including 15 hidden "Hall of Shame" ones. See [Badges and XP](docs/guides/badges.md).
 - 17 short games for breaks. See [Games](docs/guides/games.md).
 - Four home-screen widgets: **Treat bank**, **Streak**, **Shorts**, and **Today** with a block per subject. See [Widgets](docs/guides/widgets.md).
 
@@ -106,7 +106,7 @@ The full picture is in [Architecture overview](docs/architecture/overview.md).
 
 ## Install
 
-> Focus is currently a **beta** (`0.25.0-beta`, version code 42). Requires **Android 8.0 (API 26)** or newer.
+> Focus is currently a **beta** (`0.26.0-beta`, version code 43). Requires **Android 8.0 (API 26)** or newer.
 
 ### Build from source
 

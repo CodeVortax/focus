@@ -211,7 +211,7 @@ class FocusAccessibility : AccessibilityService() {
                 val now = System.currentTimeMillis()
                 if (inShorts) {
                     if (now - lastFoundAt > 4000L || (Shared.watchAlive && Shared.fg != null && Shared.fg != shortsPkg && shortsPkg !in visiblePackages())) endShorts()
-                    else if (now > allowedUntil && now > Shared.suppressUntil && !ov.showing) showShortsOverlay()
+                    else if (shortsGateDue(now) && now > Shared.suppressUntil && !ov.showing) showShortsOverlay()
                     // keep the baseline fresh while nothing moves, so autoplay or a like is not mistaken for a swipe
                     if (inShorts && !burstPending && now - lastScrollAt > 800L) {
                         shortsPkg?.let { p -> rootFor(p)?.let { r -> lastFp = ShortsDetector.fingerprint(r) } }
@@ -220,6 +220,19 @@ class FocusAccessibility : AccessibilityService() {
             } catch (_: Exception) {}
             h.postDelayed(this, 1000)
         }
+    }
+
+    /** Strict mode keeps its timed pass; otherwise Shorts are counted in videos, and a bought treat covers everything. */
+    private fun shortsGateDue(now: Long): Boolean {
+        if (now < Shared.treatUntil) return false
+        if (store.strictShorts) return now > allowedUntil
+        val allow = store.shortsAllow()
+        return allow < 0 || store.shortsSwipes() > allow
+    }
+
+    private fun grantCount(reason: String, n: Int) {
+        store.setShortsAllow(store.shortsSwipes() + n)
+        if (row >= 0) db.setReason(row, reason)
     }
 
     private fun grant(reason: String, minutes: Int) {
@@ -231,15 +244,20 @@ class FocusAccessibility : AccessibilityService() {
         if (store.strictShorts) { showStrictOverlay(); return }
         val bank = store.bank()
         val ch = ArrayList<Choice>()
-        ch += Choice(trf("Just finish this one  ·  %d min", Config.SHORTS_GRACE_MIN), 0xFF4285F4.toInt()) {
-            grant("Grace", Config.SHORTS_GRACE_MIN)
+        val swiped = store.shortsSwipes()
+        val limit = store.shortsLimit
+        val left = if (limit <= 0) Int.MAX_VALUE else (limit - swiped).coerceAtLeast(0)
+        for (n in listOf(3, 5, 10, 20)) {
+            if (n <= left) ch += Choice(trf("Watch %d more", n), 0xFF4285F4.toInt()) { grantCount("Shorts x$n", n) }
         }
+        if (left in 1..2) ch += Choice(trf("Watch %d more", left), 0xFF4285F4.toInt()) { grantCount("Shorts x$left", left) }
+        if (left == 0) ch += Choice(tr("Daily limit reached"), 0xFF555866.toInt(), enabled = false) {}
         if (bank >= Config.TREAT_STEP) {
             ch += Choice(trf("Treat  ·  %d min  (bank %d)", Config.TREAT_STEP, bank), 0xFF34A853.toInt()) {
-                store.spend(Config.TREAT_STEP); grant("Treat", Config.TREAT_STEP)
+                store.spend(Config.TREAT_STEP); Shared.treatUntil = System.currentTimeMillis() + Config.TREAT_STEP * 60_000L; if (row >= 0) db.setReason(row, "Treat")
             }
             if (bank > Config.TREAT_STEP) ch += Choice(trf("Use all  ·  %d min", bank), 0xFF34A853.toInt()) {
-                store.spend(bank); grant("Treat (all)", bank)
+                store.spend(bank); Shared.treatUntil = System.currentTimeMillis() + bank * 60_000L; if (row >= 0) db.setReason(row, "Treat (all)")
             }
         } else {
             ch += Choice(tr("Treat bank empty: finish tasks to earn"), 0xFF555866.toInt(), enabled = false) {}
@@ -248,7 +266,7 @@ class FocusAccessibility : AccessibilityService() {
         ov.show(
             tag = "shorts",
             title = tr(if (shortsPkg in ShortsDetector.TIKTOK) "TikTok" else "Shorts"),
-            subtitle = trf("%d swiped today  ·  %d min", store.shortsSwipes(), mins),
+            subtitle = if (limit > 0) trf("%d of %d today  ·  %d min", swiped, limit, mins) else trf("%d swiped today  ·  %d min", swiped, mins),
             delaySec = Config.DELAY_SECONDS,
             choices = ch,
             leaveLabel = tr("Back out"),
