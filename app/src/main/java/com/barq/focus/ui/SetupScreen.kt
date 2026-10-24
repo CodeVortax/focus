@@ -84,7 +84,7 @@ import com.barq.focus.data.EpLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
     val ctx = LocalContext.current
