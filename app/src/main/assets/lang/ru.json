@@ -973,6 +973,24 @@
   "Procrastination levy": "Налог на прокрастинацию",
   "Delay is a lifestyle, and lifestyles are taxed.": "Отсрочка — это образ жизни, а образ жизни облагается налогом.",
   "Late slip": "Квитанция об опоздании",
-  "The tasks arrived late to their own party. Sign here.": "Задачи опоздали на собственную вечеринку. Распишитесь здесь."
+  "The tasks arrived late to their own party. Sign here.": "Задачи опоздали на собственную вечеринку. Распишитесь здесь.",
+  "Colour and theme": "Цвет и тема",
+  "App colour, light or dark": "Цвет приложения, светлая или тёмная",
+  "The tick you tap on tasks": "Галочка на задачах",
+  "Use your own font file": "Свой файл шрифта",
+  "App language and your own translation": "Язык приложения и свой перевод",
+  "About me": "Обо мне",
+  "Who made Focus, and how to support it": "Кто сделал Focus и как поддержать",
+  "From %s": "Из: %s",
+  "Egypt": "Египет",
+  "%d years old": "%d лет",
+  "Turns %d next month": "В следующем месяце исполнится %d",
+  "I build Focus on my own, as a student. If it helps you, a star or a coffee keeps it going. Thank you.": "Я делаю Focus один, будучи студентом. Если он вам помогает, звезда или кофе поддержат проект. Спасибо.",
+  "Star Focus on GitHub": "Поставить звезду на GitHub",
+  "Buy me a coffee": "Угостить кофе",
+  "Buy me a coffee (coming soon)": "Угостить кофе (скоро)",
+  "Copy my crypto address": "Скопировать мой крипто-адрес",
+  "Crypto (coming soon)": "Крипто (скоро)",
+  "Address copied": "Адрес скопирован"
  }
 }

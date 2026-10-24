@@ -61,6 +61,7 @@ class WatchService : Service() {
     private var fg: String? = null
     private var fgRow = -1L
     private var lastEventTs = 0L
+    private val seenAtLast = HashSet<String>()
     private var tick = 0
     private var deadSince = 0L
     private var nullSince = 0L
@@ -83,7 +84,7 @@ class WatchService : Service() {
         store = Store(this)
         db = Db.get(this)
         overlay = Overlay.get(this)
-        db.fixOpen()
+        db.fixOpen(store.beat)
         always = Apps.alwaysAllowed(this)
         Shared.watchAlive = true
 
@@ -195,11 +196,14 @@ class WatchService : Service() {
 
     private fun step() {
         val now = System.currentTimeMillis()
+        // several events can share one millisecond (A paused, B resumed): only skip the ones already handled
         for ((pkg, type, ts) in events(lastEventTs)) {
-            if (ts <= lastEventTs) continue
-            lastEventTs = ts
+            if (ts < lastEventTs) continue
+            if (ts == lastEventTs) { if (!seenAtLast.add("$pkg/$type")) continue }
+            else { lastEventTs = ts; seenAtLast.clear(); seenAtLast.add("$pkg/$type") }
             onEvent(pkg, type, ts)
         }
+        if (tick % 10 == 0) store.beat = now
 
         val cur = fg
         projectTick(now, cur)
@@ -302,13 +306,12 @@ class WatchService : Service() {
         )
     }
 
-    /** Re-open the previous row when you come back within [gap] ms, so one visit is one row. */
-    private fun openOrMerge(kind: String, pkg: String, ts: Long, gap: Long): Long {
-        val last = db.lastRow(kind, pkg)
-        val end = last?.t1
-        if (last != null && end != null && ts - end in 0..gap) { db.reopen(last.id); return last.id }
-        return db.open(kind, pkg, ts)
-    }
+    /**
+     * Every visit is its own row. (Re-opening the previous row on a quick return used to count the time you spent
+     * away as time in the app; the Log screen glues close visits together for display only.)
+     */
+    @Suppress("UNUSED_PARAMETER")
+    private fun openOrMerge(kind: String, pkg: String, ts: Long, gap: Long): Long = db.open(kind, pkg, ts)
 
     /** A treat is one pool of minutes for every gate: the Shorts gate must not ask again for time you already paid. */
     private fun treated(minutes: Int) { Shared.treatUntil = System.currentTimeMillis() + minutes * 60_000L }

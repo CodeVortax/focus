@@ -52,6 +52,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ExpandLess
@@ -288,7 +292,7 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                 }
             }
 
-            Group("look", Icons.Default.Palette, "Appearance", "Colour, theme, check shape, language") {
+            Group("look", Icons.Default.Palette, "Colour and theme", "App colour, light or dark") {
                 Text(tr("App colour"), fontWeight = FontWeight.SemiBold)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     FilterChip(
@@ -316,6 +320,8 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                         )
                     }
                 }
+            }
+            Group("shape", Icons.Default.Check, "Check shape", "The tick you tap on tasks") {
                 Text(tr("Check shape"), fontWeight = FontWeight.SemiBold)
                 var shape by remember { mutableStateOf(store.checkShape) }
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -330,6 +336,8 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                     ShapeCheck(demo, MaterialTheme.colorScheme.primary, 0) { demo = it }
                     Text(tr("Tap to preview the pop and glow"), style = MaterialTheme.typography.bodyMedium)
                 }
+            }
+            Group("font", Icons.Default.TextFields, "Font", "Use your own font file") {
                 Text(tr("Font"), fontWeight = FontWeight.SemiBold)
                 val fontPick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { u ->
                     if (u != null) {
@@ -350,6 +358,8 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                     tr("Pick a .ttf or .otf file to try a font. To make one permanent, put it at app/src/main/assets/fonts/default.ttf and rebuild."),
                     style = MaterialTheme.typography.bodyMedium
                 )
+            }
+            Group("lang", Icons.Default.Language, "Language", "App language and your own translation") {
                 Text(tr("Language"), fontWeight = FontWeight.SemiBold)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     I18n.names(ctx).forEach { (c, n) ->
@@ -431,6 +441,33 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                 )
             }
 
+            Group("me", Icons.Default.Person, "About me", "Who made Focus, and how to support it") {
+                val age = remember { com.barq.focus.data.Author.age() }
+                Text(com.barq.focus.data.Author.NAME, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("@" + com.barq.focus.data.Author.HANDLE, color = MaterialTheme.colorScheme.primary)
+                Text(trf("From %s", tr(com.barq.focus.data.Author.COUNTRY)) + "  ·  " + trf("%d years old", age.years))
+                age.nextMonthTurns?.let { Text(trf("Turns %d next month", it), style = MaterialTheme.typography.bodyMedium) }
+                Text(
+                    tr("I build Focus on my own, as a student. If it helps you, a star or a coffee keeps it going. Thank you."),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Button(onClick = { openLink(ctx, com.barq.focus.data.Author.REPO) }) {
+                    Icon(Icons.Default.Star, null); Spacer(Modifier.width(8.dp)); Text(tr("Star Focus on GitHub"))
+                }
+                OutlinedButton(
+                    enabled = com.barq.focus.data.Author.COFFEE.isNotEmpty(),
+                    onClick = { openLink(ctx, com.barq.focus.data.Author.COFFEE) }
+                ) { Text(if (com.barq.focus.data.Author.COFFEE.isEmpty()) tr("Buy me a coffee (coming soon)") else tr("Buy me a coffee")) }
+                OutlinedButton(
+                    enabled = com.barq.focus.data.Author.CRYPTO.isNotEmpty(),
+                    onClick = {
+                        val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
+                        cm?.setPrimaryClip(android.content.ClipData.newPlainText("crypto", com.barq.focus.data.Author.CRYPTO))
+                        Toast.makeText(ctx, tr("Address copied"), Toast.LENGTH_SHORT).show()
+                    }
+                ) { Text(if (com.barq.focus.data.Author.CRYPTO.isEmpty()) tr("Crypto (coming soon)") else tr("Copy my crypto address")) }
+            }
+
             if (dev) Group("dev", Icons.Default.Code, "Developer options", "Rescue tools and debug capture") {
                 Text(tr("Restore locked episode files"), fontWeight = FontWeight.SemiBold)
                 Text(
@@ -506,4 +543,9 @@ internal fun PermRow(title: String, desc: String, ok: Boolean, onGrant: () -> Un
             else Button(onClick = onGrant) { Text(tr("Grant")) }
         }
     }
+}
+
+
+private fun openLink(ctx: android.content.Context, url: String) {
+    try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}
 }

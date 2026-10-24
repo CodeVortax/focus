@@ -148,6 +148,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     var cardMenu by remember { mutableStateOf<FocusCard?>(null) }
     var editing by remember { mutableStateOf<FocusCard?>(null) }
 
+    if (menu) HomeMenuSheet({ menu = false }) { menu = false; go(it) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -157,48 +158,6 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                     IconButton(onClick = { go("pdfs") }) { Icon(Icons.Default.MenuBook, "Library") }
                     Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "More") }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(
-                                text = { Text(tr("Music")) }, leadingIcon = { Icon(Icons.Default.LibraryMusic, null) },
-                                onClick = { menu = false; go("music") }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Projects")) }, leadingIcon = { Icon(Icons.Default.Build, null) },
-                                onClick = { menu = false; go("projects") }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Piggy bank")) }, leadingIcon = { Icon(Icons.Default.Savings, null) },
-                                onClick = { menu = false; go("piggy") }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Games")) }, leadingIcon = { Icon(Icons.Default.SportsEsports, null) },
-                                onClick = { menu = false; go("games") }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Trophies")) }, leadingIcon = { Icon(Icons.Default.Star, null) },
-                                onClick = { menu = false; go("trophies") }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Log")) }, leadingIcon = { Icon(Icons.Default.History, null) },
-                                onClick = { menu = false; go("log") }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Events & meetings")) }, leadingIcon = { Icon(Icons.Default.Event, null) },
-                                onClick = { menu = false; go("events") }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Not-free blocks")) }, leadingIcon = { Icon(Icons.Default.Schedule, null) },
-                                onClick = { menu = false; go("schedule") }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Import / Export (.foc)")) }, leadingIcon = { Icon(Icons.Default.Add, null) },
-                                onClick = { menu = false; go("import") }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Setup")) }, leadingIcon = { Icon(Icons.Default.Settings, null) },
-                                onClick = { menu = false; go("setup") }
-                            )
-                        }
                     }
                 }
             )
@@ -558,3 +517,40 @@ private fun AddCardDialog(onDismiss: () -> Unit, initial: FocusCard? = null, onA
 }
 
 private fun fmtMin(m: Long) = if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m"
+
+
+/** The 3-dots menu as a short grid of tiles (instead of one long list). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeMenuSheet(onDismiss: () -> Unit, go: (String) -> Unit) {
+    val items = listOf(
+        Triple("music", Icons.Default.LibraryMusic, "Music"),
+        Triple("games", Icons.Default.SportsEsports, "Games"),
+        Triple("trophies", Icons.Default.Star, "Trophies"),
+        Triple("projects", Icons.Default.Build, "Projects"),
+        Triple("piggy", Icons.Default.Savings, "Piggy bank"),
+        Triple("log", Icons.Default.History, "Log"),
+        Triple("events", Icons.Default.Event, "Events & meetings"),
+        Triple("schedule", Icons.Default.Schedule, "Not-free blocks"),
+        Triple("import", Icons.Default.Add, "Import / Export (.foc)"),
+        Triple("setup", Icons.Default.Settings, "Setup"),
+    )
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(horizontal = 12.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { (route, icon, label) ->
+                        Column(
+                            Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable { go(route) }.padding(vertical = 14.dp, horizontal = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+                            Text(tr(label), Modifier.padding(top = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, style = MaterialTheme.typography.labelLarge, maxLines = 2)
+                        }
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}

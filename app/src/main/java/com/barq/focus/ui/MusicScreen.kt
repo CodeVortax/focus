@@ -82,6 +82,13 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -251,19 +258,33 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
         }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
+            // pages slide sideways, in the direction of the tab you pick; the old page keeps its own content while it leaves
+            val page = if (!granted) -1 else if (loading && songs.isEmpty()) -2 else if (subTitle != null) 100 else tab.ordinal
+            val lastSubBox = remember { arrayOfNulls<Pair<String, List<Song>>>(1) }
+            if (sub != null) lastSubBox[0] = sub
+            val lastSub = lastSubBox[0]
+            AnimatedContent(
+                targetState = page,
+                transitionSpec = {
+                    val dir = if (targetState > initialState) 1 else -1
+                    (slideInHorizontally(tween(260)) { dir * it / 3 } + fadeIn(tween(260))) togetherWith
+                        (slideOutHorizontally(tween(260)) { -dir * it / 3 } + fadeOut(tween(160)))
+                },
+                label = "musicPage"
+            ) { pg ->
             when {
-                !granted -> Column(
-                    Modifier.align(Alignment.Center).padding(28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)
+                pg == -1 -> Column(
+                    Modifier.fillMaxSize().padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
                 ) {
                     Text(tr("Music"), style = MaterialTheme.typography.headlineSmall, fontFamily = FocusBrandFont, fontWeight = FontWeight.Bold)
                     Text(tr("Focus needs permission to read the music on your phone."), textAlign = TextAlign.Center)
                     Button(onClick = { launcher.launch(perm) }) { Text(tr("Allow")) }
                     TextButton(onClick = onBack) { Text(tr("Back")) }
                 }
-                loading && songs.isEmpty() -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                sub != null -> {
-                    val (title, list) = sub!!
+                pg == -2 -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                pg == 100 && lastSub != null -> {
+                    val (title, list) = lastSub ?: return@AnimatedContent
                     SongList(
                         list, favs, { play(list, it) }, { menuSong = it },
                         state = subState,
@@ -274,7 +295,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                         }
                     )
                 }
-                else -> when (tab) {
+                else -> when (MTab.values()[pg.coerceIn(0, MTab.values().size - 1)]) {
                     MTab.NOW -> NowPage(
                         current, false,
                         favs.contains(current?.id), 
@@ -371,6 +392,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                         )
                     }
                 }
+            }
             }
             if (granted && (sub != null || tab == MTab.FOLDERS || tab == MTab.ALBUMS || tab == MTab.ARTISTS || tab == MTab.PLAYLISTS)) {
                 Surface(

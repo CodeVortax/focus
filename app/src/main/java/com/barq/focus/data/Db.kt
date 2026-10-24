@@ -56,7 +56,10 @@ class Db private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationCon
     }
 
     /** Rows left open by a killed service get a zero-length end. */
-    fun fixOpen() { writableDatabase.execSQL("UPDATE usage SET t1=t0 WHERE t1 IS NULL") }
+    /** Rows left open by a killed service end at the last heartbeat (never before they began). */
+    fun fixOpen(beat: Long) {
+        writableDatabase.execSQL("UPDATE usage SET t1=CASE WHEN ?>t0 THEN ? ELSE t0 END WHERE t1 IS NULL", arrayOf<Any>(beat, beat))
+    }
 
     fun recent(limit: Int): List<Row> {
         val out = ArrayList<Row>()

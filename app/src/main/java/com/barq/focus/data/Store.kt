@@ -501,6 +501,11 @@ class Store(ctx: Context) {
         get() = p.getBoolean("timer_compact", false)
         set(v) { p.edit().putBoolean("timer_compact", v).apply() }
 
+    /** Last time the watcher was alive: where a row left open by a killed service really ended. */
+    var beat: Long
+        get() = p.getLong("beat", 0L)
+        set(v) { p.edit().putLong("beat", v).apply() }
+
     // ---- shorts counter ----
     fun shortsSwipes() = p.getInt("shorts_${day()}", 0)
     fun addShortsSwipe() { p.edit().putInt("shorts_${day()}", shortsSwipes() + 1).apply() }

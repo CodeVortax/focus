@@ -189,11 +189,9 @@ class FocusAccessibility : AccessibilityService() {
         // coming back within 90 s continues the same burst instead of starting a new row
         val last = db.lastRow("shorts", pkg)
         val end = last?.t1
-        if (last != null && end != null && now - end in 0..90_000L) {
-            db.reopen(last.id); row = last.id
-        } else {
-            row = db.open("shorts", pkg, now)
-            db.addCount(row, 1); store.addShortsSwipe() // the video you landed on
+        row = db.open("shorts", pkg, now)
+        if (!(last != null && end != null && now - end in 0..90_000L)) {
+            db.addCount(row, 1); store.addShortsSwipe() // the video you landed on (not again when you just stepped out and back)
         }
     }
 

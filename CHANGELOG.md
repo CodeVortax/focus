@@ -2,6 +2,22 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.26.1-beta (version code 44)
+
+### Changed
+- **Circle dial finishes the ring.** After one turn or more, letting go rounds to the nearest full circle (30, 60, 90 min...), so the ring never ends half done. The +1/+5/+10 buttons still fine-tune.
+- **Music pages slide** sideways in the direction of the tab you pick, instead of swapping instantly.
+- **Home 3-dots menu is a tile grid** (a bottom sheet) instead of one long list.
+- **Settings are split into smaller blocks:** Colour and theme, Check shape, Font and Language are now separate.
+
+### Added
+- **Settings → About me:** who made Focus, with an age that works itself out, a GitHub star link, and (empty for now) Buy me a coffee and crypto.
+
+### Fixed
+- **Usage time counted time you were away.** Coming back to an app within 90 seconds used to re-open the old row, so the gap counted as time in the app. Every visit is now its own row; the Log still shows close visits as one.
+- **Dropped events.** Two system events with the same millisecond (one app pausing as another resumes) could be skipped, leaving the wrong app "in front". Both are handled now.
+- **Rows left open by a killed service** now end at the watcher's last heartbeat instead of a zero-length end.
+
 ## 0.26.0-beta (version code 43)
 
 ### Added

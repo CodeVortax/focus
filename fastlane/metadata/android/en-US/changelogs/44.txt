@@ -1,0 +1,1 @@
+Circle dial snaps to a full ring, music pages slide, usage time no longer counts time away, 3-dots menu is a tile grid, settings split into smaller blocks, About me with GitHub star link.

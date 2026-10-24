@@ -52,7 +52,7 @@ import kotlin.math.sin
 const val DIAL_MIN_PER_TURN = 30
 
 /**
- * Draw circles with your finger: clockwise raises the minutes, anticlockwise lowers them, one full turn is 30 minutes.
+ * Draw circles with your finger (letting go after one turn or more rounds to the nearest full circle; the +1/+5/+10 buttons do the fine tuning): clockwise raises the minutes, anticlockwise lowers them, one full turn is 30 minutes.
  * The ring shows the part of the current turn; the number in the middle is the total.
  */
 @Composable
@@ -63,6 +63,13 @@ fun MinutesDial(minutes: Int, color: Color, onChange: (Int) -> Unit, modifier: M
     var acc by remember { mutableStateOf(0.0) }
     var base by remember { mutableStateOf(0) }
     val track = MaterialTheme.colorScheme.surfaceVariant
+    fun snap() {
+        val m = cur
+        if (m >= DIAL_MIN_PER_TURN) {
+            val full = ((m + DIAL_MIN_PER_TURN / 2) / DIAL_MIN_PER_TURN) * DIAL_MIN_PER_TURN
+            if (full != m) cb(full)
+        }
+    }
     Box(
         modifier.size(180.dp).pointerInput(Unit) {
             detectDragGestures(
@@ -80,7 +87,10 @@ fun MinutesDial(minutes: Int, color: Color, onChange: (Int) -> Unit, modifier: M
                     acc += d
                     val v = (base + acc / (2 * PI) * DIAL_MIN_PER_TURN).roundToInt().coerceIn(1, 600)
                     if (v != cur) cb(v)
-                }
+                },
+                // let go after a turn or more: finish the ring, so you never end on a half circle
+                onDragEnd = { snap() },
+                onDragCancel = { snap() }
             )
         },
         contentAlignment = Alignment.Center

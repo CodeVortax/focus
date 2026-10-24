@@ -973,6 +973,24 @@
   "Procrastination levy": "Taxe de procrastination",
   "Delay is a lifestyle, and lifestyles are taxed.": "Le retard est un mode de vie, et les modes de vie sont taxés.",
   "Late slip": "Billet de retard",
-  "The tasks arrived late to their own party. Sign here.": "Les tâches sont arrivées en retard à leur propre fête. Signez ici."
+  "The tasks arrived late to their own party. Sign here.": "Les tâches sont arrivées en retard à leur propre fête. Signez ici.",
+  "Colour and theme": "Couleur et thème",
+  "App colour, light or dark": "Couleur de l'app, clair ou sombre",
+  "The tick you tap on tasks": "La coche des tâches",
+  "Use your own font file": "Votre propre fichier de police",
+  "App language and your own translation": "Langue de l'app et votre traduction",
+  "About me": "À propos de moi",
+  "Who made Focus, and how to support it": "Qui a fait Focus et comment le soutenir",
+  "From %s": "De : %s",
+  "Egypt": "Égypte",
+  "%d years old": "%d ans",
+  "Turns %d next month": "Aura %d ans le mois prochain",
+  "I build Focus on my own, as a student. If it helps you, a star or a coffee keeps it going. Thank you.": "Je fais Focus seul, en tant qu'étudiant. S'il vous aide, une étoile ou un café le fait vivre. Merci.",
+  "Star Focus on GitHub": "Mettre une étoile sur GitHub",
+  "Buy me a coffee": "Offrez-moi un café",
+  "Buy me a coffee (coming soon)": "Offrez-moi un café (bientôt)",
+  "Copy my crypto address": "Copier mon adresse crypto",
+  "Crypto (coming soon)": "Crypto (bientôt)",
+  "Address copied": "Adresse copiée"
  }
 }
