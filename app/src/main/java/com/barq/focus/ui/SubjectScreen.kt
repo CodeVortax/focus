@@ -127,7 +127,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
         pausedLeft = store.activeRemaining
         nowState.longValue = System.currentTimeMillis()
     }
-    fun refresh() { Alerts.stop(); TimerAlarm.reschedule(ctx, store); Notifier.syncTimer(ctx, store); sync() }
+    fun refresh() { Alerts.stop(); TimerAlarm.reschedule(ctx, store); Notifier.syncTimer(ctx, store); com.barq.focus.service.FocusWidgets.refresh(ctx, true); sync() }
 
     LaunchedEffect(Unit) { while (true) { sync(); delay(500) } }
 
@@ -138,6 +138,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
         store.updateCard(card)
         val gained = store.settle(store.cards()) + extraSec
         if (gained > 0) msg = trf("+%s min added to your treat bank", minText(gained))
+        else if (gained < 0) msg = trf("-%s min taken back from your treat bank", minText(-gained))
         val day = card.dayItems
         if (day.isNotEmpty() && day.all { it.done } && running) stopTimer()
     }
@@ -149,8 +150,12 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
         var award = 0
         if (v && x.weekly && !x.paid) {
             award = Weekly.rewardSec(x, System.currentTimeMillis())
-            next = next.copy(paid = true)
+            next = next.copy(paid = true, paidSec = award)
             if (award > 0) { store.earnSec(award); store.touchDay() }
+        } else if (!v && x.weekly && x.paid) {
+            // un-ticked: take the reward back so it can be earned again (or not at all) when it is really done
+            if (x.paidSec > 0) { store.earnSec(-x.paidSec); award = -x.paidSec }
+            next = next.copy(paid = false, paidSec = 0)
         }
         commit(card.items.toMutableList().also { l -> l[i] = next }, award)
     }

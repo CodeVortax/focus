@@ -208,7 +208,7 @@ class WatchService : Service() {
         val cur = fg
         projectTick(now, cur)
         val gated = store.gated() - store.projectApps()          // the apps of a running project session skip the gate
-        val lockBlock = store.activeBlock()?.takeIf { it.lock }
+        val lockBlock = store.studyLock(now) ?: store.activeBlock()?.takeIf { it.lock }
         val blocked = lockBlock != null && cur != null && !isAllowed(lockBlock, cur)
         // A gated app can also sit in a floating or split window while another app has the focus: gate that one too.
         val gtarget = if (cur != null && cur in gated) cur else if (gated.isNotEmpty()) hiddenGated(gated, cur, now) else null

@@ -174,6 +174,7 @@ fun FocusApp() {
                         "log" -> LogScreen(db, back)
                         "schedule" -> ScheduleScreen(store, back)
                         "events" -> EventsScreen(back)
+                        "launcher" -> LauncherScreen(store, back)
                         "setup" -> SetupScreen(store, back, onTour = { push("welcome") })
                         "welcome" -> OnboardingScreen(store) { reset("home") }
                         else -> HomeScreen(store, onOpen = { open(it) }, go = { push(it) })

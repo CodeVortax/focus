@@ -90,6 +90,22 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:stateNotNeeded="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|navigation|uiMode|layoutDirection|locale|density|fontScale"
+            android:label="@string/launcher_name"
+            android:theme="@style/Theme.Focus">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".service.MusicService"
             android:exported="true"
@@ -151,6 +167,14 @@
         <receiver android:name=".service.ShortsWidget" android:exported="false" android:label="@string/widget_shorts_name">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_shorts_info" />
+        </receiver>
+        <receiver android:name=".service.TimerWidget" android:exported="false" android:label="@string/widget_timer_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_timer_info" />
+        </receiver>
+        <receiver android:name=".service.PiggyWidget" android:exported="false" android:label="@string/widget_piggy_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_piggy_info" />
         </receiver>
         <receiver android:name=".service.TodayWidget" android:exported="false" android:label="@string/widget_today_name">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>

@@ -74,6 +74,48 @@ object FocusWidgets {
         return v
     }
 
+    /** The running subject timer: a real countdown (the system ticks it, no refresh needed). */
+    fun timer(ctx: Context): RemoteViews {
+        val s = Store(ctx)
+        val v = RemoteViews(ctx.packageName, R.layout.widget_timer)
+        val card = s.cards().firstOrNull { it.id == s.activeCardId }
+        v.setTextViewText(R.id.w_label, tr("Timer"))
+        if (card == null) {
+            v.setViewVisibility(R.id.w_chrono, android.view.View.GONE)
+            v.setViewVisibility(R.id.w_big, android.view.View.VISIBLE)
+            v.setTextViewText(R.id.w_big, "\u23F1")
+            v.setTextViewText(R.id.w_small, tr("No timer running"))
+            v.setTextViewText(R.id.w_line, tr("Tap to pick a subject"))
+            v.setOnClickPendingIntent(R.id.w_root, open(ctx))
+            return v
+        }
+        val left = if (s.activePaused) s.activeRemaining else s.activeEnd - System.currentTimeMillis()
+        v.setTextViewText(R.id.w_label, card.title)
+        v.setViewVisibility(R.id.w_big, android.view.View.GONE)
+        v.setViewVisibility(R.id.w_chrono, android.view.View.VISIBLE)
+        v.setChronometerCountDown(R.id.w_chrono, true)
+        v.setChronometer(R.id.w_chrono, android.os.SystemClock.elapsedRealtime() + left, null, !s.activePaused)
+        v.setTextColor(R.id.w_chrono, card.color)
+        v.setTextViewText(R.id.w_small, tr(if (s.activePaused) "Paused" else if (left < 0) "Over budget" else "left"))
+        v.setTextViewText(R.id.w_line, "\uD83C\uDF7F " + trf("%s min", s.bankText()))
+        v.setOnClickPendingIntent(R.id.w_root, open(ctx, "card:${card.id}"))
+        return v
+    }
+
+    fun piggy(ctx: Context): RemoteViews {
+        val s = Store(ctx)
+        val v = RemoteViews(ctx.packageName, R.layout.widget_treat)
+        val bal = com.barq.focus.data.Vault.balanceSec(s)
+        val next = com.barq.focus.data.Vault.lots(s).minByOrNull { it.release }
+        v.setTextViewText(R.id.w_label, tr("Piggy bank"))
+        v.setTextViewText(R.id.w_big, com.barq.focus.data.minText(bal))
+        v.setTextViewText(R.id.w_small, tr("min saved"))
+        v.setTextViewText(R.id.w_line, if (next == null) tr("Nothing saved yet") else trf("Pays out in %d d", com.barq.focus.data.Vault.daysLeft(next)))
+        v.setTextColor(R.id.w_big, accent(s))
+        v.setOnClickPendingIntent(R.id.w_root, open(ctx, "piggy"))
+        return v
+    }
+
     fun streak(ctx: Context): RemoteViews {
         val s = Store(ctx)
         val v = RemoteViews(ctx.packageName, R.layout.widget_streak)
@@ -162,6 +204,8 @@ object FocusWidgets {
             each(StreakWidget::class.java) { streak(it) }
             each(ShortsWidget::class.java) { shorts(it) }
             each(TodayWidget::class.java) { today(it) }
+            each(TimerWidget::class.java) { timer(it) }
+            each(PiggyWidget::class.java) { piggy(it) }
         } catch (_: Exception) {}
     }
 }
@@ -184,4 +228,12 @@ class ShortsWidget : AppWidgetProvider() {
 
 class TodayWidget : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, m: AppWidgetManager, ids: IntArray) = update(ctx, m, ids, FocusWidgets::today)
+}
+
+class TimerWidget : AppWidgetProvider() {
+    override fun onUpdate(ctx: Context, m: AppWidgetManager, ids: IntArray) = update(ctx, m, ids, FocusWidgets::timer)
+}
+
+class PiggyWidget : AppWidgetProvider() {
+    override fun onUpdate(ctx: Context, m: AppWidgetManager, ids: IntArray) = update(ctx, m, ids, FocusWidgets::piggy)
 }

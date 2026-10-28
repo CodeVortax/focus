@@ -7,6 +7,11 @@
     <string name="widget_today_desc">Today\'s subjects with progress, treat bank, streak and Shorts</string>
     <string name="widget_streak_name">Focus · Streak</string>
     <string name="widget_streak_desc">Your work-day and light-Shorts streaks</string>
+    <string name="launcher_name">Focus Launcher</string>
+    <string name="widget_timer_name">Focus · Timer</string>
+    <string name="widget_timer_desc">The running subject timer, counting down live</string>
+    <string name="widget_piggy_name">Focus · Piggy bank</string>
+    <string name="widget_piggy_desc">What is saved in the piggy bank and when it pays out</string>
     <string name="widget_shorts_name">Focus · Shorts</string>
     <string name="widget_shorts_desc">Shorts and Reels swiped today</string>
     <string name="music_channel">Music playback</string>

@@ -33,6 +33,7 @@ data class Item(
     val created: Long = 0L,           // weekly: when it was added
     val deadline: Long = 0L,          // weekly: end of its week
     val paid: Boolean = false,        // weekly: reward already given (no double dipping)
+    val paidSec: Int = 0,             // weekly: how much was paid, so un-ticking can take it back
     val group: String = "",           // name of the TaskGroup it sits in ("" = none)
     val voice: String = "",           // voice note file name ("" = none)
     val voiceMs: Long = 0L,
@@ -138,7 +139,7 @@ class Store(ctx: Context) {
                     arr.getJSONObject(i).let { x ->
                         Item(
                             x.getString("t"), x.getBoolean("d"), x.optBoolean("w", false), x.optInt("r", 0), x.optLong("c", 0L),
-                            x.optLong("dl", 0L), x.optBoolean("p", false), x.optString("g", ""), x.optString("v", ""), x.optLong("vm", 0L),
+                            x.optLong("dl", 0L), x.optBoolean("p", false), x.optInt("ps", 0), x.optString("g", ""), x.optString("v", ""), x.optLong("vm", 0L),
                             x.optJSONArray("sb")?.let { sa -> (0 until sa.length()).map { k -> sa.getJSONObject(k).let { so -> SubTask(so.optString("t", ""), so.optBoolean("d", false)) } } } ?: emptyList()
                         )
                     }
@@ -165,7 +166,7 @@ class Store(ctx: Context) {
             c.items.forEach {
                 items.put(
                     JSONObject().put("t", it.text).put("d", it.done).put("w", it.weekly).put("r", it.reward).put("c", it.created)
-                        .put("dl", it.deadline).put("p", it.paid).put("g", it.group).put("v", it.voice).put("vm", it.voiceMs)
+                        .put("dl", it.deadline).put("p", it.paid).put("ps", it.paidSec).put("g", it.group).put("v", it.voice).put("vm", it.voiceMs)
                         .put("sb", JSONArray().also { sa -> it.subs.forEach { sx -> sa.put(JSONObject().put("t", sx.text).put("d", sx.done)) } })
                 )
             }
@@ -293,7 +294,7 @@ class Store(ctx: Context) {
     private fun bonusSec() = p.getInt("bonusS_${day()}", 0)       // piggy-bank payouts: spendable today, but not "earned" (no XP)
     fun addBonusSec(s: Int) { p.edit().putInt("bonusS_${day()}", bonusSec() + s).apply() }
     private fun spentSec() = p.getInt("spentS_${day()}", 0)
-    fun earnSec(s: Int) { p.edit().putInt("earnedS_${day()}", earnedSec() + s).apply() }
+    fun earnSec(s: Int) { p.edit().putInt("earnedS_${day()}", (earnedSec() + s).coerceAtLeast(0)).apply() }
     fun spendSec(s: Int) { p.edit().putInt("spentS_${day()}", spentSec() + s).apply() }
     fun earn(min: Int) = earnSec(min * 60)
     fun spend(min: Int) = spendSec(min * 60)
@@ -303,7 +304,7 @@ class Store(ctx: Context) {
 
     /**
      * Each subject's reward is split across its tasks: finish 1 of 4 tasks of a 10-min subject = 2.5 min.
-     * Never takes anything back. Returns seconds gained now.
+     * Un-ticking a task takes its share back (an accidental tick can be undone). Returns seconds gained now (negative = taken back).
      */
     fun settle(cards: List<FocusCard>): Int {
         var gained = 0
@@ -312,14 +313,21 @@ class Store(ctx: Context) {
             val target = c.reward * 60 * c.dayItems.count { it.done } / c.dayItems.size
             val key = "subs_${day()}_${c.id}"
             val have = p.getInt(key, 0)
-            if (target > have) { gained += target - have; p.edit().putInt(key, target).apply() }
+            if (target != have) { gained += target - have; p.edit().putInt(key, target).apply() }
         }
         if (plan.isNotEmpty() && plan.all { c -> c.dayItems.all { it.done } } && !flag("day")) {
             setFlag("day")
-            if (Calendar.getInstance().get(Calendar.HOUR_OF_DAY) < 18) p.edit().putBoolean("speedrun", true).apply()
+            if (Calendar.getInstance().get(Calendar.HOUR_OF_DAY) < 18 && !p.getBoolean("speedrun", false)) {
+                p.edit().putBoolean("speedrun", true).putBoolean("speedrun_by_${day()}", true).apply()
+            }
             gained += (Config.DAY_BONUS - (if (flag("partial")) Config.PARTIAL_BONUS else 0)) * 60
+        } else if (flag("day") && !(plan.isNotEmpty() && plan.all { c -> c.dayItems.all { it.done } })) {
+            // the last task was un-ticked: the whole-day bonus goes back too
+            p.edit().remove("day_${day()}").apply()
+            if (p.getBoolean("speedrun_by_${day()}", false)) p.edit().remove("speedrun").remove("speedrun_by_${day()}").apply()
+            gained -= (Config.DAY_BONUS - (if (flag("partial")) Config.PARTIAL_BONUS else 0)) * 60
         }
-        if (gained > 0) earnSec(gained)
+        if (gained != 0) earnSec(gained)
         return gained
     }
 
@@ -497,6 +505,37 @@ class Store(ctx: Context) {
     var checkShape: Int                           // 0 circle, 1..6 triangle..octagon, 7 mixed
         get() = p.getInt("check_shape", 0)
         set(v) { p.edit().putInt("check_shape", v).apply() }
+    var menuSide: Int                             // Home 3-dots panel: 0 follows the language, 1 left, 2 right
+        get() = p.getInt("menu_side", 0)
+        set(v) { p.edit().putInt("menu_side", v).apply() }
+    // ---- study launcher ----
+    fun launcherApps(): Set<String> = p.getStringSet("launcher_apps", null)?.toSet() ?: emptySet()
+    fun setLauncherApps(s: Set<String>) { p.edit().putStringSet("launcher_apps", HashSet(s)).apply() }
+    var launcherCols: Int
+        get() = p.getInt("launcher_cols", 4)
+        set(v) { p.edit().putInt("launcher_cols", v.coerceIn(3, 5)).apply() }
+    var launcherTasks: Boolean
+        get() = p.getBoolean("launcher_tasks", true)
+        set(v) { p.edit().putBoolean("launcher_tasks", v).apply() }
+    var launcherLockUntil: Long                    // study lock end (millis), 0 = none
+        get() = p.getLong("launcher_lock_until", 0L)
+        set(v) { p.edit().putLong("launcher_lock_until", v).apply() }
+    var launcherLockOnTimer: Boolean               // also lock while a subject timer runs
+        get() = p.getBoolean("launcher_lock_timer", false)
+        set(v) { p.edit().putBoolean("launcher_lock_timer", v).apply() }
+
+    /** The study lock as a strict block: only the launcher's apps (plus Focus, the phone and the system) work. */
+    fun studyLock(now: Long): Block? {
+        val until = when {
+            launcherLockUntil > now -> launcherLockUntil
+            launcherLockOnTimer && activeCardId != -1L && !activePaused -> maxOf(activeEnd, now + 60_000L)
+            else -> return null
+        }
+        val c = Calendar.getInstance(); c.timeInMillis = until
+        val m = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
+        return Block(-99L, "Study lock", 0, m, lock = true, strict = true, allowed = launcherApps())
+    }
+
     var timerCompact: Boolean
         get() = p.getBoolean("timer_compact", false)
         set(v) { p.edit().putBoolean("timer_compact", v).apply() }

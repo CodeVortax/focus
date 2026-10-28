@@ -30,6 +30,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.MenuBook
@@ -148,7 +153,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     var cardMenu by remember { mutableStateOf<FocusCard?>(null) }
     var editing by remember { mutableStateOf<FocusCard?>(null) }
 
-    if (menu) HomeMenuSheet({ menu = false }) { menu = false; go(it) }
+    if (menu) HomeMenuPanel(store.menuSide, { menu = false }) { menu = false; go(it) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -519,10 +524,12 @@ private fun AddCardDialog(onDismiss: () -> Unit, initial: FocusCard? = null, onA
 private fun fmtMin(m: Long) = if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m"
 
 
-/** The 3-dots menu as a short grid of tiles (instead of one long list). */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The 3-dots menu: a slim panel of icons that slides in from the side. Slide it inward (or tap the arrow) and the
+ * names appear. The side follows the language direction unless Settings picked one.
+ */
 @Composable
-private fun HomeMenuSheet(onDismiss: () -> Unit, go: (String) -> Unit) {
+private fun HomeMenuPanel(side: Int, onDismiss: () -> Unit, go: (String) -> Unit) {
     val items = listOf(
         Triple("music", Icons.Default.LibraryMusic, "Music"),
         Triple("games", Icons.Default.SportsEsports, "Games"),
@@ -532,23 +539,63 @@ private fun HomeMenuSheet(onDismiss: () -> Unit, go: (String) -> Unit) {
         Triple("log", Icons.Default.History, "Log"),
         Triple("events", Icons.Default.Event, "Events & meetings"),
         Triple("schedule", Icons.Default.Schedule, "Not-free blocks"),
+        Triple("launcher", Icons.Default.Home, "Study launcher"),
         Triple("import", Icons.Default.Add, "Import / Export (.foc)"),
         Triple("setup", Icons.Default.Settings, "Setup"),
     )
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(horizontal = 12.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items.chunked(3).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { (route, icon, label) ->
-                        Column(
-                            Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable { go(route) }.padding(vertical = 14.dp, horizontal = 4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-                            Text(tr(label), Modifier.padding(top = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, style = MaterialTheme.typography.labelLarge, maxLines = 2)
+    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    // auto = the end side, where the 3-dots button is
+    val onRight = when (side) { 1 -> false; 2 -> true; else -> !rtl }
+    var expanded by remember { mutableStateOf(false) }
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val width by androidx.compose.animation.core.animateDpAsState(if (expanded) 210.dp else 64.dp, label = "menuW")
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        Box(Modifier.fillMaxSize().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onDismiss)) {
+            androidx.compose.animation.AnimatedVisibility(
+                shown,
+                modifier = Modifier.align(if (onRight == !rtl) Alignment.CenterEnd else Alignment.CenterStart),
+                enter = androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(240)) { if (onRight) it else -it },
+            ) {
+                var drag by remember { mutableStateOf(0f) }
+                Surface(
+                    Modifier.fillMaxHeight().width(width).clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {}
+                        .pointerInput(onRight) {
+                            androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                                onDragStart = { drag = 0f },
+                                onHorizontalDrag = { c, dx -> c.consume(); drag += dx },
+                                onDragEnd = {
+                                    val inward = if (onRight) -drag else drag
+                                    if (inward > 40f) expanded = true else if (inward < -40f) expanded = false
+                                }
+                            )
+                        },
+                    shape = if (onRight) RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp) else RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
+                    tonalElevation = 6.dp, shadowElevation = 8.dp
+                ) {
+                    Column(
+                        Modifier.windowInsetsPadding(WindowInsets.systemBars).verticalScroll(rememberScrollState()).padding(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        IconButton(onClick = { expanded = !expanded }, Modifier.align(Alignment.CenterHorizontally)) {
+                            Icon(
+                                if (expanded == onRight) Icons.AutoMirrored.Filled.KeyboardArrowRight else Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                tr(if (expanded) "Hide names" else "Show names")
+                            )
+                        }
+                        items.forEach { (route, icon, label) ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 8.dp).clip(RoundedCornerShape(16.dp)).clickable { go(route) }.padding(vertical = 12.dp, horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(icon, tr(label), tint = MaterialTheme.colorScheme.primary)
+                                if (expanded) Text(tr(label), Modifier.padding(start = 14.dp), maxLines = 1, style = MaterialTheme.typography.bodyLarge)
+                            }
                         }
                     }
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }

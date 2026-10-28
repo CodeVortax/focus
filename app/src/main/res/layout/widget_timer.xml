@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="12dp"
+    android:background="@drawable/widget_bg">
+    <TextView android:id="@+id/w_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:textColor="@color/widget_dim" android:textSize="12sp" android:maxLines="1" />
+    <Chronometer android:id="@+id/w_chrono" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:textSize="34sp" android:textStyle="bold" android:textColor="@color/widget_on" android:maxLines="1" />
+    <TextView android:id="@+id/w_big" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:textSize="34sp" android:textStyle="bold" android:textColor="@color/widget_on" android:maxLines="1" />
+    <TextView android:id="@+id/w_small" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:textColor="@color/widget_dim" android:textSize="12sp" android:maxLines="1" />
+    <TextView android:id="@+id/w_line" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:paddingTop="6dp" android:textColor="@color/widget_on" android:textSize="12sp" android:maxLines="1" />
+</LinearLayout>

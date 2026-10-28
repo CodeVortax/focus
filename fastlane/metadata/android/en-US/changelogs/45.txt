@@ -1,0 +1,1 @@
+Study launcher with a study lock, side-panel menu, Timer and Piggy widgets, un-ticking a task takes its reward back, dial ring fills on release.

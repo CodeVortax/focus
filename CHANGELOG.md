@@ -2,6 +2,21 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.27.0-beta (version code 45)
+
+### Added
+- **Study launcher.** A small home screen (clock, running timer, what is left on your plate, only the apps you pick). Make it your home app or open it when you study. Home menu → Study launcher. See [Study launcher](docs/guides/study-launcher.md).
+- **Study lock.** For 25 to 120 minutes, or while a subject timer runs, every app that is not on the launcher is blocked (no emergency button) and the phone's settings can't be opened. Ending a time lock early means typing a sentence.
+- **Timer widget** (a live countdown of the running subject) and **Piggy bank widget** (saved minutes and days to payout).
+- **Menu side.** Settings → Colour and theme → Menu side: the Home menu comes from the left, the right, or follows the language.
+
+### Changed
+- **The Home 3-dots menu is a slim side panel** of icons that slides in. Slide it inward or tap the arrow to see the names.
+- **Circle dial.** While you draw it shows the turn you are on (as before); when you let go the ring animates to a full circle. The minutes are exactly what you drew.
+
+### Fixed
+- **Un-ticking a task takes its reward back.** An accidental tick used to keep the minutes (and the whole-day bonus) even after you un-ticked it. Now the share of the subject's reward, a planned task's reward and the whole-day bonus all go back, and come again when you tick it for real.
+
 ## 0.26.1-beta (version code 44)
 
 ### Changed

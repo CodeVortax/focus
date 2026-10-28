@@ -309,6 +309,13 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                         )
                     }
                 }
+                Text(tr("Menu side"), fontWeight = FontWeight.SemiBold)
+                var menuSide by remember { mutableStateOf(store.menuSide) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0 to "Follow language", 1 to "Left", 2 to "Right").forEach { (m, n) ->
+                        FilterChip(selected = menuSide == m, onClick = { menuSide = m; store.menuSide = m }, label = { Text(tr(n)) })
+                    }
+                }
                 Text(tr("Theme"), fontWeight = FontWeight.SemiBold)
                 var themeMode by remember { mutableStateOf(store.themeMode) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

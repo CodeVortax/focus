@@ -19,6 +19,8 @@
 
 package com.barq.focus.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
@@ -52,7 +54,7 @@ import kotlin.math.sin
 const val DIAL_MIN_PER_TURN = 30
 
 /**
- * Draw circles with your finger (letting go after one turn or more rounds to the nearest full circle; the +1/+5/+10 buttons do the fine tuning): clockwise raises the minutes, anticlockwise lowers them, one full turn is 30 minutes.
+ * Draw circles with your finger: clockwise raises the minutes, anticlockwise lowers them, one full turn is 30 minutes.
  * The ring shows the part of the current turn; the number in the middle is the total.
  */
 @Composable
@@ -63,19 +65,15 @@ fun MinutesDial(minutes: Int, color: Color, onChange: (Int) -> Unit, modifier: M
     var acc by remember { mutableStateOf(0.0) }
     var base by remember { mutableStateOf(0) }
     val track = MaterialTheme.colorScheme.surfaceVariant
-    fun snap() {
-        val m = cur
-        if (m >= DIAL_MIN_PER_TURN) {
-            val full = ((m + DIAL_MIN_PER_TURN / 2) / DIAL_MIN_PER_TURN) * DIAL_MIN_PER_TURN
-            if (full != m) cb(full)
-        }
-    }
+    // while you draw, the ring shows the part of the turn you are on; when you let go it fills up to a full circle
+    var settled by remember { mutableStateOf(false) }
+    val fill by animateFloatAsState(if (settled) 1f else 0f, tween(450), label = "dialFill")
     Box(
         modifier.size(180.dp).pointerInput(Unit) {
             detectDragGestures(
                 onDragStart = { p ->
                     last = atan2((p.y - size.height / 2f).toDouble(), (p.x - size.width / 2f).toDouble())
-                    acc = 0.0; base = cur
+                    acc = 0.0; base = cur; settled = false
                 },
                 onDrag = { change, _ ->
                     change.consume()
@@ -88,9 +86,8 @@ fun MinutesDial(minutes: Int, color: Color, onChange: (Int) -> Unit, modifier: M
                     val v = (base + acc / (2 * PI) * DIAL_MIN_PER_TURN).roundToInt().coerceIn(1, 600)
                     if (v != cur) cb(v)
                 },
-                // let go after a turn or more: finish the ring, so you never end on a half circle
-                onDragEnd = { snap() },
-                onDragCancel = { snap() }
+                onDragEnd = { settled = true },
+                onDragCancel = { settled = true }
             )
         },
         contentAlignment = Alignment.Center
@@ -101,7 +98,8 @@ fun MinutesDial(minutes: Int, color: Color, onChange: (Int) -> Unit, modifier: M
             val sz = Size(size.width - w, size.height - w)
             drawArc(track, 0f, 360f, false, Offset(inset, inset), sz, style = Stroke(w))
             val frac = (minutes % DIAL_MIN_PER_TURN) / DIAL_MIN_PER_TURN.toFloat()
-            val sweep = if (minutes > 0 && frac == 0f) 360f else frac * 360f
+            val part = if (minutes > 0 && frac == 0f) 360f else frac * 360f
+            val sweep = part + (360f - part) * fill
             drawArc(color, -90f, sweep, false, Offset(inset, inset), sz, style = Stroke(w, cap = StrokeCap.Round))
             val ang = -PI / 2 + sweep / 180.0 * PI
             val r = (size.width - w) / 2
