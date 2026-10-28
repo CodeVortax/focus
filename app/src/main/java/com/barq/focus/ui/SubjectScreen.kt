@@ -73,6 +73,7 @@ import com.barq.focus.data.VoicePlayer
 import com.barq.focus.data.Weekly
 import com.barq.focus.data.SubTask
 import com.barq.focus.data.dayItems
+import com.barq.focus.data.weekItems
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import com.barq.focus.data.tr

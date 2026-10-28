@@ -31,6 +31,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -564,7 +565,7 @@ private fun HomeMenuPanel(side: Int, onDismiss: () -> Unit, go: (String) -> Unit
                 Surface(
                     Modifier.fillMaxHeight().width(width).clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {}
                         .pointerInput(onRight) {
-                            androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                            detectHorizontalDragGestures(
                                 onDragStart = { drag = 0f },
                                 onHorizontalDrag = { c, dx -> c.consume(); drag += dx },
                                 onDragEnd = {
