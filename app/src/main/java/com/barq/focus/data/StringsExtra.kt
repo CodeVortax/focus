@@ -21,6 +21,8 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "%d full turns" to "%d دورات كاملة",
+    "%d turns + %d min" to "%d دورات + %d دقيقة",
     "Turn the ring to set the minutes. Add more any time." to "أدر الحلقة لضبط الدقائق. يمكنك إضافة المزيد في أي وقت.",
     "No timer running" to "لا يوجد مؤقت يعمل",
     "Tap to pick a subject" to "اضغط لاختيار مادة",

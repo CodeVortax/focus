@@ -1031,6 +1031,8 @@
   "Start a lock now:": "Начать блокировку сейчас:",
   "Needs usage access, overlay and accessibility (Settings). Ending a time lock early means typing a sentence on the launcher.": "Нужны доступ к использованию, наложение и спецвозможности (Настройки). Досрочное снятие — набрать фразу на лаунчере.",
   "Launcher apps": "Приложения лаунчера",
-  "Turn the ring to set the minutes. Add more any time.": "Крутите кольцо, чтобы задать минуты. Можно добавить ещё в любой момент."
+  "Turn the ring to set the minutes. Add more any time.": "Крутите кольцо, чтобы задать минуты. Можно добавить ещё в любой момент.",
+  "%d full turns": "%d полных оборота",
+  "%d turns + %d min": "%d оборота + %d мин"
  }
 }

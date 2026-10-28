@@ -1031,6 +1031,8 @@
   "Start a lock now:": "Lancer un verrou maintenant :",
   "Needs usage access, overlay and accessibility (Settings). Ending a time lock early means typing a sentence on the launcher.": "Nécessite accès à l'usage, superposition et accessibilité (Réglages). L'arrêter plus tôt : taper une phrase dans le lanceur.",
   "Launcher apps": "Apps du lanceur",
-  "Turn the ring to set the minutes. Add more any time.": "Tournez l'anneau pour régler les minutes. Ajoutez-en à tout moment."
+  "Turn the ring to set the minutes. Add more any time.": "Tournez l'anneau pour régler les minutes. Ajoutez-en à tout moment.",
+  "%d full turns": "%d tours complets",
+  "%d turns + %d min": "%d tours + %d min"
  }
 }

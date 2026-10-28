@@ -1031,6 +1031,8 @@
   "Start a lock now:": "Sperre jetzt starten:",
   "Needs usage access, overlay and accessibility (Settings). Ending a time lock early means typing a sentence on the launcher.": "Braucht Nutzungszugriff, Überlagerung und Bedienungshilfen (Einstellungen). Früh beenden heißt einen Satz im Launcher tippen.",
   "Launcher apps": "Launcher-Apps",
-  "Turn the ring to set the minutes. Add more any time.": "Dreh den Ring, um die Minuten einzustellen. Du kannst jederzeit mehr hinzufügen."
+  "Turn the ring to set the minutes. Add more any time.": "Dreh den Ring, um die Minuten einzustellen. Du kannst jederzeit mehr hinzufügen.",
+  "%d full turns": "%d volle Umdrehungen",
+  "%d turns + %d min": "%d Umdrehungen + %d Min."
  }
 }

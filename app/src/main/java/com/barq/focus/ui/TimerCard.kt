@@ -176,9 +176,13 @@ fun SubjectTimerCard(
         budgetMs <= 0L -> 1f
         else -> (remaining.toFloat() / budgetMs).coerceIn(0f, 1f)
     }
+    val turns = (budgetMs / 60_000L).toInt() / DIAL_MIN_PER_TURN
+    val extra = (budgetMs / 60_000L).toInt() % DIAL_MIN_PER_TURN
     TimerCardUi(
         timeText = timeText,
-        caption = tr(
+        caption = if (!running && !paused && turns >= 1)
+            (if (extra == 0) com.barq.focus.data.trf("%d full turns", turns) else com.barq.focus.data.trf("%d turns + %d min", turns, extra))
+        else tr(
             when {
                 paused -> "Paused. Go do your thing, then resume."
                 !running -> "Turn the ring to set the minutes. Add more any time."
