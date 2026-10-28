@@ -225,7 +225,8 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
                     }
                 },
                 onStop = { stopTimer() },
-                onToggleCompact = { compact = !compact; store.timerCompact = compact }
+                onToggleCompact = { compact = !compact; store.timerCompact = compact },
+                onDial = { v -> card = card.copy(minutes = v); store.updateCard(card) }
             )
 
             Card(Modifier.fillMaxWidth()) {
@@ -234,8 +235,6 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
                         listOf(1, 5, 10).forEach { m -> OutlinedButton(onClick = { addMinutes(m) }) { Text("+${m}m") } }
                     }
                     if (!running) {
-                        Spacer(Modifier.height(8.dp))
-                        MinutesDial(card.minutes, col, { v -> card = card.copy(minutes = v); store.updateCard(card) })
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             rewardText,

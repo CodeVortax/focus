@@ -38,6 +38,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,11 +88,20 @@ fun TimerCardUi(
     timeText: String, caption: String, fraction: Float, over: Boolean,
     running: Boolean, paused: Boolean, color: Color, compact: Boolean,
     showPlay: Boolean = true,
+    dialMinutes: Int = 0, onDial: ((Int) -> Unit)? = null,
     onPlayPause: () -> Unit, onStop: () -> Unit, onToggleCompact: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val ink = if (over) MaterialTheme.colorScheme.error else color
     val showPause = running && !paused
+    // not running: turn the ring itself to set the minutes. Drawing shows the part of the turn, letting go fills it.
+    var dragging by remember { mutableStateOf(false) }
+    val part = (dialMinutes % DIAL_MIN_PER_TURN) / DIAL_MIN_PER_TURN.toFloat()
+    val target = if (onDial != null && dragging && dialMinutes > 0) (if (part == 0f) 1f else part) else fraction
+    val shown by androidx.compose.animation.core.animateFloatAsState(
+        target, if (dragging) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(450), label = "ring"
+    )
+    val ringMod = Modifier.turnDial(dialMinutes, onDial != null && !running, { dragging = it }, { onDial?.invoke(it) })
     val src = remember { MutableInteractionSource() }
     Surface(
         modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp),
@@ -97,8 +109,8 @@ fun TimerCardUi(
     ) {
         if (!compact) {
             Box(Modifier.fillMaxWidth().height(310.dp).padding(18.dp)) {
-                Box(Modifier.align(Alignment.Center).size(236.dp), contentAlignment = Alignment.Center) {
-                    Ring(fraction, ink, 26.dp, Modifier.fillMaxSize())
+                Box(Modifier.align(Alignment.Center).size(236.dp).then(ringMod), contentAlignment = Alignment.Center) {
+                    Ring(shown, ink, 26.dp, Modifier.fillMaxSize())
                     Column(
                         Modifier.clickable(interactionSource = src, indication = null, onClick = onToggleCompact).padding(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -124,7 +136,7 @@ fun TimerCardUi(
                 Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Ring(fraction, ink, 12.dp, Modifier.size(64.dp))
+                Ring(shown, ink, 12.dp, Modifier.size(64.dp).then(ringMod))
                 Spacer(Modifier.width(14.dp))
                 Column(
                     Modifier.weight(1f).clickable(interactionSource = src, indication = null, onClick = onToggleCompact),
@@ -148,7 +160,8 @@ fun TimerCardUi(
 @Composable
 fun SubjectTimerCard(
     running: Boolean, paused: Boolean, endAt: Long, pausedLeft: Long, budgetMs: Long, nowState: State<Long>,
-    color: Color, compact: Boolean, onPlayPause: () -> Unit, onStop: () -> Unit, onToggleCompact: () -> Unit
+    color: Color, compact: Boolean, onPlayPause: () -> Unit, onStop: () -> Unit, onToggleCompact: () -> Unit,
+    onDial: ((Int) -> Unit)? = null
 ) {
     val remaining = when {
         paused -> pausedLeft
@@ -168,12 +181,13 @@ fun SubjectTimerCard(
         caption = tr(
             when {
                 paused -> "Paused. Go do your thing, then resume."
-                !running -> "Budget. Be generous, add more any time."
+                !running -> "Turn the ring to set the minutes. Add more any time."
                 over -> "Over budget. Add time or wrap up."
                 else -> "Time left"
             }
         ),
         fraction = fraction, over = over, running = running, paused = paused, color = color, compact = compact,
+        dialMinutes = (budgetMs / 60_000L).toInt(), onDial = onDial,
         onPlayPause = onPlayPause, onStop = onStop, onToggleCompact = onToggleCompact
     )
 }
