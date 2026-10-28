@@ -38,6 +38,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateContentSize
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -90,7 +92,7 @@ fun TimerCardUi(
     timeText: String, caption: String, fraction: Float, over: Boolean,
     running: Boolean, paused: Boolean, color: Color, compact: Boolean,
     showPlay: Boolean = true,
-    dialMinutes: Int = 0, onDial: ((Int) -> Unit)? = null,
+    dialMinutes: Int = 0, onDial: ((Int) -> Unit)? = null, runLaps: Int = 0,
     onPlayPause: () -> Unit, onStop: () -> Unit, onToggleCompact: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -103,14 +105,19 @@ fun TimerCardUi(
     val shown by androidx.compose.animation.core.animateFloatAsState(
         target, if (dragging) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(450), label = "ring"
     )
-    val laps = if (onDial != null && dragging && dialMinutes > 0) (dialMinutes - 1) / DIAL_MIN_PER_TURN else 0
+    val laps = if (onDial != null && dragging && dialMinutes > 0) (dialMinutes - 1) / DIAL_MIN_PER_TURN else runLaps
     val ringMod = Modifier.turnDial(dialMinutes, onDial != null && !running, { dragging = it }, { onDial?.invoke(it) })
     val src = remember { MutableInteractionSource() }
     Surface(
-        modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp),
+        modifier.fillMaxWidth().animateContentSize(androidx.compose.animation.core.tween(280)), shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp, shadowElevation = 3.dp
     ) {
-        if (!compact) {
+        androidx.compose.animation.AnimatedContent(
+            targetState = compact,
+            transitionSpec = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(240, delayMillis = 60)) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)) },
+            label = "timerSize"
+        ) { isCompact ->
+        if (!isCompact) {
             Box(Modifier.fillMaxWidth().height(310.dp).padding(18.dp)) {
                 Box(Modifier.align(Alignment.Center).size(236.dp).then(ringMod), contentAlignment = Alignment.Center) {
                     Ring(shown, ink, 26.dp, Modifier.fillMaxSize(), laps)
@@ -156,6 +163,7 @@ fun TimerCardUi(
                 }
             }
         }
+        }
     }
 }
 
@@ -174,9 +182,15 @@ fun SubjectTimerCard(
     val over = running && remaining < 0
     val secs = (kotlin.math.abs(remaining) + 999) / 1000
     val timeText = (if (over) "+" else "") + "%02d:%02d".format(secs / 60, secs % 60)
+    // a budget of more than one turn (30 min) drains turn by turn: the ring moves from the first second, and the
+    // turns still to come sit as a darker full ring underneath
+    val turnMs = DIAL_MIN_PER_TURN * 60_000L
+    val multi = running && !over && budgetMs > turnMs && remaining > 0L
+    val lapsLeft = if (multi) ((remaining + turnMs - 1) / turnMs).toInt() - 1 else 0
     val fraction = when {
         over || !running -> 1f
         budgetMs <= 0L -> 1f
+        multi -> ((remaining - lapsLeft * turnMs).toFloat() / turnMs).coerceIn(0f, 1f)
         else -> (remaining.toFloat() / budgetMs).coerceIn(0f, 1f)
     }
     val turns = (budgetMs / 60_000L).toInt() / DIAL_MIN_PER_TURN
@@ -194,7 +208,7 @@ fun SubjectTimerCard(
             }
         ),
         fraction = fraction, over = over, running = running, paused = paused, color = color, compact = compact,
-        dialMinutes = (budgetMs / 60_000L).toInt(), onDial = onDial,
+        dialMinutes = (budgetMs / 60_000L).toInt(), onDial = onDial, runLaps = lapsLeft,
         onPlayPause = onPlayPause, onStop = onStop, onToggleCompact = onToggleCompact
     )
 }

@@ -15,6 +15,8 @@ Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 - **One ring.** The timer's own ring is the dial: when no timer runs, draw circles on it (clockwise raises the minutes, one turn = 30). While you draw it shows the turn you are on; when you let go it fills up to a full circle, which is also how the timer starts. The separate dial is gone.
 
 ### Fixed
+- **Timer ring for budgets over 30 minutes** drains turn by turn from the first second (it used to look frozen until 30 minutes were left); the turns still to come sit underneath as a darker ring.
+- **Switching the timer between the small and big card** now animates (the card resizes and fades) instead of jumping.
 - **Un-ticking a task takes its reward back.** An accidental tick used to keep the minutes (and the whole-day bonus) even after you un-ticked it. Now the share of the subject's reward, a planned task's reward and the whole-day bonus all go back, and come again when you tick it for real.
 
 ## 0.26.1-beta (version code 44)
