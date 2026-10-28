@@ -65,6 +65,8 @@ class WatchService : Service() {
     private var tick = 0
     private var deadSince = 0L
     private var nullSince = 0L
+    private var gateAwaySince = 0L
+    private var gateFor: String? = null
     // project session bookkeeping
     private var projLast = 0L
     private var projCarry = 0L
@@ -226,7 +228,16 @@ class WatchService : Service() {
             } else {
                 if (overlay.showing && overlay.tag == "block") overlay.hide()
                 if (gtarget == null) {
-                    if (overlay.showing && overlay.tag == "gate") overlay.hide()
+                    // The gate stays on the app until you choose something or press Leave. A passing blip (a keyboard, a
+                    // system window, a transition) must not hide it, so only a sustained absence of the app does.
+                    if (overlay.showing && overlay.tag == "gate") {
+                        if (gateAwaySince == 0L) gateAwaySince = now
+                        val limit = if (cur != null && cur in always) 700L else 1800L      // home screen: hide soon; anything else: wait
+                        if (now - gateAwaySince > limit) { overlay.hide(); gateAwaySince = 0L }
+                    } else gateAwaySince = 0L
+                } else if (overlay.showing && overlay.tag == "gate") {
+                    gateAwaySince = 0L
+                    if (gtarget != gateFor) overlay.hide()          // another gated app came to the front: gate that one instead
                 } else if (!overlay.showing && now > Shared.suppressUntil && (allowedUntil[gtarget] ?: 0L) <= now && now >= Shared.treatUntil) {
                     showGate(gtarget)
                 }
@@ -322,6 +333,7 @@ class WatchService : Service() {
     }
 
     private fun showGate(cur: String) {
+        gateFor = cur
         val block = store.activeBlock()
         val bank = store.bank()
         val ch = ArrayList<Choice>()

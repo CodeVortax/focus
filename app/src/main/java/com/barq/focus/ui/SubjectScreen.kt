@@ -97,6 +97,8 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
     var msg by remember { mutableStateOf("") }
     var newItem by remember { mutableStateOf("") }
     var menu by remember { mutableStateOf(false) }
+    var examDlg by remember { mutableStateOf(false) }
+    var reviewOffer by remember { mutableStateOf<String?>(null) }
     var classDlg by remember { mutableStateOf(false) }
     var daysDlg by remember { mutableStateOf(false) }
     var showPark by remember { mutableStateOf(false) }
@@ -157,6 +159,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
             if (x.paidSec > 0) { store.earnSec(-x.paidSec); award = -x.paidSec }
             next = next.copy(paid = false, paidSec = 0)
         }
+        if (v && !x.weekly && !x.text.startsWith("\u21BB ")) reviewOffer = x.text
         commit(card.items.toMutableList().also { l -> l[i] = next }, award)
     }
 
@@ -204,6 +207,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
                     IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, tr("More")) }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text(tr("Timer sound settings")) }, onClick = { menu = false; onSettings() })
+                        DropdownMenuItem(text = { Text(tr("Exam date…")) }, onClick = { menu = false; examDlg = true })
                         DropdownMenuItem(text = { Text(tr("Class days…")) }, onClick = { menu = false; classDlg = true })
                         DropdownMenuItem(text = { Text(tr("Make open tasks last N days…")) }, onClick = { menu = false; daysDlg = true })
                     }
@@ -253,6 +257,26 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
                 }
             }
 
+            reviewOffer?.let { t ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(trf("Review \"%s\" again in 1, 3 and 7 days?", t), fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { store.scheduleReviews(card.id, t); reviewOffer = null; msg = tr("Reviews scheduled") }) { Text(tr("Yes")) }
+                            TextButton(onClick = { reviewOffer = null }) { Text(tr("No")) }
+                        }
+                    }
+                }
+            }
+            if (card.examDate > 0L) {
+                val daysTo = ((card.examDate - System.currentTimeMillis()).coerceAtLeast(0L) / 86_400_000L).toInt() + 1
+                val left = card.dayItems.count { !it.done } + card.weekItems.count { !it.done }
+                Text(
+                    if (System.currentTimeMillis() > card.examDate) tr("The exam day has passed.")
+                    else trf("Exam in %d days  ·  %d tasks left  ·  about %s a day", daysTo, left, String.format(java.util.Locale.US, "%.1f", left / daysTo.toFloat())),
+                    style = MaterialTheme.typography.bodyMedium, color = col, fontWeight = FontWeight.SemiBold
+                )
+            }
             if (card.classDays != 0) Text(
                 trf("Class days: %s. Keep the plate empty before them.", dayNames(card.classDays)),
                 style = MaterialTheme.typography.bodyMedium, color = col
@@ -455,6 +479,13 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
             }
         )
     }
+    if (examDlg) DueDialog(
+        initial = card.examDate,
+        onDismiss = { examDlg = false },
+        onPick = { d -> card = card.copy(examDate = d); store.updateCard(card); examDlg = false },
+        onEndOfWeek = { card = card.copy(examDate = 0L); store.updateCard(card); examDlg = false },
+        endLabel = tr("No exam")
+    )
     if (classDlg) {
         var bits by remember { mutableIntStateOf(card.classDays) }
         val names = remember { java.text.DateFormatSymbols.getInstance().shortWeekdays }   // 1 = Sunday

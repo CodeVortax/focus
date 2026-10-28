@@ -1033,6 +1033,12 @@
   "Launcher apps": "Приложения лаунчера",
   "Turn the ring to set the minutes. Add more any time.": "Крутите кольцо, чтобы задать минуты. Можно добавить ещё в любой момент.",
   "%d full turns": "%d полных оборота",
-  "%d turns + %d min": "%d оборота + %d мин"
+  "%d turns + %d min": "%d оборота + %d мин",
+  "Exam date…": "Дата экзамена…",
+  "Review \"%s\" again in 1, 3 and 7 days?": "Повторить «%s» через 1, 3 и 7 дней?",
+  "Reviews scheduled": "Повторения запланированы",
+  "Exam in %d days  ·  %d tasks left  ·  about %s a day": "Экзамен через %d дн.  ·  осталось задач: %d  ·  около %s в день",
+  "The exam day has passed.": "День экзамена прошёл.",
+  "No exam": "Без экзамена"
  }
 }

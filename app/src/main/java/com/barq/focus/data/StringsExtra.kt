@@ -21,6 +21,12 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "Exam date…" to "موعد الامتحان…",
+    "Review \"%s\" again in 1, 3 and 7 days?" to "مراجعة «%s» بعد 1 و3 و7 أيام؟",
+    "Reviews scheduled" to "تمت جدولة المراجعات",
+    "Exam in %d days  ·  %d tasks left  ·  about %s a day" to "الامتحان بعد %d يومًا  ·  متبقٍ %d مهمة  ·  نحو %s يوميًا",
+    "The exam day has passed." to "مرّ يوم الامتحان.",
+    "No exam" to "بلا امتحان",
     "%d full turns" to "%d دورات كاملة",
     "%d turns + %d min" to "%d دورات + %d دقيقة",
     "Turn the ring to set the minutes. Add more any time." to "أدر الحلقة لضبط الدقائق. يمكنك إضافة المزيد في أي وقت.",

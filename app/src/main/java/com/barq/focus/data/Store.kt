@@ -58,7 +58,8 @@ data class FocusCard(
     val groups: List<TaskGroup> = emptyList(),
     val eps: List<Episode> = emptyList(),   // treat cards: a series, one episode per token
     val folder: String = "",                // treat cards: the folder (tree uri) the episodes live in, for locking
-    val classDays: Int = 0                  // study cards: bit 0 = Monday .. bit 6 = Sunday; new work arrives on those days
+    val classDays: Int = 0,                 // study cards: bit 0 = Monday .. bit 6 = Sunday; new work arrives on those days
+    val examDate: Long = 0L                 // study cards: end of the exam day (millis), 0 = none
 )
 
 /** A project: a name and the apps you will use for it. */
@@ -155,7 +156,7 @@ class Store(ctx: Context) {
                     }
                 }
             } ?: emptyList()
-            FocusCard(o.getLong("id"), o.getString("title"), CardType.valueOf(o.getString("type")), o.getInt("color"), o.getInt("minutes"), items, o.optString("sound", ""), o.optInt("reward", 10), o.optString("media", ""), groups, eps, o.optString("folder", ""), o.optInt("cd", 0))
+            FocusCard(o.getLong("id"), o.getString("title"), CardType.valueOf(o.getString("type")), o.getInt("color"), o.getInt("minutes"), items, o.optString("sound", ""), o.optInt("reward", 10), o.optString("media", ""), groups, eps, o.optString("folder", ""), o.optInt("cd", 0), o.optLong("ex", 0L))
         }
     }
 
@@ -174,7 +175,7 @@ class Store(ctx: Context) {
             c.groups.forEach { groups.put(JSONObject().put("n", it.name).put("c", it.color).put("x", it.collapsed)) }
             a.put(JSONObject().put("id", c.id).put("title", c.title).put("type", c.type.name)
                 .put("color", c.color).put("minutes", c.minutes).put("items", items).put("sound", c.sound).put("reward", c.reward).put("media", c.media).put("groups", groups)
-                .put("folder", c.folder).put("cd", c.classDays).put("eps", JSONArray().also { ea ->
+                .put("folder", c.folder).put("cd", c.classDays).put("ex", c.examDate).put("eps", JSONArray().also { ea ->
                     c.eps.forEach { e -> ea.put(JSONObject().put("u", e.uri).put("n", e.name).put("ms", e.ms).put("d", e.done).put("l", e.locked).put("o", e.orig)) }
                 }))
         }
@@ -223,7 +224,46 @@ class Store(ctx: Context) {
             if (misses > 0) { ruleMissPending = pend.toString(); ruleMissTotal += misses }
             if (clean > 0) ruleCleanTotal += clean
         }
+        releaseReviews()
         notePlanned(cards())
+    }
+
+    // ---- spaced review: a finished task comes back as a short review task after 1, 3 and 7 days ----
+    class Review(val cardId: Long, val text: String, val due: Int)
+
+    fun reviews(): List<Review> = try {
+        val a = JSONArray(p.getString("reviews", "[]") ?: "[]")
+        (0 until a.length()).map { a.getJSONObject(it).let { o -> Review(o.getLong("c"), o.getString("t"), o.getInt("d")) } }
+    } catch (_: Exception) { emptyList() }
+
+    private fun saveReviews(l: List<Review>) {
+        val a = JSONArray(); l.forEach { a.put(JSONObject().put("c", it.cardId).put("t", it.text).put("d", it.due)) }
+        p.edit().putString("reviews", a.toString()).apply()
+    }
+
+    private fun dayKeyPlus(n: Int): Int {
+        val c = Calendar.getInstance(); c.add(Calendar.DAY_OF_YEAR, n)
+        return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
+    }
+
+    fun scheduleReviews(cardId: Long, text: String) {
+        val t = text.removePrefix("\u21BB ")
+        saveReviews(reviews().filter { !(it.cardId == cardId && it.text == t) } + listOf(1, 3, 7).map { Review(cardId, t, dayKeyPlus(it)) })
+    }
+
+    /** Reviews that are due today become ordinary tasks on their subject. */
+    fun releaseReviews() {
+        val all = reviews()
+        if (all.isEmpty()) return
+        val today = day()
+        val (due, later) = all.partition { it.due <= today }
+        if (due.isEmpty()) return
+        val have = cards()
+        saveCards(have.map { c ->
+            val mine = due.filter { it.cardId == c.id }.map { "\u21BB " + it.text }.filter { t -> c.items.none { it.text == t && !it.done } }
+            if (mine.isEmpty()) c else c.copy(items = c.items + mine.map { Item(it, false) })
+        })
+        saveReviews(later)
     }
 
     /** Class-day misses waiting for the Vault to fine them, and lifetime counts for the badges. */

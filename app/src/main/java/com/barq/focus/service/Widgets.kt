@@ -186,6 +186,11 @@ object FocusWidgets {
             "\uD83C\uDF7F " + trf("%s min", s.bankText()) + "   \uD83D\uDD25 " + days(Game.workStreak(s)) +
                 "   \uD83D\uDCF1 " + trf("%d swiped", s.shortsSwipes())
         )
+        val nowMs = System.currentTimeMillis()
+        cards.filter { it.examDate > nowMs }.minByOrNull { it.examDate }?.let { c ->
+            val d = ((c.examDate - nowMs) / 86_400_000L).toInt() + 1
+            v.setTextViewText(R.id.w_line, "\uD83D\uDCC5 ${c.title} " + trf("%d d", d) + "   " + "\uD83C\uDF7F " + trf("%s min", s.bankText()))
+        }
         v.setOnClickPendingIntent(R.id.w_root, open(ctx))
         return v
     }

@@ -1033,6 +1033,12 @@
   "Launcher apps": "Apps du lanceur",
   "Turn the ring to set the minutes. Add more any time.": "Tournez l'anneau pour régler les minutes. Ajoutez-en à tout moment.",
   "%d full turns": "%d tours complets",
-  "%d turns + %d min": "%d tours + %d min"
+  "%d turns + %d min": "%d tours + %d min",
+  "Exam date…": "Date de l'examen…",
+  "Review \"%s\" again in 1, 3 and 7 days?": "Réviser « %s » dans 1, 3 et 7 jours ?",
+  "Reviews scheduled": "Révisions planifiées",
+  "Exam in %d days  ·  %d tasks left  ·  about %s a day": "Examen dans %d jours  ·  %d tâches restantes  ·  environ %s par jour",
+  "The exam day has passed.": "Le jour de l'examen est passé.",
+  "No exam": "Pas d'examen"
  }
 }

@@ -230,7 +230,7 @@ fun GroupDialog(initial: TaskGroup?, defaultColor: Int, onDismiss: () -> Unit, o
 /** Pick any day (next week, in two months...). [onPick] gets the moment that day ends; [onEndOfWeek] goes back to the default. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DueDialog(initial: Long, onDismiss: () -> Unit, onPick: (Long) -> Unit, onEndOfWeek: () -> Unit) {
+fun DueDialog(initial: Long, onDismiss: () -> Unit, onPick: (Long) -> Unit, onEndOfWeek: () -> Unit, endLabel: String = tr("End of this week")) {
     val st = rememberDatePickerState(initialSelectedDateMillis = if (initial > 0L) initial - 1L else null)
     DatePickerDialog(
         onDismissRequest = onDismiss,
@@ -246,7 +246,7 @@ fun DueDialog(initial: Long, onDismiss: () -> Unit, onPick: (Long) -> Unit, onEn
         },
         dismissButton = {
             Row {
-                TextButton(onClick = onEndOfWeek) { Text(tr("End of this week")) }
+                TextButton(onClick = onEndOfWeek) { Text(endLabel) }
                 TextButton(onClick = onDismiss) { Text(tr("Cancel")) }
             }
         }

@@ -2,6 +2,15 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.28.0-beta (version code 46)
+
+### Added
+- **Spaced review.** After you tick a task, Focus offers to bring it back as a "↻ review" task in 1, 3 and 7 days.
+- **Exam countdown.** Subject menu → Exam date…: the subject shows "Exam in 9 days · 4 tasks left · about 0.4 a day", and the Today widget shows the nearest exam.
+
+### Fixed
+- **The gate no longer flickers.** It stays on the app until you pick something or press Leave. A passing blip (keyboard, system window, transition) can't hide it; only the app really being gone for a moment can (0.7 s on the home screen, 1.8 s elsewhere). If another gated app comes to the front, the gate moves to it.
+
 ## 0.27.0-beta (version code 45)
 
 ### Added
