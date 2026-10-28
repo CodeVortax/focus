@@ -58,13 +58,15 @@ import com.barq.focus.data.tr
 
 /** Thick rounded progress ring: [fraction] of the circle is filled, starting at 12 o'clock. */
 @Composable
-private fun Ring(fraction: Float, color: Color, stroke: Dp, modifier: Modifier) {
+private fun Ring(fraction: Float, color: Color, stroke: Dp, modifier: Modifier, laps: Int = 0) {
     val track = color.copy(alpha = 0.16f)
     Canvas(modifier) {
         val s = stroke.toPx()
         val tl = Offset(s / 2, s / 2)
         val sz = Size(size.width - s, size.height - s)
         drawArc(track, -90f, 360f, false, tl, sz, style = Stroke(s, cap = StrokeCap.Round))
+        // turns already made while setting the time: a full, darker ring underneath the turn you are on
+        if (laps > 0) drawArc(androidx.compose.ui.graphics.lerp(color, Color.Black, 0.35f), -90f, 360f, false, tl, sz, style = Stroke(s, cap = StrokeCap.Round))
         if (fraction > 0.001f) drawArc(color, -90f, 360f * fraction.coerceIn(0f, 1f), false, tl, sz, style = Stroke(s, cap = StrokeCap.Round))
     }
 }
@@ -101,6 +103,7 @@ fun TimerCardUi(
     val shown by androidx.compose.animation.core.animateFloatAsState(
         target, if (dragging) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(450), label = "ring"
     )
+    val laps = if (onDial != null && dragging && dialMinutes > 0) (dialMinutes - 1) / DIAL_MIN_PER_TURN else 0
     val ringMod = Modifier.turnDial(dialMinutes, onDial != null && !running, { dragging = it }, { onDial?.invoke(it) })
     val src = remember { MutableInteractionSource() }
     Surface(
@@ -110,7 +113,7 @@ fun TimerCardUi(
         if (!compact) {
             Box(Modifier.fillMaxWidth().height(310.dp).padding(18.dp)) {
                 Box(Modifier.align(Alignment.Center).size(236.dp).then(ringMod), contentAlignment = Alignment.Center) {
-                    Ring(shown, ink, 26.dp, Modifier.fillMaxSize())
+                    Ring(shown, ink, 26.dp, Modifier.fillMaxSize(), laps)
                     Column(
                         Modifier.clickable(interactionSource = src, indication = null, onClick = onToggleCompact).padding(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -136,7 +139,7 @@ fun TimerCardUi(
                 Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Ring(shown, ink, 12.dp, Modifier.size(64.dp).then(ringMod))
+                Ring(shown, ink, 12.dp, Modifier.size(64.dp).then(ringMod), laps)
                 Spacer(Modifier.width(14.dp))
                 Column(
                     Modifier.weight(1f).clickable(interactionSource = src, indication = null, onClick = onToggleCompact),
