@@ -80,11 +80,11 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
         }
     ) { pad ->
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2), modifier = Modifier.padding(pad),
+            columns = GridCells.Adaptive(150.dp), modifier = Modifier.padding(pad),
             contentPadding = PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            item(span = { GridItemSpan(2) }) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -99,14 +99,14 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                     }
                 }
             }
-            item(span = { GridItemSpan(2) }) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     StreakCard("🔥", data.work, tr("work-day streak"), Modifier.weight(1f))
                     StreakCard("🛡️", data.light, tr("light-Shorts streak (50 or fewer)"), Modifier.weight(1f))
                 }
             }
-            item(span = { GridItemSpan(2) }) { Text(tr("Today's quests"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
-            items(data.quests, span = { GridItemSpan(2) }) { q ->
+            item(span = { GridItemSpan(maxLineSpan) }) { Text(tr("Today's quests"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+            items(data.quests, span = { GridItemSpan(maxLineSpan) }) { q ->
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                         .background(if (q.done) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
@@ -118,7 +118,7 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                     Text(tr(q.text), fontWeight = if (q.done) FontWeight.SemiBold else FontWeight.Normal)
                 }
             }
-            item(span = { GridItemSpan(2) }) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(trf("Badges  %d / %d", normal.count { it.id in data.have }, normal.size), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
             items(normal) { b ->
@@ -138,7 +138,7 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                 }
             }
             if (shame.isNotEmpty()) {
-                item(span = { GridItemSpan(2) }) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
                         trf("Hall of Shame  %d / %d", shame.count { it.id in data.have }, shame.size),
                         style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold

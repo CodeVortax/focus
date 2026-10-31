@@ -140,7 +140,7 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
         )
     }, contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime)) { pad ->
         Column(
-            Modifier.padding(pad).padding(horizontal = 16.dp).verticalScroll(rememberScrollState()),
+            Modifier.padding(pad).fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 720.dp).padding(horizontal = 16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Group("perms", Icons.Default.Security, "Permissions", if (missing == 0) "All set" else trf("%d still needed", missing), missing > 0) {

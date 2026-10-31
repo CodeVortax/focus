@@ -288,7 +288,7 @@ fun NotesScreen(store: Store, onOpen: (Long, Int) -> Unit, onBack: () -> Unit) {
                     )
                 } else if (grid) {
                     LazyVerticalStaggeredGrid(
-                        columns = StaggeredGridCells.Fixed(2), modifier = Modifier.fillMaxSize(),
+                        columns = StaggeredGridCells.Adaptive(165.dp), modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 120.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalItemSpacing = 10.dp
                     ) {

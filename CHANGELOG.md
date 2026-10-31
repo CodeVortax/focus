@@ -2,6 +2,17 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## 0.29.0-beta (version code 47)
+
+### Added
+- **Landscape.** Music's Now playing page puts the cover on one side and the controls on the other; Home, Notes, Albums and Trophies grids add columns to fit the width; Settings stays in a centred column.
+- **Notes selection.** Long-press a note to select several, then share, pin, archive, trash, restore or delete them together.
+- **PDF reader overhaul.** One-line floating toolbar you can move (hold 1.5 s, then drag; it shrinks to the pen icon after 2.5 s idle). Pen and highlighter remember their colour, size and style; the pen has Normal/Pencil, the highlighter Normal/Straight line; five main colours plus any-colour picker; stylus-only mode; Clear page asks twice. The top bar hides while you read (tap the page to bring it back), a page slider appears at the edge while you scroll, and the system navigation bar hides.
+- **PDF covers** in the library.
+
+### Fixed
+- Text shared to Focus now goes into the Import / Export paste box, ready to check and import.
+
 ## 0.28.0-beta (version code 46)
 
 ### Added

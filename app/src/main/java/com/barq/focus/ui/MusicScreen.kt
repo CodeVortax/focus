@@ -327,7 +327,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                                 .sortedBy { it.name.lowercase() }
                         }
                         LazyVerticalGrid(
-                            GridCells.Fixed(2), state = albumsState, contentPadding = PaddingValues(12.dp),
+                            GridCells.Adaptive(150.dp), state = albumsState, contentPadding = PaddingValues(12.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(albums, key = { it.id }) { a ->
@@ -783,11 +783,75 @@ private fun NowPage(
     val primary = MaterialTheme.colorScheme.primary
     val dim = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth()) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
-        Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
+    val land = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val artBox: @Composable (Modifier) -> Unit = { m ->
+        Box(m.padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
             Art(current, Modifier.fillMaxHeight().aspectRatio(1f), 700, 28.dp)
         }
+    }
+    if (land) Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.fillMaxHeight().weight(0.8f)) {
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+            artBox(Modifier.weight(1f).fillMaxWidth())
+        }
+        Column(Modifier.fillMaxHeight().weight(1.2f).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Spacer(Modifier.height(14.dp))
+        Text(
+            current?.title ?: tr("Nothing playing"), textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FocusNoteFont, fontWeight = FontWeight.Bold, textDirection = TextDirection.Content)
+        )
+        Text(current?.artist ?: "", color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
+        Text(
+            current?.let { it.album + if (it.track > 0) "  -  " + it.track else "" } ?: "",
+            color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium
+        )
+        if (current == null) TextButton(onClick = onLibrary) { Text(tr("Pick something to play")) }
+
+        Spacer(Modifier.height(10.dp))
+        LtrRow(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onFav, enabled = current != null) { Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", Modifier.size(30.dp), tint = if (fav) primary else dim) }
+            IconButton(onClick = onInfo, enabled = current != null) { Icon(Icons.Default.Info, "Info", tint = dim) }
+            IconButton(onClick = onAddPlaylist, enabled = current != null) { Icon(Icons.Default.PlaylistAdd, "Playlist", tint = dim) }
+            IconButton(onClick = onMore, enabled = current != null) { Icon(Icons.Default.MoreHoriz, "More", tint = dim) }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onRepeat) {
+                Icon(
+                    if (Music.repeatMode == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, "Repeat",
+                    tint = if (Music.repeatMode == Player.REPEAT_MODE_OFF) dim.copy(alpha = 0.6f) else primary
+                )
+            }
+            IconButton(onClick = onShuffle) { Icon(Icons.Default.Shuffle, "Shuffle", tint = if (Music.shuffle) primary else dim.copy(alpha = 0.6f)) }
+        }
+
+        LtrRow(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(mmss(drag?.toLong() ?: pos), style = MaterialTheme.typography.labelLarge, color = dim)
+            Slider(
+                drag ?: pos.toFloat().coerceAtMost(dur.coerceAtLeast(1L).toFloat()),
+                { drag = it },
+                Modifier.weight(1f).padding(horizontal = 6.dp),
+                valueRange = 0f..dur.coerceAtLeast(1L).toFloat(),
+                onValueChangeFinished = { drag?.let { Music.player?.seekTo(it.toLong()) }; drag = null }
+            )
+            Text(mmss(dur), style = MaterialTheme.typography.labelLarge, color = dim)
+        }
+
+        LtrRow(Modifier.fillMaxWidth().padding(bottom = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { Music.player?.seekToPreviousMediaItem() }) { Icon(Icons.Default.SkipPrevious, "Previous", Modifier.size(32.dp)) }
+            IconButton(onClick = { Music.player?.let { it.seekTo((it.currentPosition - 10_000L).coerceAtLeast(0L)) } }) { Icon(Icons.Default.FastRewind, "Back 10 s") }
+            FilledIconButton(onClick = { Music.player?.let { if (it.isPlaying) it.pause() else it.play() } }, Modifier.size(84.dp)) {
+                Icon(if (Music.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(48.dp))
+            }
+            IconButton(onClick = { Music.player?.let { it.seekTo(it.currentPosition + 10_000L) } }) { Icon(Icons.Default.FastForward, "Forward 10 s") }
+            IconButton(onClick = { Music.player?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Next", Modifier.size(32.dp)) }
+        }
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onVolume) { Icon(Icons.Default.VolumeUp, "Volume", tint = dim) }
+            IconButton(onClick = onEq) { Icon(Icons.Default.Equalizer, "Equalizer", tint = dim) }
+        }
+        }
+    } else Column(Modifier.fillMaxSize().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(Modifier.fillMaxWidth()) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
+        artBox(Modifier.weight(1f).fillMaxWidth())
         Spacer(Modifier.height(14.dp))
         Text(
             current?.title ?: tr("Nothing playing"), textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
