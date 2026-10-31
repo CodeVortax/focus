@@ -19,6 +19,8 @@
 
 package com.barq.focus.ui
 
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.gestures.detectDragGestures
 import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
@@ -101,14 +103,13 @@ import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-private enum class Tool { PEN, HIGHLIGHT, ERASER }
+enum class Tool { PEN, HIGHLIGHT, ERASER }
 
 private sealed class Act {
     class Add(val s: InkStroke) : Act()
     class Remove(val s: InkStroke) : Act()
 }
 
-private val INK_COLORS: List<Int> = listOf(0xFF000000.toInt(), 0xFFFFFFFF.toInt()) + CardSwatches.map { it.toArgb() }
 private val PEN_W = floatArrayOf(0.0022f, 0.0045f, 0.009f)   // fraction of the page width
 private val HI_W = floatArrayOf(0.018f, 0.030f, 0.046f)
 
@@ -147,9 +148,18 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
 
     var mode by remember { mutableIntStateOf(store.pdfMode) }
     var annot by remember { mutableStateOf(false) }
-    var tool by remember { mutableStateOf(Tool.PEN) }
-    var color by remember { mutableIntStateOf(INK_COLORS[2]) }
-    var sizeIdx by remember { mutableIntStateOf(1) }
+    var tool by remember { mutableStateOf(Tool.values()[store.pdfTool.coerceIn(0, 2)]) }
+    var penColor by remember { mutableIntStateOf(store.penColor) }
+    var hiColor by remember { mutableIntStateOf(store.hiColor) }
+    var penSize by remember { mutableIntStateOf(store.penSize.coerceIn(0, 2)) }
+    var hiSize by remember { mutableIntStateOf(store.hiSize.coerceIn(0, 2)) }
+    var pencil by remember { mutableStateOf(store.penPencil) }
+    var straight by remember { mutableStateOf(store.hiStraight) }
+    val color = if (tool == Tool.HIGHLIGHT) hiColor else penColor
+    val sizeIdx = if (tool == Tool.HIGHLIGHT) hiSize else penSize
+    var chrome by remember { mutableStateOf(true) }          // the top bar: hides while you read, tap the page to bring it back
+    var sliderShown by remember { mutableStateOf(false) }
+    var sliderDrag by remember { mutableStateOf(false) }
     var stylusOnly by remember { mutableStateOf(store.penStylusOnly) }
     val strokes = remember { mutableStateListOf<InkStroke>() }
     val undo = remember { mutableStateListOf<Act>() }
@@ -160,6 +170,24 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
     var showBookmarks by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     val page by remember { derivedStateOf { listState.firstVisibleItemIndex } }
+
+    // reading is full screen: no gray gesture/navigation bar. A swipe from the edge brings the bars back for a moment.
+    val window = remember(view) { var c = view.context; while (c is android.content.ContextWrapper && c !is android.app.Activity) c = c.baseContext; (c as? android.app.Activity)?.window }
+    DisposableEffect(window) {
+        val ctrl = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) }
+        ctrl?.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        if (android.os.Build.VERSION.SDK_INT >= 29) window?.isNavigationBarContrastEnforced = false
+        onDispose { ctrl?.show(androidx.core.view.WindowInsetsCompat.Type.systemBars()) }
+    }
+    LaunchedEffect(chrome, window) {
+        val ctrl = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) } ?: return@LaunchedEffect
+        ctrl.hide(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
+        if (chrome) ctrl.show(androidx.core.view.WindowInsetsCompat.Type.statusBars()) else ctrl.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+    }
+    // scrolling hides the top bar; the page slider shows while you move and for a moment after
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) { chrome = false; sliderShown = true } else { delay(1500); sliderShown = false }
+    }
 
     LaunchedEffect(Unit) {
         doc?.loadRatios()
@@ -228,41 +256,8 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
 
     val bg = when (mode) { 2 -> Color.Black; 1 -> Color(0xFFD9CBB0); else -> MaterialTheme.colorScheme.surfaceVariant }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(entry.title, maxLines = 1, style = MaterialTheme.typography.titleMedium)
-                        if (doc != null && doc.count > 0) Text("${page + 1} / ${doc.count}", style = MaterialTheme.typography.labelLarge)
-                    }
-                },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                actions = {
-                    IconButton(onClick = { bookmarks = store.toggleBookmark(entry.uri, page) }) {
-                        Icon(if (page in bookmarks) Icons.Default.Star else Icons.Default.StarBorder, "Bookmark")
-                    }
-                    IconButton(onClick = { annot = !annot }) {
-                        Icon(Icons.Default.Edit, "Pen", tint = if (annot) MaterialTheme.colorScheme.primary else LocalContentColor.current)
-                    }
-                    IconButton(onClick = {
-                        mode = (mode + 1) % 3
-                        store.pdfMode = mode
-                        Toast.makeText(ctx, tr(when (mode) { 1 -> "Sepia"; 2 -> "Night"; else -> "Day" }), Toast.LENGTH_SHORT).show()
-                    }) { Icon(Icons.Default.Brightness4, "Reading mode") }
-                    Box {
-                        IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "More") }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(text = { Text(tr("Go to")) }, onClick = { menu = false; jump = true })
-                            DropdownMenuItem(text = { Text(tr("Bookmarks")) }, onClick = { menu = false; showBookmarks = true })
-                            DropdownMenuItem(text = { Text(tr("Reset zoom")) }, onClick = { menu = false; resetZoom() })
-                        }
-                    }
-                }
-            )
-        }
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize().background(bg)) {
+    Scaffold(contentWindowInsets = WindowInsets(0)) { _ ->
+        Box(Modifier.fillMaxSize().background(bg)) {
             when {
                 doc == null || doc.count == 0 -> Text(tr("Could not open this PDF."), Modifier.align(Alignment.Center))
                 !ready -> CircularProgressIndicator(Modifier.align(Alignment.Center))
@@ -306,7 +301,7 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
                                     }
                                 }
                                 .pointerInput(annot) {
-                                    if (!annot) detectTapGestures(onDoubleTap = { o ->
+                                    if (!annot) detectTapGestures(onTap = { chrome = !chrome }, onDoubleTap = { o ->
                                         scope.launch {
                                             val from = scaleS.floatValue
                                             val to = if (from > 1.05f) 1f else 2.5f
@@ -337,35 +332,98 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
                                         strokes.filter { it.page == i },
                                         annot, tool, color,
                                         if (tool == Tool.HIGHLIGHT) HI_W[sizeIdx] else PEN_W[sizeIdx],
-                                        stylusOnly, { st -> addStroke(st) }, { st -> eraseStroke(st) }
+                                        stylusOnly, pencil, straight, { st -> addStroke(st) }, { st -> eraseStroke(st) }
                                     )
                                 }
                             }
                         }
 
-                        // thin reading progress line + a page pill that opens "Go to"
-                        LinearProgressIndicator(
-                            progress = { (page + 1f) / doc.count }, modifier = Modifier.fillMaxWidth().height(2.dp).align(Alignment.TopCenter)
-                        )
-                        Text(
-                            "${page + 1} / ${doc.count}",
-                            Modifier.align(Alignment.BottomCenter).padding(bottom = if (annot) 168.dp else 18.dp)
-                                .clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                                .clickable { jump = true }.padding(horizontal = 14.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold
-                        )
+                        // page slider on the edge: appears while you scroll, drag it to jump
+                        val trackTop = with(androidx.compose.ui.platform.LocalDensity.current) { 90.dp.toPx() }
+                        val trackH = (hPx - 2 * trackTop).coerceAtLeast(1f)
                         AnimatedVisibility(
-                            visible = annot, modifier = Modifier.align(Alignment.BottomCenter),
-                            enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()
+                            visible = sliderShown || sliderDrag, modifier = Modifier.align(Alignment.CenterEnd),
+                            enter = fadeIn(), exit = fadeOut()
                         ) {
-                            InkBar(
-                                tool, { tool = it }, color, { color = it }, sizeIdx, { sizeIdx = it },
-                                undo.isNotEmpty(), redo.isNotEmpty(), { doUndo() }, { doRedo() }, { clearPage() },
-                                stylusOnly, { stylusOnly = it; store.penStylusOnly = it }, { annot = false }
-                            )
+                            val frac = if (doc.count <= 1) 0f else page.toFloat() / (doc.count - 1)
+                            Box(
+                                Modifier.fillMaxHeight().width(56.dp)
+                                    .pointerInput(doc.count) {
+                                        detectDragGestures(
+                                            onDragStart = { sliderDrag = true },
+                                            onDragEnd = { sliderDrag = false }, onDragCancel = { sliderDrag = false }
+                                        ) { c, _ ->
+                                            c.consume()
+                                            val f = ((c.position.y - trackTop) / trackH).coerceIn(0f, 1f)
+                                            scope.launch { listState.scrollToItem((f * (doc.count - 1)).roundToInt()) }
+                                        }
+                                    }
+                            ) {
+                                Box(
+                                    Modifier.align(Alignment.TopEnd).padding(end = 10.dp, top = 90.dp).fillMaxHeight().padding(bottom = 90.dp).width(4.dp)
+                                        .clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f))
+                                )
+                                val thumbY = (trackTop + frac * trackH) - with(androidx.compose.ui.platform.LocalDensity.current) { 18.dp.toPx() }
+                                Row(
+                                    Modifier.align(Alignment.TopEnd).offset { IntOffset(0, thumbY.roundToInt()) }.padding(end = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "${page + 1} / ${doc.count}",
+                                        Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)).padding(horizontal = 10.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold
+                                    )
+                                    Box(Modifier.padding(start = 6.dp).size(width = 12.dp, height = 36.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.primary))
+                                }
+                            }
+                        }
+
+                        if (annot) FloatingInkBar(
+                            tool, { tool = it; store.pdfTool = it.ordinal },
+                            color, { c -> if (tool == Tool.HIGHLIGHT) { hiColor = c; store.hiColor = c } else { penColor = c; store.penColor = c } },
+                            sizeIdx, { i -> if (tool == Tool.HIGHLIGHT) { hiSize = i; store.hiSize = i } else { penSize = i; store.penSize = i } },
+                            pencil, { pencil = it; store.penPencil = it }, straight, { straight = it; store.hiStraight = it },
+                            undo.isNotEmpty(), redo.isNotEmpty(), { doUndo() }, { doRedo() }, { clearPage() },
+                            stylusOnly, { stylusOnly = it; store.penStylusOnly = it }, { annot = false },
+                            wPx.toFloat(), hPx.toFloat(), store.inkBarX, store.inkBarY, { x, y -> store.inkBarX = x; store.inkBarY = y }
+                        )
+                    }
+                }
+            }
+            AnimatedVisibility(
+                visible = chrome, modifier = Modifier.align(Alignment.TopCenter),
+                enter = slideInVertically { -it } + fadeIn(), exit = slideOutVertically { -it } + fadeOut()
+            ) {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(entry.title, maxLines = 1, style = MaterialTheme.typography.titleMedium)
+                        if (doc != null && doc.count > 0) Text("${page + 1} / ${doc.count}", style = MaterialTheme.typography.labelLarge)
+                    }
+                },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                actions = {
+                    IconButton(onClick = { bookmarks = store.toggleBookmark(entry.uri, page) }) {
+                        Icon(if (page in bookmarks) Icons.Default.Star else Icons.Default.StarBorder, "Bookmark")
+                    }
+                    IconButton(onClick = { annot = !annot; if (annot) chrome = false }) {
+                        Icon(Icons.Default.Edit, "Pen", tint = if (annot) MaterialTheme.colorScheme.primary else LocalContentColor.current)
+                    }
+                    IconButton(onClick = {
+                        mode = (mode + 1) % 3
+                        store.pdfMode = mode
+                        Toast.makeText(ctx, tr(when (mode) { 1 -> "Sepia"; 2 -> "Night"; else -> "Day" }), Toast.LENGTH_SHORT).show()
+                    }) { Icon(Icons.Default.Brightness4, "Reading mode") }
+                    Box {
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "More") }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(text = { Text(tr("Go to")) }, onClick = { menu = false; jump = true })
+                            DropdownMenuItem(text = { Text(tr("Bookmarks")) }, onClick = { menu = false; showBookmarks = true })
+                            DropdownMenuItem(text = { Text(tr("Reset zoom")) }, onClick = { menu = false; resetZoom() })
                         }
                     }
                 }
+            )
             }
         }
     }
@@ -413,7 +471,7 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
 @Composable
 private fun PdfPageItem(
     doc: PdfDoc, index: Int, renderW: Int, mode: Int, strokes: List<InkStroke>,
-    annot: Boolean, tool: Tool, color: Int, widthFrac: Float, stylusOnly: Boolean,
+    annot: Boolean, tool: Tool, color: Int, widthFrac: Float, stylusOnly: Boolean, pencil: Boolean, straight: Boolean,
     onStroke: (InkStroke) -> Unit, onErase: (InkStroke) -> Unit,
 ) {
     val ratio = doc.ratios[index]
@@ -430,13 +488,13 @@ private fun PdfPageItem(
             b.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds,
             colorFilter = when (mode) { 2 -> INVERT; 1 -> SEPIA; else -> null }
         ) else CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp))
-        InkLayer(index, strokes, annot, tool, color, widthFrac, stylusOnly, onStroke, onErase)
+        InkLayer(index, strokes, annot, tool, color, widthFrac, stylusOnly, pencil, straight, onStroke, onErase)
     }
 }
 
 @Composable
 private fun InkLayer(
-    page: Int, strokes: List<InkStroke>, annot: Boolean, tool: Tool, color: Int, widthFrac: Float, stylusOnly: Boolean,
+    page: Int, strokes: List<InkStroke>, annot: Boolean, tool: Tool, color: Int, widthFrac: Float, stylusOnly: Boolean, pencil: Boolean, straight: Boolean,
     onStroke: (InkStroke) -> Unit, onErase: (InkStroke) -> Unit,
 ) {
     val live = remember { mutableStateListOf<Float>() }       // the stroke being drawn, normalised x,y pairs
@@ -445,6 +503,8 @@ private fun InkLayer(
     val colorNow by rememberUpdatedState(color)
     val widthNow by rememberUpdatedState(widthFrac)
     val toolNow by rememberUpdatedState(tool)
+    val pencilNow by rememberUpdatedState(pencil)
+    val straightNow by rememberUpdatedState(straight)
     val onStrokeNow by rememberUpdatedState(onStroke)
     val onEraseNow by rememberUpdatedState(onErase)
 
@@ -489,25 +549,30 @@ private fun InkLayer(
                         val p = c.position
                         if ((p - last).getDistance() < 1.5f) continue
                         last = p
-                        if (t == Tool.ERASER) erase(p) else { live.add(p.x / bw); live.add(p.y / bh) }
+                        if (t == Tool.ERASER) erase(p)
+                        else if (t == Tool.HIGHLIGHT && straightNow) {
+                            // a straight highlighter keeps the first point and follows the finger with the last one
+                            val fx = live[0]; val fy = live[1]
+                            live.clear(); live.add(fx); live.add(fy); live.add(p.x / bw); live.add(p.y / bh)
+                        } else { live.add(p.x / bw); live.add(p.y / bh) }
                     }
                     if (!cancelled && t != Tool.ERASER && live.isNotEmpty()) {
-                        onStrokeNow(InkStroke(page, colorNow, widthNow, t == Tool.HIGHLIGHT, live.toFloatArray()))
+                        onStrokeNow(InkStroke(page, colorNow, widthNow, t == Tool.HIGHLIGHT, live.toFloatArray(), t == Tool.PEN && pencilNow))
                     }
                     live.clear()
                 }
             }
     ) {
-        for (s in strokes) drawInk(s.pts, size.width, size.height, Color(s.color), s.w * size.width, s.highlighter)
+        for (s in strokes) drawInk(s.pts, size.width, size.height, Color(s.color), s.w * size.width, s.highlighter, s.pencil)
         if (live.isNotEmpty() && toolNow != Tool.ERASER) {
-            drawInk(live.toFloatArray(), size.width, size.height, Color(colorNow), widthNow * size.width, toolNow == Tool.HIGHLIGHT)
+            drawInk(live.toFloatArray(), size.width, size.height, Color(colorNow), widthNow * size.width, toolNow == Tool.HIGHLIGHT, toolNow == Tool.PEN && pencilNow)
         }
     }
 }
 
-private fun DrawScope.drawInk(p: FloatArray, w: Float, h: Float, color: Color, widthPx: Float, highlighter: Boolean) {
+private fun DrawScope.drawInk(p: FloatArray, w: Float, h: Float, color: Color, widthPx: Float, highlighter: Boolean, pencil: Boolean = false) {
     if (p.size < 2) return
-    val c = if (highlighter) color.copy(alpha = 0.38f) else color
+    val c = if (highlighter) color.copy(alpha = 0.38f) else if (pencil) color.copy(alpha = 0.55f) else color
     if (p.size < 4) { drawCircle(c, widthPx / 2f, Offset(p[0] * w, p[1] * h)); return }
     val path = Path()
     path.moveTo(p[0] * w, p[1] * h)
@@ -519,48 +584,10 @@ private fun DrawScope.drawInk(p: FloatArray, w: Float, h: Float, color: Color, w
         k += 2
     }
     path.lineTo(p[p.size - 2] * w, p[p.size - 1] * h)
-    drawPath(path, c, style = Stroke(width = widthPx, cap = StrokeCap.Round, join = StrokeJoin.Round))
-}
-
-@Composable
-private fun InkBar(
-    tool: Tool, onTool: (Tool) -> Unit, color: Int, onColor: (Int) -> Unit, sizeIdx: Int, onSize: (Int) -> Unit,
-    canUndo: Boolean, canRedo: Boolean, onUndo: () -> Unit, onRedo: () -> Unit, onClear: () -> Unit,
-    stylusOnly: Boolean, onStylus: (Boolean) -> Unit, onDone: () -> Unit,
-) {
-    Surface(
-        Modifier.padding(12.dp).fillMaxWidth(), shape = RoundedCornerShape(28.dp),
-        tonalElevation = 6.dp, shadowElevation = 10.dp
-    ) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                INK_COLORS.forEach { c ->
-                    Box(
-                        Modifier.size(30.dp).clip(CircleShape).background(Color(c))
-                            .border(if (c == color) 3.dp else 1.dp, if (c == color) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                            .clickable { onColor(c) }
-                    )
-                }
-            }
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                FilterChip(tool == Tool.PEN, { onTool(Tool.PEN) }, { Text(tr("Pen")) })
-                FilterChip(tool == Tool.HIGHLIGHT, { onTool(Tool.HIGHLIGHT) }, { Text(tr("Highlighter")) })
-                FilterChip(tool == Tool.ERASER, { onTool(Tool.ERASER) }, { Text(tr("Eraser")) })
-                listOf(10, 16, 22).forEachIndexed { i, d ->
-                    Box(Modifier.size(34.dp).clickable { onSize(i) }, contentAlignment = Alignment.Center) {
-                        Box(
-                            Modifier.size(d.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = if (i == sizeIdx) 1f else 0.3f))
-                        )
-                    }
-                }
-                Text("↶", Modifier.clip(CircleShape).clickable(enabled = canUndo, onClick = onUndo).padding(horizontal = 12.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canUndo) 1f else 0.3f))
-                Text("↷", Modifier.clip(CircleShape).clickable(enabled = canRedo, onClick = onRedo).padding(horizontal = 12.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canRedo) 1f else 0.3f))
-                TextButton(onClick = onClear) { Text(tr("Clear page")) }
-                FilterChip(stylusOnly, { onStylus(!stylusOnly) }, { Text(tr("Stylus only")) })
-                Button(onClick = onDone) { Text(tr("Done")) }
-            }
-        }
-    }
+    if (pencil) {
+        // pencil: a soft thin base with a grainy dashed line over it
+        drawPath(path, c, style = Stroke(width = widthPx * 0.8f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, color.copy(alpha = 0.9f), style = Stroke(width = widthPx * 0.55f, cap = StrokeCap.Butt, join = StrokeJoin.Round,
+            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(widthPx * 0.9f, widthPx * 0.5f, widthPx * 0.3f, widthPx * 0.6f))))
+    } else drawPath(path, c, style = Stroke(width = widthPx, cap = if (highlighter) StrokeCap.Butt else StrokeCap.Round, join = StrokeJoin.Round))
 }

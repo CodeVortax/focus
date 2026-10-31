@@ -21,6 +21,23 @@ package com.barq.focus.data
 
 /** Arabic for the strings added in 0.12 (merged into AR when Arabic is selected). */
 val AR_EXTRA: Map<String, String> = mapOf(
+    "%d selected" to "تم تحديد %d",
+    "Select all" to "تحديد الكل",
+    "Text received. Check it, then tap Import pasted." to "تم استلام النص. راجعه ثم اضغط «استيراد الملصق».",
+    "Undo" to "تراجع",
+    "Redo" to "إعادة",
+    "Normal" to "عادي",
+    "Pencil" to "قلم رصاص",
+    "Straight line" to "خط مستقيم",
+    "Clear this page?" to "مسح هذه الصفحة؟",
+    "This removes every pen and highlighter mark on this page." to "سيُزيل هذا كل علامات القلم والتظليل في هذه الصفحة.",
+    "Continue" to "متابعة",
+    "Are you really sure?" to "هل أنت متأكد حقًا؟",
+    "Last check. You can still undo it right after with the undo arrow." to "تحقق أخير. يمكنك التراجع بعدها مباشرة بسهم التراجع.",
+    "Yes, clear the page" to "نعم، امسح الصفحة",
+    "Keep it" to "أبقها",
+    "Pick a colour" to "اختر لونًا",
+    "Use this colour" to "استخدم هذا اللون",
     "Exam date…" to "موعد الامتحان…",
     "Review \"%s\" again in 1, 3 and 7 days?" to "مراجعة «%s» بعد 1 و3 و7 أيام؟",
     "Reviews scheduled" to "تمت جدولة المراجعات",

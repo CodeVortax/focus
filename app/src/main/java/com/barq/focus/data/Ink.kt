@@ -26,7 +26,7 @@ import java.io.File
 import java.security.MessageDigest
 
 /** One pen/highlighter stroke. Points are x,y pairs normalised to the page (0..1); width is a fraction of the page width. */
-class InkStroke(val page: Int, val color: Int, val w: Float, val highlighter: Boolean, val pts: FloatArray)
+class InkStroke(val page: Int, val color: Int, val w: Float, val highlighter: Boolean, val pts: FloatArray, val pencil: Boolean = false)
 
 /** Annotations live next to the app's data, one small JSON file per PDF. */
 object InkStore {
@@ -46,7 +46,7 @@ object InkStore {
             (0 until a.length()).map { i ->
                 val o = a.getJSONObject(i)
                 val p = o.getJSONArray("pts")
-                InkStroke(o.getInt("p"), o.getInt("c"), o.getDouble("w").toFloat(), o.optBoolean("h"), FloatArray(p.length()) { k -> p.getDouble(k).toFloat() })
+                InkStroke(o.getInt("p"), o.getInt("c"), o.getDouble("w").toFloat(), o.optBoolean("h"), FloatArray(p.length()) { k -> p.getDouble(k).toFloat() }, o.optBoolean("pc"))
             }
         } catch (_: Exception) { emptyList() }
     }
@@ -59,7 +59,7 @@ object InkStore {
             list.forEach { s ->
                 val p = JSONArray()
                 s.pts.forEach { v -> p.put(Math.round(v * 10000.0) / 10000.0) }
-                a.put(JSONObject().put("p", s.page).put("c", s.color).put("w", s.w.toDouble()).put("h", s.highlighter).put("pts", p))
+                a.put(JSONObject().put("p", s.page).put("c", s.color).put("w", s.w.toDouble()).put("h", s.highlighter).put("pc", s.pencil).put("pts", p))
             }
             f.writeText(a.toString())
         } catch (_: Exception) {}

@@ -71,6 +71,31 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** First-page covers for the library: drawn once, kept in memory and in the cache folder. */
+object PdfThumbs {
+    private val mem = LruCache<String, Bitmap>(24)
+    private fun fileFor(ctx: Context, uri: String): java.io.File {
+        val d = java.io.File(ctx.cacheDir, "pdfthumbs"); d.mkdirs()
+        val h = java.security.MessageDigest.getInstance("MD5").digest(uri.toByteArray()).joinToString("") { "%02x".format(it) }
+        return java.io.File(d, "$h.png")
+    }
+    suspend fun get(ctx: Context, uri: String): Bitmap? = withContext(Dispatchers.IO) {
+        mem.get(uri)?.let { return@withContext it }
+        val f = fileFor(ctx, uri)
+        if (f.exists()) android.graphics.BitmapFactory.decodeFile(f.path)?.let { mem.put(uri, it); return@withContext it }
+        try {
+            val doc = PdfDoc(ctx, Uri.parse(uri))
+            try {
+                if (doc.count == 0) return@withContext null
+                doc.loadRatiosFirst()
+                val b = doc.render(0, 260) ?: return@withContext null
+                f.outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 90, it) }
+                mem.put(uri, b); b
+            } finally { doc.close() }
+        } catch (_: Throwable) { null }
+    }
+}
+
 /** PdfRenderer wrapper: one page open at a time, renders off the main thread, small bitmap cache. */
 class PdfDoc(ctx: Context, uri: Uri) {
     private val pfd: ParcelFileDescriptor? = ctx.contentResolver.openFileDescriptor(uri, "r")
@@ -89,6 +114,14 @@ class PdfDoc(ctx: Context, uri: Uri) {
             for (i in 0 until count) {
                 r.openPage(i).use { p -> if (p.width > 0) ratios[i] = p.height.toFloat() / p.width }
             }
+        }
+    }
+
+    /** Only page 1's ratio (enough for a cover). */
+    fun loadRatiosFirst() {
+        synchronized(lock) {
+            val r = renderer ?: return
+            r.openPage(0).use { p -> if (p.width > 0) ratios[0] = p.height.toFloat() / p.width }
         }
     }
 
@@ -142,16 +175,23 @@ fun PdfLibraryScreen(store: Store, onOpen: (PdfEntry) -> Unit, onOpenBuiltin: (P
             Modifier.padding(pad), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(list, key = { it.uri }) { e ->
-                Column(
+                Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
-                        .combinedClickable(onClick = { onOpen(e) }, onLongClick = { removing = e }).padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .combinedClickable(onClick = { onOpen(e) }, onLongClick = { removing = e }).padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(e.title, style = MaterialTheme.typography.titleMedium, maxLines = 2)
-                    if (e.pages > 0) {
-                        Text(trf("Page %d of %d", e.lastPage + 1, e.pages), style = MaterialTheme.typography.bodyMedium)
-                        LinearProgressIndicator(progress = { (e.lastPage + 1f) / e.pages }, modifier = Modifier.fillMaxWidth())
-                    } else Text(tr("Not opened yet"), style = MaterialTheme.typography.bodyMedium)
+                    var cover by remember(e.uri) { mutableStateOf<Bitmap?>(null) }
+                    LaunchedEffect(e.uri) { cover = PdfThumbs.get(ctx, e.uri) }
+                    Box(Modifier.size(width = 64.dp, height = 88.dp).clip(RoundedCornerShape(8.dp)).background(androidx.compose.ui.graphics.Color.White), contentAlignment = Alignment.Center) {
+                        cover?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(e.title, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+                        if (e.pages > 0) {
+                            Text(trf("Page %d of %d", e.lastPage + 1, e.pages), style = MaterialTheme.typography.bodyMedium)
+                            LinearProgressIndicator(progress = { (e.lastPage + 1f) / e.pages }, modifier = Modifier.fillMaxWidth())
+                        } else Text(tr("Not opened yet"), style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
         }

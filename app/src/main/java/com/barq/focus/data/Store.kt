@@ -804,6 +804,35 @@ class Store(ctx: Context) {
         get() = p.getBoolean("pen_stylus_only", false)
         set(v) { p.edit().putBoolean("pen_stylus_only", v).apply() }
 
+    // the drawing tools remember their own colour, size and style
+    var pdfTool: Int
+        get() = p.getInt("pdf_tool", 0)
+        set(v) { p.edit().putInt("pdf_tool", v).apply() }
+    var penColor: Int
+        get() = p.getInt("pen_color", 0xFF1E88E5.toInt())
+        set(v) { p.edit().putInt("pen_color", v).apply() }
+    var penSize: Int
+        get() = p.getInt("pen_size", 1)
+        set(v) { p.edit().putInt("pen_size", v).apply() }
+    var penPencil: Boolean
+        get() = p.getBoolean("pen_pencil", false)
+        set(v) { p.edit().putBoolean("pen_pencil", v).apply() }
+    var hiColor: Int
+        get() = p.getInt("hi_color", 0xFFFDD835.toInt())
+        set(v) { p.edit().putInt("hi_color", v).apply() }
+    var hiSize: Int
+        get() = p.getInt("hi_size", 1)
+        set(v) { p.edit().putInt("hi_size", v).apply() }
+    var hiStraight: Boolean
+        get() = p.getBoolean("hi_straight", false)
+        set(v) { p.edit().putBoolean("hi_straight", v).apply() }
+    var inkBarX: Float
+        get() = p.getFloat("ink_bar_x", -1f)
+        set(v) { p.edit().putFloat("ink_bar_x", v).apply() }
+    var inkBarY: Float
+        get() = p.getFloat("ink_bar_y", -1f)
+        set(v) { p.edit().putFloat("ink_bar_y", v).apply() }
+
     fun bookmarks(uri: String): List<Int> =
         (p.getString("bm_${uri.hashCode()}", "") ?: "").split(",").mapNotNull { it.toIntOrNull() }.sorted()
 

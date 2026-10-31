@@ -1039,6 +1039,22 @@
   "Reviews scheduled": "Повторения запланированы",
   "Exam in %d days  ·  %d tasks left  ·  about %s a day": "Экзамен через %d дн.  ·  осталось задач: %d  ·  около %s в день",
   "The exam day has passed.": "День экзамена прошёл.",
-  "No exam": "Без экзамена"
+  "No exam": "Без экзамена",
+  "%d selected": "Выбрано: %d",
+  "Select all": "Выбрать все",
+  "Text received. Check it, then tap Import pasted.": "Текст получен. Проверьте его и нажмите «Импортировать вставленное».",
+  "Undo": "Отменить",
+  "Redo": "Повторить",
+  "Normal": "Обычный",
+  "Pencil": "Карандаш",
+  "Straight line": "Прямая линия",
+  "Clear this page?": "Очистить эту страницу?",
+  "This removes every pen and highlighter mark on this page.": "Это удалит все пометки ручкой и маркером на этой странице.",
+  "Continue": "Продолжить",
+  "Are you really sure?": "Вы точно уверены?",
+  "Last check. You can still undo it right after with the undo arrow.": "Последняя проверка. Сразу после этого можно отменить стрелкой «отменить».",
+  "Yes, clear the page": "Да, очистить страницу",
+  "Pick a colour": "Выберите цвет",
+  "Use this colour": "Использовать этот цвет"
  }
 }

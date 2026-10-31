@@ -1039,6 +1039,22 @@
   "Reviews scheduled": "Révisions planifiées",
   "Exam in %d days  ·  %d tasks left  ·  about %s a day": "Examen dans %d jours  ·  %d tâches restantes  ·  environ %s par jour",
   "The exam day has passed.": "Le jour de l'examen est passé.",
-  "No exam": "Pas d'examen"
+  "No exam": "Pas d'examen",
+  "%d selected": "%d sélectionnée(s)",
+  "Select all": "Tout sélectionner",
+  "Text received. Check it, then tap Import pasted.": "Texte reçu. Vérifiez-le puis touchez « Importer le collé ».",
+  "Undo": "Annuler",
+  "Redo": "Rétablir",
+  "Normal": "Normal",
+  "Pencil": "Crayon",
+  "Straight line": "Ligne droite",
+  "Clear this page?": "Effacer cette page ?",
+  "This removes every pen and highlighter mark on this page.": "Cela supprime tous les traits de stylo et de surligneur de cette page.",
+  "Continue": "Continuer",
+  "Are you really sure?": "Êtes-vous vraiment sûr ?",
+  "Last check. You can still undo it right after with the undo arrow.": "Dernière vérification. Vous pourrez annuler juste après avec la flèche d'annulation.",
+  "Yes, clear the page": "Oui, effacer la page",
+  "Pick a colour": "Choisir une couleur",
+  "Use this colour": "Utiliser cette couleur"
  }
 }
