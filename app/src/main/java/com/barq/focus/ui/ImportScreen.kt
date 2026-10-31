@@ -75,7 +75,7 @@ fun ImportScreen(onBack: () -> Unit) {
         val t = Shared.pendingText
         Shared.pendingUri = null; Shared.pendingText = null
         if (u != null) result = Foc.applyUri(ctx, u)
-        else if (t != null) { text = t; result = Foc.applyText(ctx, t) }
+        else if (t != null) { text = t; toast(tr("Text received. Check it, then tap Import pasted.")) }
     }
 
     Scaffold(

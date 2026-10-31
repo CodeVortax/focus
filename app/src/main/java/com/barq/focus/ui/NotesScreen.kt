@@ -19,6 +19,10 @@
 
 package com.barq.focus.ui
 
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.foundation.border
+import androidx.activity.compose.BackHandler
 import android.content.ClipboardManager
 import android.content.Intent
 import android.widget.Toast
@@ -97,6 +101,8 @@ fun NotesScreen(store: Store, onOpen: (Long, Int) -> Unit, onBack: () -> Unit) {
     var grid by remember { mutableStateOf(store.notesGrid) }
     var sort by remember { mutableIntStateOf(store.notesSort) }
     var actions by remember { mutableStateOf<Note?>(null) }
+    var picked by remember { mutableStateOf<Set<Long>>(emptySet()) }       // selection mode: ids of the selected notes
+    val selecting = picked.isNotEmpty()
     var menu by remember { mutableStateOf(false) }
     var sortMenu by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
@@ -130,6 +136,8 @@ fun NotesScreen(store: Store, onOpen: (Long, Int) -> Unit, onBack: () -> Unit) {
         }.sortedWith(byPin.then(bySort))
     }
 
+    LaunchedEffect(mode) { picked = emptySet() }
+    LaunchedEffect(all) { picked = picked.filter { id -> all.any { it.id == id } }.toSet() }
     LaunchedEffect(labels) { if (label != null && label !in labels) label = null }
     LaunchedEffect(searching) { if (searching) focus.requestFocus() }
 
@@ -140,9 +148,35 @@ fun NotesScreen(store: Store, onOpen: (Long, Int) -> Unit, onBack: () -> Unit) {
         rev++
     }
 
+    BackHandler(selecting) { picked = emptySet() }
+    fun chosen() = shown.filter { it.id in picked }
+    fun each(f: (Note) -> Note) { chosen().forEach { db.save(f(it)) }; picked = emptySet(); rev++ }
+
     Scaffold(
         topBar = {
-            TopAppBar(
+            if (selecting) TopAppBar(
+                title = { Text(trf("%d selected", picked.size)) },
+                navigationIcon = { IconButton(onClick = { picked = emptySet() }) { Icon(Icons.Default.Close, "Cancel") } },
+                actions = {
+                    IconButton(onClick = { picked = if (picked.size == shown.size) emptySet() else shown.map { it.id }.toSet() }) { Icon(Icons.Default.SelectAll, tr("Select all")) }
+                    if (mode == "trash") {
+                        IconButton(onClick = { each { it.copy(trashedAt = 0L) } }) { Icon(Icons.Default.RestoreFromTrash, tr("Restore")) }
+                        IconButton(onClick = { chosen().forEach { db.delete(it.id) }; picked = emptySet(); rev++ }) { Icon(Icons.Default.DeleteForever, tr("Delete forever")) }
+                    } else {
+                        IconButton(onClick = {
+                            val text = chosen().joinToString("\n\n") { n ->
+                                (if (n.title.isNotBlank()) n.title + "\n" else "") + (if (n.type == 1) n.items.joinToString("\n") { (if (it.done) "[x] " else "[ ] ") + it.text } else n.body)
+                            }
+                            ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), tr("Share")))
+                        }) { Icon(Icons.Default.Share, tr("Share")) }
+                        IconButton(onClick = { val all = chosen().all { it.pinned }; each { it.copy(pinned = !all) } }) { Icon(Icons.Default.Star, tr("Pin")) }
+                        IconButton(onClick = { val un = mode == "archive"; each { it.copy(archived = !un) } }) {
+                            Icon(if (mode == "archive") Icons.Default.Unarchive else Icons.Default.Archive, tr("Archive"))
+                        }
+                        IconButton(onClick = { each { it.copy(trashedAt = System.currentTimeMillis(), pinned = false) } }) { Icon(Icons.Default.Delete, tr("Move to trash")) }
+                    }
+                }
+            ) else TopAppBar(
                 title = {
                     if (searching) {
                         TextField(
@@ -259,7 +293,7 @@ fun NotesScreen(store: Store, onOpen: (Long, Int) -> Unit, onBack: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalItemSpacing = 10.dp
                     ) {
                         items(shown, key = { it.id }) { n ->
-                            NoteCard(n, { if (mode == "trash") actions = n else onOpen(n.id, n.type) }, { actions = n }) { idx -> toggleItem(n, idx) }
+                            NoteCard(n, n.id in picked, { if (selecting) picked = if (n.id in picked) picked - n.id else picked + n.id else if (mode == "trash") actions = n else onOpen(n.id, n.type) }, { picked = picked + n.id }) { idx -> toggleItem(n, idx) }
                         }
                     }
                 } else {
@@ -269,7 +303,7 @@ fun NotesScreen(store: Store, onOpen: (Long, Int) -> Unit, onBack: () -> Unit) {
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(shown, key = { it.id }) { n ->
-                            NoteCard(n, { if (mode == "trash") actions = n else onOpen(n.id, n.type) }, { actions = n }) { idx -> toggleItem(n, idx) }
+                            NoteCard(n, n.id in picked, { if (selecting) picked = if (n.id in picked) picked - n.id else picked + n.id else if (mode == "trash") actions = n else onOpen(n.id, n.type) }, { picked = picked + n.id }) { idx -> toggleItem(n, idx) }
                         }
                     }
                 }
@@ -311,11 +345,12 @@ fun NotesScreen(store: Store, onOpen: (Long, Int) -> Unit, onBack: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun NoteCard(n: Note, onClick: () -> Unit, onLong: () -> Unit, onToggle: (Int) -> Unit) {
+private fun NoteCard(n: Note, selected: Boolean, onClick: () -> Unit, onLong: () -> Unit, onToggle: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val tint = if (n.color == 0) MaterialTheme.colorScheme.surfaceVariant else Color(n.color).copy(alpha = 0.22f)
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(tint)
+            .then(if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(22.dp)) else Modifier)
             .combinedClickable(onClick = onClick, onLongClick = onLong).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
