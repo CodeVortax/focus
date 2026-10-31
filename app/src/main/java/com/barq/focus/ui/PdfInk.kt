@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -123,7 +124,7 @@ private fun EraserIcon(tint: Color, modifier: Modifier = Modifier.size(24.dp)) {
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.rotateAroundCenter(deg: Float, block: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit) =
-    androidx.compose.ui.graphics.drawscope.rotate(deg, center, block)
+    rotate(deg, center, block)
 
 @Composable
 private fun ToolIcon(tool: Tool, tint: Color, modifier: Modifier = Modifier.size(24.dp)) {
