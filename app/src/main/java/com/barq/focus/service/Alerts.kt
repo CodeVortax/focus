@@ -137,18 +137,18 @@ object Alerter {
         if (store.alertedEnd != end) {
             store.alertedEnd = end
             store.lastNag = now
-            post(c, card, trf("%s: time's up", card.title), tr("Add time or wrap up."))
+            post(c, trf("%s: time's up", card.title), tr("Add time or wrap up."))
             Alerts.run(c, card.sound, store.ringSec, if (store.speak) trf("Time's up, buddy! %s.", card.title) else null, speakFirst = true)
         } else if (card.type == CardType.STUDY) {
             store.lastNag = now
             val n = ((now - end) / 60_000L).toInt().coerceAtLeast(1)
-            post(c, card, trf("%s: %d min over", card.title, n), tr("Add time or stop the timer."))
+            post(c, trf("%s: %d min over", card.title, n), tr("Add time or stop the timer."))
             Alerts.run(c, card.sound, store.nagRingSec, if (store.speak) nagText(n) else null, speakFirst = false)
         } else return
         TimerAlarm.reschedule(c, store)
     }
 
-    private fun post(c: Context, card: FocusCard, title: String, text: String) {
+    private fun post(c: Context, title: String, text: String) {
         try {
             val nm = c.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(

@@ -70,8 +70,8 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlayCircleFilled
-import androidx.compose.material.icons.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Search
@@ -79,7 +79,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.animation.AnimatedContent
@@ -284,7 +284,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                 }
                 pg == -2 -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 pg == 100 && lastSub != null -> {
-                    val (title, list) = lastSub ?: return@AnimatedContent
+                    val (title, list) = lastSub
                     SongList(
                         list, favs, { play(list, it) }, { menuSong = it },
                         state = subState,
@@ -413,7 +413,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
             text = {
                 Column {
                     ActionRow(Icons.Default.PlayArrow, tr("Play now")) { menuSong = null; play(listOf(s), 0) }
-                    ActionRow(Icons.Default.QueueMusic, tr("Play next")) {
+                    ActionRow(Icons.AutoMirrored.Filled.QueueMusic, tr("Play next")) {
                         menuSong = null
                         val p = Music.get(ctx)
                         if (p.mediaItemCount == 0) play(listOf(s), 0) else p.addMediaItem(p.currentMediaItemIndex + 1, Music.item(s))
@@ -425,7 +425,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                         if (p.mediaItemCount == 0) play(listOf(s), 0) else p.addMediaItem(Music.item(s))
                         toast(tr("Added to the queue"))
                     }
-                    ActionRow(Icons.Default.PlaylistAdd, tr("Add to playlists")) { menuSong = null; addTo = s }
+                    ActionRow(Icons.AutoMirrored.Filled.PlaylistAdd, tr("Add to playlists")) { menuSong = null; addTo = s }
                     ActionRow(Icons.Default.Share, tr("Share song")) { menuSong = null; shareSong(ctx, s) }
                     ActionRow(Icons.Default.Info, tr("Song info")) { menuSong = null; infoOf = s }
                 }
@@ -441,11 +441,11 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                 ActionRow(Icons.Default.FastForward, tr("Play speed and pitch")) { showMore = false; showSpeed = true }
                 ActionRow(Icons.Default.Pause, tr("Sleep timer")) { showMore = false; showSleep = true }
                 HorizontalDivider()
-                ActionRow(Icons.Default.QueueMusic, tr("Add to the queue")) {
+                ActionRow(Icons.AutoMirrored.Filled.QueueMusic, tr("Add to the queue")) {
                     showMore = false
                     Music.get(ctx).addMediaItem(Music.item(current)); toast(tr("Added to the queue"))
                 }
-                ActionRow(Icons.Default.PlaylistAdd, tr("Add to playlists")) { showMore = false; addTo = current }
+                ActionRow(Icons.AutoMirrored.Filled.PlaylistAdd, tr("Add to playlists")) { showMore = false; addTo = current }
                 HorizontalDivider()
                 ActionRow(Icons.Default.Share, tr("Share song")) { showMore = false; shareSong(ctx, current) }
                 ActionRow(Icons.Default.Info, tr("Song info")) { showMore = false; infoOf = current }
@@ -622,7 +622,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
 private fun MusicBar(tab: MTab, onTab: (MTab) -> Unit, onRefresh: () -> Unit, onSleep: () -> Unit, onEq: () -> Unit, onClose: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val items = listOf(
-        MTab.QUEUE to Icons.Default.QueueMusic, MTab.NOW to Icons.Default.PlayCircleFilled, MTab.FOLDERS to Icons.Default.Folder,
+        MTab.QUEUE to Icons.AutoMirrored.Filled.QueueMusic, MTab.NOW to Icons.Default.PlayCircleFilled, MTab.FOLDERS to Icons.Default.Folder,
         MTab.ALBUMS to Icons.Default.Album, MTab.ARTISTS to Icons.Default.Person, MTab.PLAYLISTS to Icons.Default.LibraryMusic,
         MTab.SEARCH to Icons.Default.Search,
     )
@@ -731,7 +731,6 @@ private fun SongList(list: List<Song>, favs: Set<Long>, onPlay: (Int) -> Unit, o
 
 @Composable
 private fun QueuePage(byId: Map<Long, Song>) {
-    val ctx = LocalContext.current
     val p = Music.player
     val items = remember(Music.version) {
         if (p == null) emptyList() else (0 until p.mediaItemCount).map { p.getMediaItemAt(it) }
@@ -811,7 +810,7 @@ private fun NowPage(
         LtrRow(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onFav, enabled = current != null) { Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", Modifier.size(30.dp), tint = if (fav) primary else dim) }
             IconButton(onClick = onInfo, enabled = current != null) { Icon(Icons.Default.Info, "Info", tint = dim) }
-            IconButton(onClick = onAddPlaylist, enabled = current != null) { Icon(Icons.Default.PlaylistAdd, "Playlist", tint = dim) }
+            IconButton(onClick = onAddPlaylist, enabled = current != null) { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, "Playlist", tint = dim) }
             IconButton(onClick = onMore, enabled = current != null) { Icon(Icons.Default.MoreHoriz, "More", tint = dim) }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onRepeat) {
@@ -845,7 +844,7 @@ private fun NowPage(
             IconButton(onClick = { Music.player?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Next", Modifier.size(32.dp)) }
         }
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onVolume) { Icon(Icons.Default.VolumeUp, "Volume", tint = dim) }
+            IconButton(onClick = onVolume) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "Volume", tint = dim) }
             IconButton(onClick = onEq) { Icon(Icons.Default.Equalizer, "Equalizer", tint = dim) }
         }
         }
@@ -868,7 +867,7 @@ private fun NowPage(
         LtrRow(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onFav, enabled = current != null) { Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", Modifier.size(30.dp), tint = if (fav) primary else dim) }
             IconButton(onClick = onInfo, enabled = current != null) { Icon(Icons.Default.Info, "Info", tint = dim) }
-            IconButton(onClick = onAddPlaylist, enabled = current != null) { Icon(Icons.Default.PlaylistAdd, "Playlist", tint = dim) }
+            IconButton(onClick = onAddPlaylist, enabled = current != null) { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, "Playlist", tint = dim) }
             IconButton(onClick = onMore, enabled = current != null) { Icon(Icons.Default.MoreHoriz, "More", tint = dim) }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onRepeat) {
@@ -902,7 +901,7 @@ private fun NowPage(
             IconButton(onClick = { Music.player?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Next", Modifier.size(32.dp)) }
         }
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onVolume) { Icon(Icons.Default.VolumeUp, "Volume", tint = dim) }
+            IconButton(onClick = onVolume) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "Volume", tint = dim) }
             IconButton(onClick = onEq) { Icon(Icons.Default.Equalizer, "Equalizer", tint = dim) }
         }
     }

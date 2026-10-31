@@ -68,10 +68,8 @@ fun TimerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
         endAt == 0L -> total
         else -> (endAt - now).coerceIn(0L, total)
     }
-    val progress = if (endAt == 0L) 0f else 1f - remaining.toFloat() / total
     val secs = (remaining + 999) / 1000
     val col = Color(card.color)
-    val track = MaterialTheme.colorScheme.surfaceVariant
 
     var compact by remember { mutableStateOf(store.timerCompact) }
     val running = endAt != 0L && !done

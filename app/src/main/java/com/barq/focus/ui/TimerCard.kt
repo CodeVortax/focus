@@ -74,7 +74,7 @@ private fun Ring(fraction: Float, color: Color, stroke: Dp, modifier: Modifier, 
 }
 
 @Composable
-private fun RoundBtn(color: Color, filled: Boolean, size: Dp, desc: String, onClick: () -> Unit, content: @Composable () -> Unit) {
+private fun RoundBtn(color: Color, filled: Boolean, size: Dp, onClick: () -> Unit, content: @Composable () -> Unit) {
     Box(
         Modifier.size(size).clip(CircleShape)
             .then(if (filled) Modifier.background(color) else Modifier.border(2.dp, color, CircleShape))
@@ -133,12 +133,12 @@ fun TimerCardUi(
                     }
                 }
                 if (showPlay) Box(Modifier.align(Alignment.BottomStart)) {
-                    RoundBtn(ink, true, 44.dp, tr(if (showPause) "Pause" else "Start"), onPlayPause) {
+                    RoundBtn(ink, true, 44.dp, onPlayPause) {
                         Icon(if (showPause) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(26.dp))
                     }
                 }
                 if (running) Box(Modifier.align(Alignment.BottomEnd)) {
-                    RoundBtn(ink, false, 44.dp, tr("Stop"), onStop) { Icon(Icons.Default.Stop, null, tint = ink, modifier = Modifier.size(22.dp)) }
+                    RoundBtn(ink, false, 44.dp, onStop) { Icon(Icons.Default.Stop, null, tint = ink, modifier = Modifier.size(22.dp)) }
                 }
             }
         } else {
@@ -156,10 +156,10 @@ fun TimerCardUi(
                     Text(caption, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (showPlay) RoundBtn(ink, true, 38.dp, tr(if (showPause) "Pause" else "Start"), onPlayPause) {
+                    if (showPlay) RoundBtn(ink, true, 38.dp, onPlayPause) {
                         Icon(if (showPause) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(22.dp))
                     }
-                    if (running) RoundBtn(ink, false, 38.dp, tr("Stop"), onStop) { Icon(Icons.Default.Stop, null, tint = ink, modifier = Modifier.size(20.dp)) }
+                    if (running) RoundBtn(ink, false, 38.dp, onStop) { Icon(Icons.Default.Stop, null, tint = ink, modifier = Modifier.size(20.dp)) }
                 }
             }
         }

@@ -49,7 +49,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.filled.ViewAgenda
@@ -169,7 +169,7 @@ fun NotesScreen(store: Store, onOpen: (Long, Int) -> Unit, onBack: () -> Unit) {
                             }
                             ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), tr("Share")))
                         }) { Icon(Icons.Default.Share, tr("Share")) }
-                        IconButton(onClick = { val all = chosen().all { it.pinned }; each { it.copy(pinned = !all) } }) { Icon(Icons.Default.Star, tr("Pin")) }
+                        IconButton(onClick = { val allPinned = chosen().all { it.pinned }; each { it.copy(pinned = !allPinned) } }) { Icon(Icons.Default.Star, tr("Pin")) }
                         IconButton(onClick = { val un = mode == "archive"; each { it.copy(archived = !un) } }) {
                             Icon(if (mode == "archive") Icons.Default.Unarchive else Icons.Default.Archive, tr("Archive"))
                         }
@@ -212,7 +212,7 @@ fun NotesScreen(store: Store, onOpen: (Long, Int) -> Unit, onBack: () -> Unit) {
                         Icon(if (grid) Icons.Default.ViewAgenda else Icons.Default.ViewModule, "Layout")
                     }
                     Box {
-                        IconButton(onClick = { sortMenu = true }) { Icon(Icons.Default.Sort, "Sort") }
+                        IconButton(onClick = { sortMenu = true }) { Icon(Icons.AutoMirrored.Filled.Sort, "Sort") }
                         DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
                             listOf("Last edited", "Created", "Title A-Z").forEachIndexed { i, s ->
                                 DropdownMenuItem(

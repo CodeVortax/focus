@@ -121,7 +121,6 @@ private class DashState {
         y += vy * dt
         wx += DASH_SPEED * dt
         var dead = false
-        var support = 0f
         val l = wx + 0.1f
         val r = wx + 0.7f
         for (o in level) {

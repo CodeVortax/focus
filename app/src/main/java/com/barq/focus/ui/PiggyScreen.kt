@@ -44,7 +44,6 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PiggyScreen(store: Store, onBack: () -> Unit) {
-    val ctx = LocalContext.current
     var on by remember { mutableStateOf(store.vaultOn) }
     val lots = remember { Vault.lots(store).sortedBy { it.release } }
     val ledger = remember { Vault.ledger(store).reversed() }

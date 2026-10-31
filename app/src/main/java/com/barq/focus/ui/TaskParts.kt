@@ -31,7 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
@@ -113,7 +113,7 @@ fun TaskRow(
                         color = color, trackColor = color.copy(alpha = 0.2f)
                     )
                     Text("  $d/${item.subs.size}", style = MaterialTheme.typography.labelMedium, color = color)
-                    Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, Modifier.size(18.dp), tint = color)
+                    Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(18.dp), tint = color)
                 }
             }
             if (open) {
@@ -182,7 +182,7 @@ fun GroupHeader(group: TaskGroup, done: Int, total: Int, onToggle: () -> Unit, o
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                if (group.collapsed) Icons.Default.KeyboardArrowRight else Icons.Default.KeyboardArrowDown,
+                if (group.collapsed) Icons.AutoMirrored.Filled.KeyboardArrowRight else Icons.Default.KeyboardArrowDown,
                 null, tint = ink, modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(4.dp))

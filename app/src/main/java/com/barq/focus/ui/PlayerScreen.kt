@@ -17,8 +17,6 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
-
 package com.barq.focus.ui
 
 import android.app.Activity

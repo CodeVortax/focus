@@ -36,8 +36,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PanTool
-import androidx.compose.material.icons.filled.Redo
-import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -228,8 +228,8 @@ fun FloatingInkBar(
                     BarButton(false, onClick = { poke(); picker = false; popup = !popup }, enabled = tool != Tool.ERASER) {
                         Box(Modifier.size(24.dp).clip(CircleShape).background(if (tool == Tool.ERASER) Color.Transparent else Color(color)).border(2.dp, MaterialTheme.colorScheme.outline, CircleShape))
                     }
-                    BarButton(false, canUndo, { poke(); onUndo() }) { Icon(Icons.Default.Undo, tr("Undo"), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canUndo) 1f else 0.3f)) }
-                    BarButton(false, canRedo, { poke(); onRedo() }) { Icon(Icons.Default.Redo, tr("Redo"), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canRedo) 1f else 0.3f)) }
+                    BarButton(false, canUndo, { poke(); onUndo() }) { Icon(Icons.AutoMirrored.Filled.Undo, tr("Undo"), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canUndo) 1f else 0.3f)) }
+                    BarButton(false, canRedo, { poke(); onRedo() }) { Icon(Icons.AutoMirrored.Filled.Redo, tr("Redo"), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canRedo) 1f else 0.3f)) }
                     BarButton(false, onClick = { poke(); confirm = 1 }) { Icon(Icons.Default.DeleteSweep, tr("Clear page")) }
                     // the hand: pen works with the stylus only. A red hand with a line through it while it is on.
                     BarButton(stylusOnly, onClick = { poke(); onStylus(!stylusOnly) }) {

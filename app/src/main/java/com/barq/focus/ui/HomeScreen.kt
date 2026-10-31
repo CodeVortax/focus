@@ -38,7 +38,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Savings
@@ -113,7 +113,6 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     LifecycleResumeEffect(Unit) { rev++; onPauseOrDispose {} }
 
     var cards by remember(rev) { mutableStateOf(store.also { it.rollover() }.cards()) }
-    val bank = remember(rev) { store.bank() }
     val setupOk = remember(rev) { Perms.ready(ctx) && Perms.accessibility(ctx) }
     val running = remember(rev) { cards.firstOrNull { it.id == store.activeCardId } }
     val (done, total) = remember(rev, cards) { store.progress(cards) }
@@ -161,7 +160,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                 title = { Text(tr("Focus"), fontFamily = FocusBrandFont, fontWeight = FontWeight.Bold) },
                 actions = {
                     IconButton(onClick = { go("notes") }) { Icon(Icons.Default.Description, "Notes") }
-                    IconButton(onClick = { go("pdfs") }) { Icon(Icons.Default.MenuBook, "Library") }
+                    IconButton(onClick = { go("pdfs") }) { Icon(Icons.AutoMirrored.Filled.MenuBook, "Library") }
                     Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "More") }
                     }

@@ -425,6 +425,7 @@ class Overlay private constructor(private val ctx: Context) {
             addView(scroll, FrameLayout.LayoutParams(-1, -1))
             addView(leave, FrameLayout.LayoutParams(-1, dp(60), Gravity.BOTTOM).apply { setMargins(dp(22), 0, dp(22), dp(28)) })
         }
+        @Suppress("DEPRECATION")
         val lp = WindowManager.LayoutParams(
             -1, -1,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
