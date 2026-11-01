@@ -41,7 +41,7 @@ object I18n {
         var isRtl = false
         when (newCode) {
             "en" -> {}
-            "ar" -> { map = AR + AR_EXTRA; isRtl = true }
+            "ar" -> { map = AR + AR_EXTRA + AR_V30; isRtl = true }
             in BUILTIN -> map = loadAsset(ctx, newCode)
             else -> {
                 val json = store.langPack(newCode)

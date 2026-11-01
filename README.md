@@ -75,7 +75,7 @@ Everything runs on your phone. There is no account, no server, and the manifest 
 ### Motivation
 
 - Streaks, XP and levels.
-- 46 badges, including 15 hidden "Hall of Shame" ones. See [Badges and XP](docs/guides/badges.md).
+- 46 badges, including 15 hidden "Honest Moments" ones (plain facts about a rough patch, never a judgment). See [Badges and XP](docs/guides/badges.md).
 - 17 short games for breaks. See [Games](docs/guides/games.md).
 - Four home-screen widgets: **Treat bank**, **Streak**, **Shorts**, and **Today** with a block per subject. See [Widgets](docs/guides/widgets.md).
 

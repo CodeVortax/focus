@@ -120,9 +120,9 @@ object Alerts {
 /** Decides when to alert for the running timer. Called by the alarm AND by the watcher tick; safe to call often. */
 object Alerter {
     private fun nagText(n: Int) = when {
-        n < 10 -> trf("%d minutes over time. Go faster, bro!", n)
-        n < 20 -> trf("%d minutes over. Come on buddy, wrap it up.", n)
-        else -> trf("%d minutes over. Add time or stop the timer, bro.", n)
+        n < 10 -> trf("%d minutes over time. Take a breath, then wrap up when you can.", n)
+        n < 20 -> trf("%d minutes over. Time to start wrapping up, friend.", n)
+        else -> trf("%d minutes over. Add time or stop the timer, whichever helps.", n)
     }
 
     fun check(c: Context, store: Store) {

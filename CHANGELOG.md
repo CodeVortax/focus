@@ -2,6 +2,23 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
+## Unreleased
+
+### Fixed
+- **Shorts gate flicker.** The gate pauses the video, a paused feed sends no accessibility events, and the Shorts session timed out after 4 s with the gate on screen: the gate came down, the video resumed, was found again and the gate came back, over and over. While the gate is up, the Shorts app being in front now keeps the session alive.
+- **Gate after Recents.** An unanswered gate that goes out of view (Recents, a system window) now keeps the countdown it had already run when you come back within 90 seconds, instead of starting the wait again. An answered gate is unchanged: your pass still holds through Recents. The gate is never skipped.
+
+### Changed
+- **Gentler wording.** "Hall of Shame" is now **Honest Moments**, and its 15 badges are plain facts instead of jokes at your expense (Goat Neglecter → Gentle Reminder, Shorts Zombie → Big Scroll Day, Emergency Abuser → Needed the Phone, Streak Funeral → Fresh Start, and so on). Badge ids are unchanged, so what you earned stays earned; earned ones no longer use the red error colour. Over-time reminders no longer say "go faster, bro". The Strict-mode sentence you type is now "I am choosing to scroll right now, and I know it takes time from what matters to me." (still typed by hand, letter by letter). Translations: Arabic is updated; Russian, German and French show the English text for the changed lines until their packs are updated.
+
+### Added
+- **Study companion.** Short, kind lines in the gate ("You worked for this. Enjoy your break.", "One small task can get you started."), the Shorts gate, the not-free screen, and as a small toast when you leave or use the emergency button. One reusable message system (`Support`), translated through the normal string tables (Arabic included), never the same line twice in a row, tap a line on the gate to put it away. Settings → Study companion: on/off, how often the pop-up lines appear, and the tone (calm, warm, playful).
+- **A quiet line under the study timer.** While a subject timer runs, one short line sits under it ("One minute at a time.", later "Keep going. You don't need to rush."). It changes at most twice a session, is never a pop-up or a notification, and a tap puts it away. Ticking a task off shows a short "Done. That counts." toast. Both follow Settings → Study companion.
+- **Home screen.** A short greeting, then one clear primary button: **Continue: <subject>** when a timer is running, otherwise **Start: <subject>** for the first subject that still has something to do. With nothing planned, a gentle "Add one small thing" card replaces the bare "nothing on your plate". A **Take a break** link opens Games. Progress, treat bank and streaks are unchanged below.
+- **Look & theme** (Home menu). Six presets (Calm Sage, Midnight, Warm Paper, Ocean, Lavender, Minimal Monochrome), a live preview you apply or cancel, and **export / import as JSON** so a theme can be edited by hand or with an AI. A theme sets colours (with a dark variant), card and button radius, spacing, text scale and a few home and gate choices. Imports are strictly checked: unknown fields, bad colours, out-of-range numbers and text that is too faint are rejected with a plain reason and nothing is applied. The gate screens follow the applied theme. See [Look & theme](docs/guides/themes.md).
+- **Calm Breathing** (Games, at the top). A circle that grows as you breathe in and shrinks as you breathe out; two patterns (in 4, out 6; or box 4-4-4-4), 1, 3 or 5 minutes, a "Still" mode without motion, and a kind finish whether you stop early or not. No score, no timer pressure. Memory Match was already in Games.
+- First JVM unit tests (`GateSessionsTest`, `SupportTest`, `ThemeJsonTest`, `BreathTest`).
+
 ## 0.29.0-beta (version code 47)
 
 ### Added

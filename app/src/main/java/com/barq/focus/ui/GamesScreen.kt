@@ -191,6 +191,7 @@ fun GamesScreen(store: Store, onBack: () -> Unit) {
         "2048" -> Game2048(store) { game = null }
         "mines" -> MinesGame(store) { game = null }
         "memory" -> MemoryGame(store) { game = null }
+        "breath" -> BreathGame(store) { game = null }
         "schulte" -> SchulteGame(store) { game = null }
         "nback" -> NBackGame(store) { game = null }
         "react" -> ReactionGame(store) { game = null }
@@ -220,6 +221,11 @@ private fun GamesHub(store: Store, listState: androidx.compose.foundation.lazy.L
                     tr("Short breaks for a busy brain. Play a round, then get back to your plate."),
                     style = MaterialTheme.typography.bodyMedium
                 )
+            }
+            // calm
+            item {
+                GameCard("🫧", tr("Calm Breathing"), tr("A slow breathing circle. No score, no pressure."),
+                    store.getLong(BREATH_TOTAL_KEY).let { if (it >= 60L) trf("Total: %d min", (it / 60L).toInt()) else "" }) { onPick("breath") }
             }
             // arcade
             item { GameCard("🧱", tr("Blocks"), tr("Falling blocks. Find the rhythm and let the noise go quiet."), trf("Best: %d", store.getLong("hs_tetris"))) { onPick("tetris") } }

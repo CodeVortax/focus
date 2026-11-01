@@ -76,6 +76,7 @@ import com.barq.focus.data.dayItems
 import com.barq.focus.data.weekItems
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
+import com.barq.focus.data.support
 import com.barq.focus.data.tr
 import com.barq.focus.data.trf
 import com.barq.focus.service.Notifier
@@ -162,6 +163,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
         }
         if (v && !x.weekly && !x.text.startsWith("\u21BB ")) reviewOffer = x.text
         commit(card.items.toMutableList().also { l -> l[i] = next }, award)
+        if (v) store.support(com.barq.focus.data.Moment.TASK_DONE)?.let { android.widget.Toast.makeText(ctx, it, android.widget.Toast.LENGTH_SHORT).show() }
     }
 
     fun setSubs(i: Int, l: List<SubTask>) {

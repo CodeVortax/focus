@@ -30,6 +30,8 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import com.barq.focus.data.Config
+import com.barq.focus.data.Moment
+import com.barq.focus.data.support
 import com.barq.focus.data.Db
 import com.barq.focus.data.Store
 import com.barq.focus.data.trf
@@ -208,6 +210,11 @@ class FocusAccessibility : AccessibilityService() {
             try {
                 val now = System.currentTimeMillis()
                 if (inShorts) {
+                    // Our own gate pauses the video (audio focus), and a paused feed sends no accessibility events, so nothing
+                    // refreshes lastFoundAt while the gate is up. Without this the session timed out after 4 s, the gate was
+                    // taken down, the video resumed, was found again, and the gate came back: the Shorts flicker.
+                    // While the gate covers the app, being in front is the proof the feed is still there.
+                    if (ov.showing && ov.tag == "shorts" && coveredByGate()) lastFoundAt = now
                     if (now - lastFoundAt > 4000L || (Shared.watchAlive && Shared.fg != null && Shared.fg != shortsPkg && shortsPkg !in visiblePackages())) endShorts()
                     else if (shortsGateDue(now) && now > Shared.suppressUntil && !ov.showing) showShortsOverlay()
                     // keep the baseline fresh while nothing moves, so autoplay or a like is not mistaken for a swipe
@@ -218,6 +225,13 @@ class FocusAccessibility : AccessibilityService() {
             } catch (_: Exception) {}
             h.postDelayed(this, 1000)
         }
+    }
+
+    /** The Shorts app is still the one under our gate (in front, or at least still has a window on screen). */
+    private fun coveredByGate(): Boolean {
+        val p = shortsPkg ?: return false
+        if (Shared.watchAlive && Shared.fg == p) return true
+        return p in visiblePackages()
     }
 
     /** Strict mode keeps its timed pass; otherwise Shorts are counted in videos, and a bought treat covers everything. */
@@ -268,6 +282,7 @@ class FocusAccessibility : AccessibilityService() {
             delaySec = Config.DELAY_SECONDS,
             choices = ch,
             leaveLabel = tr("Back out"),
+            note = store.support(if (bank >= Config.TREAT_STEP) Moment.GATE_EARNED else Moment.GATE_EMPTY),
             onLeave = { if (shortsPkg in ShortsDetector.TIKTOK) { exitApp(shortsPkg!!); endShorts() } else backOut() }
         )
     }
@@ -280,7 +295,7 @@ class FocusAccessibility : AccessibilityService() {
             subtitle = tr("Strict mode"),
             delaySec = 0,
             choices = emptyList(),
-            strictPhrase = tr("I am wasting my time right now and I know it hurts my focus."),
+            strictPhrase = tr("I am choosing to scroll right now, and I know it takes time from what matters to me."),
             typedLabel = trf("Typing it unlocks %d min. You have to type it every time.", Config.STRICT_EXTEND_MIN),
             onTyped = { grant("Typed", Config.STRICT_EXTEND_MIN) },
             leaveLabel = tr("Close it"),

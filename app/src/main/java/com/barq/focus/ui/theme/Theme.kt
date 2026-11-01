@@ -37,6 +37,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
 
 private val LightColors = lightColorScheme(
     primary = GoogleBlue,
@@ -77,12 +80,17 @@ fun FocusTheme(
 ) {
     val context = LocalContext.current
     val accent = AppTheme.accent
+    // a design theme (Look & theme) replaces the accent and light/dark choices while one is applied or being previewed
+    val cfg = AppTheme.effective
+    val systemDark = isSystemInDarkTheme()
+    val dark = cfg?.isDark(systemDark) ?: darkTheme
     val colorScheme = when {
-        accent != 0 -> accentScheme(androidx.compose.ui.graphics.Color(accent), darkTheme)
+        cfg != null -> cfg.palette(systemDark).toScheme(dark)
+        accent != 0 -> accentScheme(androidx.compose.ui.graphics.Color(accent), dark)
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (darkTheme) dynamicDarkColorScheme(context).let { it.copy(surface = it.background) }
+            if (dark) dynamicDarkColorScheme(context).let { it.copy(surface = it.background) }
             else dynamicLightColorScheme(context).let { creamy(it, it.primary) }
-        darkTheme -> DarkColors
+        dark -> DarkColors
         else -> creamy(LightColors, GoogleBlue)
     }
 
@@ -93,8 +101,10 @@ fun FocusTheme(
             val window = (view.context as? android.app.Activity)?.window
             if (window != null) {
                 val ctl = androidx.core.view.WindowCompat.getInsetsController(window, view)
-                ctl.isAppearanceLightStatusBars = !darkTheme
-                ctl.isAppearanceLightNavigationBars = !darkTheme
+                // icons follow how light the page really is, so a light theme under a dark phone (or the reverse) stays readable
+                val lightBars = if (cfg != null) ThemeJson.luminance(cfg.palette(systemDark).background) > 0.4 else !dark
+                ctl.isAppearanceLightStatusBars = lightBars
+                ctl.isAppearanceLightNavigationBars = lightBars
                 // the XML window background follows the phone's night mode; follow the app's choice instead
                 window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(colorScheme.background.toArgb()))
             }
@@ -103,8 +113,8 @@ fun FocusTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        shapes = PixelShapes,
-        typography = FocusTypography.withFont(AppFont.family),
+        shapes = cfg?.let { shapesFor(it) } ?: PixelShapes,
+        typography = FocusTypography.withFont(AppFont.family).let { t -> cfg?.let { t.scaledBy(it.typographyScale) } ?: t },
         content = content
     )
 }
@@ -161,3 +171,51 @@ private fun accentScheme(a: Color, dark: Boolean): ColorScheme {
     )
     return if (dark) out else creamy(out, a)
 }
+
+/** The Material colour roles built from a theme's eleven colours. Text colours are validated for contrast before a theme can be applied. */
+private fun ThemeColors.toScheme(dark: Boolean): ColorScheme {
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    val bg = Color(background)
+    val cardC = Color(card)
+    fun over(c: Int, a: Float) = Color(c).copy(alpha = a).compositeOver(bg)
+    fun on(c: Int) = Color(ThemeJson.onColor(c))
+    return base.copy(
+        primary = Color(primary), onPrimary = on(primary),
+        primaryContainer = over(primary, 0.22f), onPrimaryContainer = Color(textPrimary),
+        secondary = Color(secondary), onSecondary = on(secondary),
+        secondaryContainer = over(secondary, 0.20f), onSecondaryContainer = Color(textPrimary),
+        tertiary = Color(accent), onTertiary = on(accent),
+        tertiaryContainer = over(accent, 0.18f), onTertiaryContainer = Color(textPrimary),
+        error = Color(error), onError = on(error),
+        errorContainer = over(error, 0.18f), onErrorContainer = Color(textPrimary),
+        background = bg, onBackground = Color(textPrimary),
+        surface = Color(surface), onSurface = Color(textPrimary),
+        surfaceVariant = lerp(cardC, bg, 0.5f), onSurfaceVariant = Color(textSecondary),
+        surfaceContainerLowest = cardC, surfaceContainerLow = cardC, surfaceContainer = cardC,
+        surfaceContainerHigh = cardC, surfaceContainerHighest = cardC,
+        outline = Color(textSecondary).copy(alpha = 0.6f), outlineVariant = Color(textSecondary).copy(alpha = 0.25f),
+    )
+}
+
+/** Card radius drives the Material shape scale, so cards, dialogs and chips follow it. (Material buttons stay pill-shaped; the home Start button uses the button radius.) */
+private fun shapesFor(c: ThemeConfig) = Shapes(
+    extraSmall = RoundedCornerShape((c.cardRadius * 0.4f).dp),
+    small = RoundedCornerShape((c.cardRadius * 0.6f).dp),
+    medium = RoundedCornerShape(c.cardRadius.dp),
+    large = RoundedCornerShape((c.cardRadius + 8).dp),
+    extraLarge = RoundedCornerShape((c.cardRadius + 16).dp),
+)
+
+private fun TextStyle.scaled(f: Float) = copy(
+    fontSize = if (fontSize.isSpecified) fontSize * f else fontSize,
+    lineHeight = if (lineHeight.isSpecified) lineHeight * f else lineHeight,
+)
+
+/** Every text style multiplied by [f], on top of the phone's own font scale. */
+fun Typography.scaledBy(f: Float): Typography = if (f == 1f) this else Typography(
+    displayLarge = displayLarge.scaled(f), displayMedium = displayMedium.scaled(f), displaySmall = displaySmall.scaled(f),
+    headlineLarge = headlineLarge.scaled(f), headlineMedium = headlineMedium.scaled(f), headlineSmall = headlineSmall.scaled(f),
+    titleLarge = titleLarge.scaled(f), titleMedium = titleMedium.scaled(f), titleSmall = titleSmall.scaled(f),
+    bodyLarge = bodyLarge.scaled(f), bodyMedium = bodyMedium.scaled(f), bodySmall = bodySmall.scaled(f),
+    labelLarge = labelLarge.scaled(f), labelMedium = labelMedium.scaled(f), labelSmall = labelSmall.scaled(f),
+)

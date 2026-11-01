@@ -58,6 +58,17 @@ object AppTheme {
     /** 0 = follow the system, 1 = always light, 2 = always dark. */
     var mode by androidx.compose.runtime.mutableIntStateOf(0)
 
+    /** The saved design theme (null = Focus's own look, with the accent and light/dark choices above). */
+    var saved by androidx.compose.runtime.mutableStateOf<ThemeConfig?>(null)
+
+    /** A theme being tried out before it is applied; it is never saved by itself. */
+    var preview by androidx.compose.runtime.mutableStateOf<ThemeConfig?>(null)
+
+    val effective: ThemeConfig? get() = preview ?: saved
+
+    /** Reads the saved theme from its JSON. A broken or unknown theme falls back to the default look rather than crashing. */
+    fun loadSaved(json: String) { saved = ThemeJson.parseOrNull(json) }
+
     /** Shape of the task check: 0 circle, 1..6 triangle..octagon, 7 = mixed. */
     var checkShape by androidx.compose.runtime.mutableIntStateOf(0)
 }

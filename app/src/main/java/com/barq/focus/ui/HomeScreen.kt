@@ -47,6 +47,8 @@ import com.barq.focus.data.Game
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.filled.MoreVert
+import com.barq.focus.data.Moment
+import com.barq.focus.data.support
 import com.barq.focus.data.tr
 import com.barq.focus.data.trf
 import androidx.compose.ui.draw.drawBehind
@@ -100,7 +102,9 @@ import com.barq.focus.data.Store
 import com.barq.focus.data.startOfDay
 import com.barq.focus.service.Perms
 import com.barq.focus.service.Shared
+import com.barq.focus.ui.theme.AppTheme
 import com.barq.focus.ui.theme.CardSwatches
+import androidx.compose.material.icons.filled.Palette
 import com.barq.focus.ui.theme.FocusBrandFont
 
 fun typeLabel(t: CardType) = tr(when (t) { CardType.STUDY -> "Study"; CardType.TREAT -> "Treat"; CardType.FREE -> "Free" })
@@ -116,6 +120,8 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     val setupOk = remember(rev) { Perms.ready(ctx) && Perms.accessibility(ctx) }
     val running = remember(rev) { cards.firstOrNull { it.id == store.activeCardId } }
     val (done, total) = remember(rev, cards) { store.progress(cards) }
+    val look = AppTheme.effective
+    val greeting = remember(rev) { store.support(Moment.HOME_GREETING) }.takeIf { look?.homeShowGreeting != false }
     val swipes = remember(rev) { store.shortsSwipes() }
     val shortsMin = remember(rev) { Db.get(ctx).totalsSince("shorts", startOfDay()).values.sum() / 60_000 }
 
@@ -168,7 +174,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
             )
         }
     ) { pad ->
-        Column(Modifier.padding(pad).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(pad).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy((look?.spacingDp ?: 12).dp)) {
             if (!setupOk) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
@@ -180,12 +186,28 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                     }
                 }
             }
-            running?.let {
-                Card(Modifier.fillMaxWidth().clickable { onOpen(it) }) {
-                    Text(trf("Timer running: %s. Tap to open.", it.title), Modifier.padding(16.dp))
+            greeting?.let { Text(it, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp)) }
+            // the one thing to do next: keep going with the running timer, or start the first subject that still has something to do
+            val next = running ?: cards.firstOrNull { it.type == CardType.STUDY && it.dayItems.any { i -> !i.done } }
+            next?.let { n ->
+                val label = if (running != null) trf("Continue: %s", n.title) else trf("Start: %s", n.title)
+                val go1 = { if (running != null) onOpen(n) else open(n) }
+                val shape = RoundedCornerShape((look?.buttonRadius ?: 20).dp)
+                val mod = Modifier.fillMaxWidth().heightIn(min = if (look?.homePrimaryAction == "normal") 48.dp else 56.dp)
+                val txt: @Composable () -> Unit = {
+                    Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+                if (look?.homePrimaryAction == "subtle") FilledTonalButton(onClick = go1, modifier = mod, shape = shape) { txt() }
+                else Button(onClick = go1, modifier = mod, shape = shape) { txt() }
+            }
+            // nothing planned: an invitation, not an error (shown even with the companion off, it is a plain empty state)
+            if (total == 0) Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr(com.barq.focus.data.Support.POOL.getValue(Moment.HOME_EMPTY).first().text), style = MaterialTheme.typography.bodyLarge)
+                    FilledTonalButton(onClick = { showAdd = true }) { Text(tr("Add something small")) }
                 }
             }
-            Card(Modifier.fillMaxWidth().clickable { go("log") }) {
+            if (look?.homeShowProgress != false) Card(Modifier.fillMaxWidth().clickable { go("log") }) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
                         when {
@@ -210,6 +232,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                             trf("Lv %d", lvl) + " " + tr(Game.titleOf(lvl).second),
                         style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary
                     )
+                    TextButton(onClick = { go("games") }, contentPadding = PaddingValues(0.dp)) { Text(tr("Take a break")) }
                     if (total > 0 && done < total) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             TextButton(onClick = { showEnd = true }, contentPadding = PaddingValues(0.dp)) { Text(tr("End day")) }
@@ -541,6 +564,7 @@ private fun HomeMenuPanel(side: Int, onDismiss: () -> Unit, go: (String) -> Unit
         Triple("schedule", Icons.Default.Schedule, "Not-free blocks"),
         Triple("launcher", Icons.Default.Home, "Study launcher"),
         Triple("import", Icons.Default.Add, "Import / Export (.foc)"),
+        Triple("theme", Icons.Default.Palette, "Look & theme"),
         Triple("setup", Icons.Default.Settings, "Setup"),
     )
     val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl

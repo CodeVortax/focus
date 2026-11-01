@@ -41,6 +41,25 @@ Every choice writes its reason onto the usage row, so the [Usage screen](../guid
 
 An empty bank shows **Treat bank empty: finish tasks to earn** as a disabled button.
 
+## Gate sessions
+
+`GateSessions` (pure Kotlin, unit-tested) remembers how far an **unanswered** gate had got. Phases per gated app: `IDLE`, `SHOWN`, `AWAY`, `PASSED`.
+
+- `SHOWN`: the gate is on screen.
+- `AWAY`: the gate was taken down because the app left the screen (Recents, a system window) before any choice. If the app comes back within 90 seconds, the gate returns with the countdown it had left. After 90 seconds it counts as a new visit.
+- `PASSED`: a valid choice was made. The pass itself is still `WatchService.allowedUntil`, which already survives Recents.
+- `Leave`, `Back to work` and `Back out` return the app to `IDLE`.
+
+It never skips the gate: opening Recents must not be a free bypass. It is in memory only, so a service restart forgets it. Transitions are logged to Logcat tag `FocusGate` in debug builds, without package names.
+
+Shorts: the Shorts gate pauses the video through audio focus, and a paused feed sends no accessibility events. While the Shorts gate is up, `FocusAccessibility` keeps the Shorts session alive as long as the app is still in front (or still has a window), so the 4 second "no Shorts seen" timeout cannot take the gate down and bring it back.
+
+## The companion line
+
+`Support` (`data/Support.kt`, pure Kotlin) holds the short kind lines, grouped by `Moment` (first visit, treat earned, no treat yet, hard to get started, coming back, not-free block, leaving, emergency, study, task done, home). Each line is an English key shown through `tr()`, so it is translated like every other string. `Store.support(moment)` returns the translated line, or null when the companion is off or the frequency setting skips a toast.
+
+The gate picks the moment in this order: coming back from Recents, three or more gates for the same app in 30 minutes ("hard to get started"), first gate in 30 minutes, treat time earned, no treat time yet. The line sits under the app chip, is one or two lines long, and disappears when tapped. It never changes the choices, the countdown or the blocking.
+
 ## The gate screen
 
 The overlay is drawn with plain Android views (a `ScrollView` added through `WindowManager`), not Compose, because a service has no Compose host.

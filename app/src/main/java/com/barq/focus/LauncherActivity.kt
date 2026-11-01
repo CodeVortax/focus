@@ -78,6 +78,7 @@ class LauncherActivity : ComponentActivity() {
             com.barq.focus.ui.theme.AppTheme.accent = it.accent
             com.barq.focus.ui.theme.AppTheme.mode = it.themeMode
             com.barq.focus.ui.theme.AppTheme.checkShape = it.checkShape
+            com.barq.focus.ui.theme.AppTheme.loadSaved(it.themeJson)
         }
         com.barq.focus.ui.theme.AppFont.load(this)
         setContent {

@@ -642,6 +642,22 @@ class Store(ctx: Context) {
         get() = p.getInt("rec_kbps", 32)
         set(v) { p.edit().putInt("rec_kbps", v).apply() }
 
+    // ---- design theme (Look & theme): the JSON of the applied theme, empty = Focus's own look ----
+    var themeJson: String
+        get() = p.getString("theme_json", "") ?: ""
+        set(v) { p.edit().putString("theme_json", v).apply() }
+
+    // ---- study companion: short kind lines on the gate, the timer and the home screen ----
+    var supportOn: Boolean
+        get() = p.getBoolean("support_on", true)
+        set(v) { p.edit().putBoolean("support_on", v).apply() }
+    var supportFreq: Int                          // for toasts: 0 rarely, 1 sometimes, 2 always
+        get() = p.getInt("support_freq", 1).coerceIn(0, 2)
+        set(v) { p.edit().putInt("support_freq", v.coerceIn(0, 2)).apply() }
+    var supportTone: Int                          // 0 any, 1 calm, 2 warm, 3 playful
+        get() = p.getInt("support_tone", 0).coerceIn(0, 3)
+        set(v) { p.edit().putInt("support_tone", v.coerceIn(0, 3)).apply() }
+
     // ---- hidden developer options (tap the version 7 times) ----
     var devOptions: Boolean
         get() = p.getBoolean("dev_options", false)

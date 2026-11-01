@@ -51,6 +51,7 @@ import com.barq.focus.data.I18n
 import com.barq.focus.data.Store
 import com.barq.focus.data.tr
 import com.barq.focus.data.trf
+import com.barq.focus.ui.theme.ThemeJson
 
 class Choice(
     val label: String,
@@ -67,7 +68,7 @@ private class Pal(
 )
 
 /** A calm "breathing" orb with a thin countdown arc around it. Shows a tick when [done]. */
-private class RingView(c: Context, private val track: Int, private val color: Int) : View(c) {
+private class RingView(c: Context, private val track: Int, private val color: Int, private val breathe: Boolean = true) : View(c) {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
     private val f = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val box = RectF()
@@ -93,7 +94,7 @@ private class RingView(c: Context, private val track: Int, private val color: In
     override fun onAttachedToWindow() { super.onAttachedToWindow(); startBreathing() }
 
     fun startBreathing() {
-        if (breath == null) breath = ValueAnimator.ofFloat(0f, 1f).apply {
+        if (breathe && breath == null) breath = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 4000
             repeatCount = ValueAnimator.INFINITE; repeatMode = ValueAnimator.REVERSE
             interpolator = android.view.animation.AccelerateDecelerateInterpolator()
@@ -142,6 +143,10 @@ class Overlay private constructor(private val ctx: Context) {
         private set
     val showing get() = root != null
 
+    /** Seconds of the opening countdown still to run (0 once the choices are open). Lets the watcher keep the countdown if the gate is taken down and comes back. */
+    @Volatile var delayLeft = 0
+        private set
+
     companion object {
         private var inst: Overlay? = null
         fun get(c: Context): Overlay = inst ?: Overlay(c.applicationContext).also { inst = it }
@@ -154,6 +159,12 @@ class Overlay private constructor(private val ctx: Context) {
     /** Same rules as FocusTheme: accent wins, then Material-You on Android 12+, then the plain palette. */
     private fun palette(): Pal {
         val s = Store(ctx)
+        // an applied design theme (Look & theme) wins over the accent and light/dark choices
+        ThemeJson.parseOrNull(s.themeJson)?.let { cfg ->
+            val sysNight = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            val c = cfg.palette(sysNight)
+            return Pal(c.background, c.textPrimary, c.textSecondary, c.card, c.primary, ThemeJson.onColor(c.primary))
+        }
         val night = when (s.themeMode) {
             1 -> false
             2 -> true
@@ -202,11 +213,12 @@ class Overlay private constructor(private val ctx: Context) {
     fun show(
         tag: String, title: String, subtitle: String, delaySec: Int, choices: List<Choice>,
         typedLabel: String? = null, onTyped: ((String) -> Unit)? = null, strictPhrase: String? = null,
-        leaveLabel: String = "Leave", onLeave: () -> Unit,
+        leaveLabel: String = "Leave", note: String? = null, onLeave: () -> Unit,
     ) {
         if (root != null || !Settings.canDrawOverlays(ctx)) return
 
         val pal = palette()
+        val theme = ThemeJson.parseOrNull(Store(ctx).themeJson)
         val gap = dp(10)
 
         val col = LinearLayout(ctx).apply {
@@ -228,12 +240,21 @@ class Overlay private constructor(private val ctx: Context) {
         }
         col.addView(chip)
 
+        // a short kind line from the companion; tap it to put it away
+        if (!note.isNullOrBlank() && theme?.gateSupportiveMessage != false) {
+            col.addView(tv(note, 15f, pal.on).apply {
+                setPadding(dp(2), dp(14), dp(2), dp(2))
+                contentDescription = note
+                setOnClickListener { visibility = View.GONE }
+            }, LinearLayout.LayoutParams(-1, -2))
+        }
+
         // the breathing orb with the countdown number (hidden until there is something to count)
         val ringBox = FrameLayout(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(dp(200), dp(200)).apply { topMargin = dp(20); bottomMargin = dp(4); gravity = Gravity.CENTER_HORIZONTAL }
             visibility = if (delaySec > 0) View.VISIBLE else View.GONE
         }
-        val rv = RingView(ctx, pal.track, pal.primary)
+        val rv = RingView(ctx, pal.track, pal.primary, theme?.gateStyle != "plain")
         val num = TextView(ctx).apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 56f)
             setTextColor(pal.primary); gravity = Gravity.CENTER
@@ -387,6 +408,7 @@ class Overlay private constructor(private val ctx: Context) {
         val countdown = object : Runnable {
             override fun run() {
                 if (root == null) return
+                delayLeft = left.coerceAtLeast(0)
                 if (left <= 0) {
                     status.text = ""; setLocked(false)
                     if (delaySec > 0) { rv.animateTo(0f); num.text = ""; rv.done = true }
@@ -437,6 +459,7 @@ class Overlay private constructor(private val ctx: Context) {
             wm.addView(frame, lp)
             root = frame
             this.tag = tag
+            delayLeft = delaySec
             grabAudio()
             h.post(countdown)
         } catch (_: Exception) {

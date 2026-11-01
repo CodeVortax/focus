@@ -39,6 +39,8 @@ import androidx.core.app.ServiceCompat
 import com.barq.focus.data.Apps
 import com.barq.focus.data.Block
 import com.barq.focus.data.Config
+import com.barq.focus.data.Moment
+import com.barq.focus.data.support
 import com.barq.focus.data.tr
 import com.barq.focus.data.trf
 import com.barq.focus.data.Db
@@ -78,6 +80,9 @@ class WatchService : Service() {
     private val blockPass = HashMap<String, Long>()
     private var always: Set<String> = emptySet()
     private val musicRows = HashMap<String, Long>()
+    // what an unanswered gate had left when it went out of view (Recents, a system window), so it does not start over
+    private val sessions = GateSessions()
+    private val shownAt = HashMap<String, ArrayList<Long>>()    // when the gate came up for each app (only to notice "hard to get started")
 
     override fun onBind(i: Intent?): IBinder? = null
 
@@ -86,6 +91,7 @@ class WatchService : Service() {
         store = Store(this)
         db = Db.get(this)
         overlay = Overlay.get(this)
+        if (com.barq.focus.BuildConfig.DEBUG) sessions.log = { Log.d("FocusGate", it) }
         db.fixOpen(store.beat)
         always = Apps.alwaysAllowed(this)
         Shared.watchAlive = true
@@ -233,11 +239,11 @@ class WatchService : Service() {
                     if (overlay.showing && overlay.tag == "gate") {
                         if (gateAwaySince == 0L) gateAwaySince = now
                         val limit = if (cur != null && cur in always) 700L else 1800L      // home screen: hide soon; anything else: wait
-                        if (now - gateAwaySince > limit) { overlay.hide(); gateAwaySince = 0L }
+                        if (now - gateAwaySince > limit) { gateFor?.let { sessions.onAway(it, now, overlay.delayLeft) }; overlay.hide(); gateAwaySince = 0L }
                     } else gateAwaySince = 0L
                 } else if (overlay.showing && overlay.tag == "gate") {
                     gateAwaySince = 0L
-                    if (gtarget != gateFor) overlay.hide()          // another gated app came to the front: gate that one instead
+                    if (gtarget != gateFor) { gateFor?.let { sessions.onAway(it, now, overlay.delayLeft) }; overlay.hide() }   // another gated app came to the front: gate that one instead
                 } else if (!overlay.showing && now > Shared.suppressUntil && (allowedUntil[gtarget] ?: 0L) <= now && now >= Shared.treatUntil) {
                     showGate(gtarget)
                 }
@@ -300,6 +306,7 @@ class WatchService : Service() {
         if (!b.strict) ch += Choice(tr("I really need this  ·  2 min"), 0xFFEA4335.toInt(), wait = 30, icon = "\uD83C\uDD98") {
             blockPass[cur] = System.currentTimeMillis() + 2 * 60_000L
             if (fgRow >= 0) db.setReason(fgRow, "Emergency (block)")
+            say(Moment.EMERGENCY)
         }
         overlay.show(
             tag = "block",
@@ -309,6 +316,7 @@ class WatchService : Service() {
             delaySec = 0,
             choices = ch,
             leaveLabel = tr("Back to work"),
+            note = store.support(Moment.BLOCK),
             onLeave = {
                 if (fgRow >= 0) db.setReason(fgRow, "blocked")
                 Shared.suppressUntil = System.currentTimeMillis() + 5000
@@ -328,14 +336,34 @@ class WatchService : Service() {
     private fun treated(minutes: Int) { Shared.treatUntil = System.currentTimeMillis() + minutes * 60_000L }
 
     private fun grant(pkg: String, reason: String, minutes: Int) {
+        sessions.onPassed(pkg, System.currentTimeMillis())
         allowedUntil[pkg] = System.currentTimeMillis() + minutes * 60_000L
         if (fgRow >= 0) db.setReason(fgRow, reason)
     }
 
+    /** A short kind line as a toast (it never blocks anything and fades by itself). Off, or skipped by the frequency setting, shows nothing. */
+    private fun say(moment: Moment) {
+        val t = store.support(moment) ?: return
+        try { android.widget.Toast.makeText(applicationContext, t, android.widget.Toast.LENGTH_LONG).show() } catch (_: Exception) {}
+    }
+
     private fun showGate(cur: String) {
         gateFor = cur
+        val now = System.currentTimeMillis()
         val block = store.activeBlock()
         val bank = store.bank()
+        val delay = sessions.delayFor(cur, now, if (block != null) Config.BLOCK_DELAY_SECONDS else Config.DELAY_SECONDS)
+        val returning = sessions.phase(cur) == GatePhase.AWAY
+        // which kind line fits: coming back, a hard time getting started, a first visit, treat time earned, or none yet
+        val visits = shownAt.getOrPut(cur) { ArrayList() }.also { v -> v.removeAll { now - it > 30 * 60_000L } }
+        val moment = when {
+            returning -> Moment.GATE_RETURN
+            visits.size >= 3 -> Moment.GATE_REPEAT
+            visits.isEmpty() -> Moment.GATE_FIRST
+            bank >= Config.TREAT_STEP -> Moment.GATE_EARNED
+            else -> Moment.GATE_EMPTY
+        }
+        if (!returning) visits.add(now)
         val ch = ArrayList<Choice>()
         ch += Choice(trf("Just search  ·  %d min", Config.SEARCH_MINUTES), 0xFF4285F4.toInt(), icon = "\uD83D\uDD0D") { grant(cur, "Just search", Config.SEARCH_MINUTES) }
         ch += Choice(trf("A link  ·  %d min", Config.LINK_MINUTES), 0xFF4285F4.toInt(), icon = "\uD83D\uDD17") { grant(cur, "A link", Config.LINK_MINUTES) }
@@ -357,17 +385,21 @@ class WatchService : Service() {
             tag = "gate",
             title = tr(if (allowedUntil.containsKey(cur)) "Time's up" else "What for?"),
             subtitle = (Config.TRACKED[cur] ?: cur) + (block?.let { "  ·  ${it.name}" } ?: ""),
-            delaySec = if (block != null) Config.BLOCK_DELAY_SECONDS else Config.DELAY_SECONDS,
+            delaySec = delay,
+            note = store.support(moment),
             choices = ch,
             typedLabel = trf("Go  ·  %d min", Config.CUSTOM_MINUTES),
             onTyped = { r -> grant(cur, r, Config.CUSTOM_MINUTES) },
             onLeave = {
                 if (fgRow >= 0) db.setReason(fgRow, "left")
+                sessions.onLeft(cur)
+                say(Moment.LEAVE)
                 allowedUntil.remove(cur)
                 Shared.suppressUntil = System.currentTimeMillis() + 5000
                 Leaver.leave(applicationContext, cur)
             }
         )
+        if (overlay.showing && overlay.tag == "gate") sessions.onShown(cur, now)
     }
 
     /** "On" in Settings is not "running": after a crash or a kill Android keeps the switch on but never rebinds the service. */

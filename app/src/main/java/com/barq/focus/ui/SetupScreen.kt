@@ -261,13 +261,37 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                 }
             }
 
+            Group("companion", Icons.Default.Star, "Study companion", "Short kind lines on the gate and the timer") {
+                var on by remember { mutableStateOf(store.supportOn) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Show kind lines"), Modifier.weight(1f))
+                    Switch(checked = on, onCheckedChange = { on = it; store.supportOn = it })
+                }
+                if (on) {
+                    var freq by remember { mutableStateOf(store.supportFreq) }
+                    Text(tr("How often (pop-up messages)"), style = MaterialTheme.typography.bodyMedium)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(0 to "Rarely", 1 to "Sometimes", 2 to "Always").forEach { (v, n) ->
+                            FilterChip(selected = freq == v, onClick = { freq = v; store.supportFreq = v }, label = { Text(tr(n)) })
+                        }
+                    }
+                    var tone by remember { mutableStateOf(store.supportTone) }
+                    Text(tr("Tone"), style = MaterialTheme.typography.bodyMedium)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(0 to "Any", 1 to "Calm", 2 to "Warm", 3 to "Playful").forEach { (v, n) ->
+                            FilterChip(selected = tone == v, onClick = { tone = v; store.supportTone = v }, label = { Text(tr(n)) })
+                        }
+                    }
+                }
+            }
+
             Group("timer", Icons.Default.Timer, "Timer and reminders", "Alerts, over-time nudges, start reminders") {
                 NumField("Ring length when time is up (sec)", store.ringSec) { store.ringSec = it }
                 NumField("Over-time reminder every (min, 0 = off)", store.nagMin) { store.nagMin = it }
                 NumField("Reminder bell length (sec)", store.nagRingSec) { store.nagRingSec = it }
                 var speak by remember { mutableStateOf(store.speak) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr("Speak (\"time's up buddy\", \"go faster bro\")"), Modifier.weight(1f))
+                    Text(tr("Speak (\"time's up\" and gentle over-time reminders)"), Modifier.weight(1f))
                     Switch(checked = speak, onCheckedChange = { speak = it; store.speak = it })
                 }
                 OutlinedButton(onClick = {

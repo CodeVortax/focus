@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateContentSize
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -56,6 +57,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.barq.focus.data.Moment
+import com.barq.focus.data.Store
+import com.barq.focus.data.support
 import com.barq.focus.data.tr
 
 /** Thick rounded progress ring: [fraction] of the circle is filled, starting at 12 o'clock. */
@@ -195,6 +199,17 @@ fun SubjectTimerCard(
     }
     val turns = (budgetMs / 60_000L).toInt() / DIAL_MIN_PER_TURN
     val extra = (budgetMs / 60_000L).toInt() % DIAL_MIN_PER_TURN
+    // One quiet line under the timer while it runs: a "starting" line for the first two minutes, then a steadier one.
+    // It changes at most twice a session, is never a pop-up, and a tap puts it away.
+    val ctx = LocalContext.current
+    val store = remember { Store(ctx) }
+    val phase = if (budgetMs - remaining < 120_000L) 0 else 1
+    var hidden by remember(running) { mutableStateOf(false) }
+    val kind = remember(running, paused, over, phase) {
+        if (!running || paused || over) null
+        else store.support(if (phase == 0) Moment.STUDY_START else Moment.STUDY_DURING)
+    }
+    androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     TimerCardUi(
         timeText = timeText,
         caption = if (!running && !paused && turns >= 1)
@@ -211,4 +226,10 @@ fun SubjectTimerCard(
         dialMinutes = (budgetMs / 60_000L).toInt(), onDial = onDial, runLaps = lapsLeft,
         onPlayPause = onPlayPause, onStop = onStop, onToggleCompact = onToggleCompact
     )
+    if (kind != null && !hidden) Text(
+        kind, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { hidden = true }.padding(horizontal = 16.dp, vertical = 12.dp)
+    )
+    }
 }

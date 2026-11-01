@@ -140,7 +140,7 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
             if (shame.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
-                        trf("Hall of Shame  %d / %d", shame.count { it.id in data.have }, shame.size),
+                        trf("Honest Moments  %d / %d", shame.count { it.id in data.have }, shame.size),
                         style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -148,7 +148,7 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                     val got = b.id in data.have
                     Column(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                            .background(if (got) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant)
+                            .background(if (got) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant)
                             .padding(14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {

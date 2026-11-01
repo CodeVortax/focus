@@ -51,28 +51,28 @@ Level titles, in order: Couch Potato, Distracted Intern, Focus Apprentice, Task 
 | 🎒 | **Ready for Class** | Arrive at a class day with an empty plate. |
 | 🎓 | **Always Prepared** | Arrive at 5 class days with an empty plate. |
 | 🍿 | **Treat Yourself** | Earn 40 minutes of treats in one day. |
-| 🔥 | **Comeback Kid** | Clear the whole plate after earning a shame badge. |
+| 🔥 | **Comeback Kid** | Clear the whole plate after a rough patch. |
 
-## Hall of Shame (15, hidden until earned)
+## Honest Moments (15, hidden until they happen)
 
-These are honest, not punishing: they never remove XP or treats.
+Plain facts about a rough patch, never a judgment: they never remove XP or treats. They used to be called the Hall of Shame; the ids are unchanged, so badges you already earned stay earned.
 
 | | Badge | Trigger |
 |---|---|---|
-| 🐐 | **Goat Neglecter** | 3 days in a row with tasks on the plate and none done. Come back before it's too late. |
-| 🧟 | **Shorts Zombie** | 300 Shorts or more in a single day. |
-| 🌙 | **Midnight Scroller** | Shorts between 1 and 5 in the morning. |
-| 🏁 | **Shorts Marathon** | One single Shorts visit of an hour or more. |
-| 👑 | **Overtime King** | Let a timer run 30 minutes over its budget. |
-| 🚨 | **Emergency Abuser** | Use the locked-block emergency button 5 times. |
-| 💬 | **Honesty Award** | Press "I'm distracted" 20 times. |
-| 🍽️ | **Plate Hoarder** | Let 30 or more unfinished tasks pile up. |
-| 👻 | **Ghosted** | Disappear from Focus for 3 days in a row. |
-| ⚰️ | **Streak Funeral** | Lose a work streak of 7 days or more. |
-| 📚 | **Overdue Homework** | Let a subject's tasks pile past a class day or a due day. |
-| 🚓 | **Speeding Ticket** | Get your first fine from the piggy bank. |
-| 🚔 | **Repeat Offender** | Get 5 fines from the piggy bank. |
-| 🪙 | **Broke Pity** | Get fined while the piggy bank is empty. |
-| 🏃 | **Deadline Dodger** | Miss 5 class days or due days. |
+| 🐐 | **Gentle Reminder** | 3 days in a row with tasks on the plate and none done. Come back whenever you're ready. |
+| 📱 | **Big Scroll Day** | 300 Shorts or more in a single day. It happens. Tomorrow is a fresh start. |
+| 🌙 | **Night Owl** | Shorts between 1 and 5 in the morning. Sleep matters too. |
+| 🏁 | **Long Scroll** | One single Shorts visit of an hour or more. |
+| ⏳ | **Went Long** | Let a timer run 30 minutes over its budget. |
+| 📞 | **Needed the Phone** | Use the locked-block emergency button 5 times. Sometimes you do. |
+| 💬 | **Honest Check-in** | Press "I'm distracted" 20 times. Noticing it is the first step. |
+| 🍽️ | **Full Plate** | 30 or more unfinished tasks piled up. Maybe it's time to trim the list. |
+| 🌿 | **Time Away** | Away from Focus for 3 days in a row. Welcome back. |
+| 🌱 | **Fresh Start** | A work streak of 7 days or more came to an end. Every streak can begin again. |
+| 🧾 | **First Fine** | Get your first fine from the piggy bank. |
+| 🧾 | **Five Fines** | Get 5 fines from the piggy bank. |
+| 🪙 | **Empty Piggy** | Get fined while the piggy bank is empty. |
+| 📚 | **Behind a Little** | A subject's tasks piled up past a class day or a due day. |
+| 🏃 | **Missed a Few** | Miss 5 class days or due days. It happens; pick the next one. |
 
-Clearing the whole plate after earning a shame badge awards **Comeback Kid**.
+Clearing the whole plate after a rough patch awards **Comeback Kid**.
