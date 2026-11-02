@@ -120,6 +120,7 @@ class Session(ctx: Context) {
         val hint = when (kind) {
             ErrKind.MODEL -> "\nTry Settings, then Find a working model."
             ErrKind.RATE -> "\nWait a minute, or pick another model in Settings."
+            ErrKind.QUOTA -> "\nTo use free credit, pick a provider with a free tier in Settings (Groq, Gemini or OpenRouter free models)."
             else -> ""
         }
         val worthChecking = kind == null || kind == ErrKind.RATE || kind == ErrKind.SERVER || kind == ErrKind.OTHER
@@ -149,7 +150,7 @@ class Session(ctx: Context) {
     }
 
     /** Saves the address and key, asks the provider for its models and picks a good one, so no model name has to be typed. */
-    fun connect(scope: CoroutineScope, base: String, typedKey: String, model: String, done: (chosen: String, note: String) -> Unit) {
+    fun connect(scope: CoroutineScope, base: String, typedKey: String, model: String, verify: Boolean, done: (chosen: String, note: String) -> Unit) {
         prefs.base = base
         if (typedKey.isNotBlank()) prefs.setKey(typedKey)
         val key = prefs.key() ?: run { done(model, "Paste your key first."); return }
@@ -163,7 +164,14 @@ class Session(ctx: Context) {
                 val chosen = if (model.isNotBlank() && model in list) model else Models.best(list) ?: model
                 prefs.model = chosen
                 refresh()
-                done(chosen, if (list.isEmpty()) "Connected, but the provider listed no models. Type a model name below." else "Connected. ${list.size} models found. Using $chosen.")
+                if (list.isEmpty()) { done(chosen, "Connected, but the provider listed no models. Type a model name below."); return@onSuccess }
+                if (!verify) { done(chosen, "Connected. ${list.size} models found. Using $chosen."); return@onSuccess }
+                // test the best few with a tiny request, so the one we keep really works for this key
+                modelsBusy = true
+                val w = Auto.findWorking(base, key, chosen, list) { done(chosen, it) }
+                modelsBusy = false
+                w.onSuccess { m -> prefs.model = m; refresh(); done(m, "Connected and tested. Using $m.") }
+                    .onFailure { e -> done(chosen, explain(base, e)) }
             }.onFailure {
                 refresh()
                 done(model, "Saved, but the model list could not be loaded (${it.message}). Type a model name below.")

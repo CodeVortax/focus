@@ -9,7 +9,21 @@ The main Focus app is unchanged by it: it still has **no internet permission** a
 - **Explain / Quiz me / Summary / Flashcards** on text you share from any app (Share, or select text and choose "Study Mate"). You see exactly what will be sent, and the rough size, before it goes.
 - **No model typing:** paste your key and Study Mate recognises the provider, asks it for its models, and picks a fast, cheap one. You can search the list and switch.
 - **Survives model trouble:** if a model is "not available" or says "too many requests", Study Mate waits and retries, then tries the next best model and keeps the one that works. **Find a working model** in Settings tests the best few for you.
-- **Providers:** OpenAI, OpenRouter, Gemini, Anthropic, DeepSeek, or any custom address.
+- **Providers:** Groq, Gemini, OpenRouter, Mistral, Cerebras, OpenAI, Anthropic, DeepSeek, or any custom address. **Connect** also tests the best few models with a tiny message and keeps one that really works for your key. The model list shows about eight recommended models, with search and "Show all".
+
+### Free options (as of November 2026; limits change, check the provider)
+
+| Provider | Free? | Rough limits | Note |
+|---|---|---|---|
+| Groq | Yes, no card | about 30 requests a minute, about 1,000 a day | not used for training |
+| Gemini | Yes, no card | varies by model | Google may use free-tier data for training outside the EU, UK and EEA |
+| OpenRouter | Yes, models marked `:free` | about 20 a minute, 50 a day (1,000 after a 10 dollar top-up) | study mate switches to `:free` models when you have no credit |
+| Mistral | Yes, experiment tier | account-specific | Mistral may use data for training |
+| Cerebras | Trial credit | finite | fast |
+| OpenAI, Anthropic | No free tier | needs paid credit | |
+| DeepSeek | Small trial credit | | |
+
+Source for the numbers: [OpenRouter's comparison of free LLM APIs](https://openrouter.ai/blog/tutorials/free-llm-apis-compared/). If privacy matters for a chat, prefer a provider that says it does not train on your data.
 - **Status check (can be switched off):** when a request fails for a reason that might be the provider's, Study Mate asks the public status page prismix.dev whether it has trouble. That request carries nothing about you or your chat.
 - Works with any "OpenAI-compatible" provider: OpenAI, OpenRouter, Gemini, Anthropic or a custom address. You use **your own API key**, stored encrypted in the Android Keystore. No Focus server.
 - Nothing is saved: the chat lives in memory and is cleared with **New** or when the app closes.

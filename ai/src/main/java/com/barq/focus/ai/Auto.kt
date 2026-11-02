@@ -63,19 +63,28 @@ object Auto {
         return if (why == ErrKind.QUOTA) ranked.filter { it.endsWith(":free") }.take(4) else ranked.take(4)
     }
 
-    /** Tries the best few models with a tiny request and returns the first that answers. */
+    /** Tries the best few models with a tiny request and returns the first that answers. On OpenRouter without credit it moves on to the free models. */
     suspend fun findWorking(base: String, key: String, current: String, known: List<String>, progress: (String) -> Unit): Result<String> {
         val ids = if (known.isNotEmpty()) known else Models.chatOnly(Api.listModels(base, key).getOrDefault(emptyList()))
-        val order = (listOf(current) + Models.ranked(ids)).filter { it.isNotBlank() }.distinct().take(6)
-        if (order.isEmpty()) return Result.failure(Exception("No models to try. Type a model name in Settings."))
+        val ranked = Models.ranked(ids)
+        val queue = ArrayDeque((listOf(current) + ranked).filter { it.isNotBlank() }.distinct().take(6))
+        if (queue.isEmpty()) return Result.failure(Exception("No models to try. Type a model name in Settings."))
+        var freeAdded = false
         var last: Throwable? = null
-        for (m in order) {
+        while (queue.isNotEmpty()) {
+            val m = queue.removeFirst()
             progress("Trying $m...")
             val r = Api.chat(base, key, m, "Reply with the single word OK.", listOf(ChatMsg("user", "Test")))
             if (r.isSuccess) return Result.success(m)
             last = r.exceptionOrNull()
             val k = (last as? ApiException)?.kind
-            if (k == ErrKind.KEY || k == ErrKind.QUOTA || k == null) break   // a different model will not fix these
+            if (k == ErrKind.QUOTA && base.contains("openrouter.ai") && !freeAdded) {
+                freeAdded = true
+                queue.clear()
+                queue.addAll(ranked.filter { it.endsWith(":free") }.take(5))
+                continue
+            }
+            if (k == null || k == ErrKind.KEY || k == ErrKind.QUOTA) break      // a different model will not fix these
             if (k == ErrKind.RATE) delay(2000)
         }
         return Result.failure(last ?: Exception("No model answered."))

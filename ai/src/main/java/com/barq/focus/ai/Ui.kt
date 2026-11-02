@@ -329,6 +329,7 @@ private fun SettingsScreen(s: Session, scope: CoroutineScope) {
     var hasKey by remember { mutableStateOf(p.hasKey()) }
     var note by remember { mutableStateOf("") }
     var query by rememberSaveable { mutableStateOf("") }
+    var showAll by rememberSaveable { mutableStateOf(false) }
 
     fun persist() {
         p.base = base; p.model = model; p.consent = consent
@@ -336,15 +337,15 @@ private fun SettingsScreen(s: Session, scope: CoroutineScope) {
         s.refresh()
     }
 
-    fun connect() {
+    fun connect(verify: Boolean) {
         note = "Connecting..."
-        s.connect(scope, base, key, model) { chosen, msg -> model = chosen; note = msg; hasKey = p.hasKey() }
+        s.connect(scope, base, key, model, verify) { chosen, msg -> model = chosen; note = msg; hasKey = p.hasKey() }
         key = ""
     }
 
     // Reopening Settings with a saved key and consent: load the model list again, without typing anything.
     LaunchedEffect(Unit) {
-        if (consent && hasKey && s.models.isEmpty() && base.startsWith("https://")) connect()
+        if (consent && hasKey && s.models.isEmpty() && base.startsWith("https://")) connect(false)
     }
 
     val provider = Providers.byBase(base)
@@ -356,6 +357,7 @@ private fun SettingsScreen(s: Session, scope: CoroutineScope) {
                     FilterChip(selected = provider?.name == pr.name, onClick = { base = pr.base; if (pr.model.isNotEmpty()) model = pr.model; s.models = emptyList() }, label = { Text(pr.name) })
                 }
             }
+            if (provider != null && provider.note.isNotEmpty()) Text(provider.note, style = MaterialTheme.typography.bodyMedium)
             if (provider != null && provider.keyHelp.isNotEmpty()) Text("Get a key: ${provider.keyHelp}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 key,
@@ -372,7 +374,7 @@ private fun SettingsScreen(s: Session, scope: CoroutineScope) {
             )
             if (provider == null) OutlinedTextField(base, { base = it }, Modifier.fillMaxWidth(), label = { Text("Address (https only)") }, singleLine = true)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = { persist(); connect() }, enabled = (key.isNotBlank() || hasKey) && !s.modelsBusy) { Text("Connect") }
+                Button(onClick = { persist(); connect(true) }, enabled = (key.isNotBlank() || hasKey) && !s.modelsBusy) { Text("Connect") }
                 TextButton(onClick = { showKey = !showKey }) { Text(if (showKey) "Hide key" else "Show key") }
                 TextButton(onClick = { p.setKey(null); hasKey = false; key = ""; s.models = emptyList(); s.refresh(); note = "Key deleted." }) { Text("Delete key") }
             }
@@ -383,15 +385,22 @@ private fun SettingsScreen(s: Session, scope: CoroutineScope) {
         StepCard(2, "Model") {
             Text("Using: ${model.ifBlank { "none yet" }}", fontWeight = FontWeight.SemiBold)
             if (s.models.isNotEmpty()) {
-                OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text("Search ${s.models.size} models") }, singleLine = true)
-                val shown = s.models.filter { query.isBlank() || it.contains(query.trim(), ignoreCase = true) }
-                shown.take(40).forEach { id ->
+                val searching = query.isNotBlank()
+                OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text("Search all ${s.models.size} models") }, singleLine = true)
+                val shown = when {
+                    searching -> s.models.filter { it.contains(query.trim(), ignoreCase = true) }
+                    showAll -> s.models
+                    else -> Models.ranked(s.models).take(8)
+                }
+                if (!searching) Text(if (showAll) "All models" else "Recommended for studying", style = MaterialTheme.typography.labelLarge)
+                shown.take(60).forEach { id ->
                     Row(Modifier.fillMaxWidth().clickable { model = id; p.model = id; s.refresh() }, verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = id == model, onClick = { model = id; p.model = id; s.refresh() })
                         Text(id, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-                if (shown.size > 40) Text("${shown.size - 40} more: type in the search box to narrow it.", style = MaterialTheme.typography.bodySmall)
+                if (shown.size > 60) Text("${shown.size - 60} more: type in the search box to narrow it.", style = MaterialTheme.typography.bodySmall)
+                if (!searching) TextButton(onClick = { showAll = !showAll }) { Text(if (showAll) "Show recommended only" else "Show all ${s.models.size}") }
             }
             OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text("Or type a model name") }, singleLine = true)
             Text(

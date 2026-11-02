@@ -145,5 +145,23 @@ class StudyAndApiTest {
         assertEquals("deepseek", Providers.statusId("https://api.deepseek.com/v1"))
         assertNull(Providers.statusId("https://example.com/v1"))
     }
+
+    @Test fun freeProvidersAreListedFirstAndDetected() {
+        assertEquals("Groq", Providers.list.first().name)
+        assertEquals("Groq", Providers.detect("gsk_abc123")?.name)
+        assertEquals("Cerebras", Providers.detect("csk-abc123")?.name)
+        assertEquals("groq", Providers.statusId("https://api.groq.com/openai/v1"))
+        assertEquals("mistral", Providers.statusId("https://api.mistral.ai/v1"))
+        Providers.list.filter { it.name != "Custom" }.forEach { assertTrue(it.name, it.note.isNotBlank()) }
+    }
+
+    @Test fun llamaAndMistralAreRecommendedOnTheirProviders() {
+        assertEquals("llama-3.3-70b-versatile", Models.best(listOf("allam-2-7b", "llama-3.3-70b-versatile", "gemma2-9b-it")))
+        assertEquals("mistral-small-latest", Models.best(listOf("mistral-large-latest", "mistral-small-latest", "codestral-latest")))
+    }
+
+    @Test fun safetyModelsAreHidden() {
+        assertEquals(listOf("llama-3.3-70b-versatile"), Models.chatOnly(listOf("llama-3.3-70b-versatile", "meta-llama/llama-guard-4-12b", "playai-tts", "whisper-large-v3")))
+    }
 }
 

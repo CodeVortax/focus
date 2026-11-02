@@ -25,15 +25,27 @@ enum class ErrKind { KEY, MODEL, RATE, QUOTA, SERVER, OTHER }
 
 class ApiException(val kind: ErrKind, message: String, val retryAfterSec: Int? = null) : Exception(message)
 
-class Provider(val name: String, val base: String, val model: String, val keyHelp: String = "")
+class Provider(val name: String, val base: String, val model: String, val keyHelp: String = "", val note: String = "")
 
 object Providers {
+    // Free options first. The notes are rough and can change: check the provider's page.
     val list = listOf(
-        Provider("OpenAI", "https://api.openai.com/v1", "gpt-4o-mini", "platform.openai.com/api-keys"),
-        Provider("OpenRouter", "https://openrouter.ai/api/v1", "openai/gpt-4o-mini", "openrouter.ai/keys (has free models)"),
-        Provider("Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.0-flash", "aistudio.google.com/apikey (has a free tier)"),
-        Provider("Anthropic", "https://api.anthropic.com/v1", "claude-haiku-5-5", "console.anthropic.com"),
-        Provider("DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "platform.deepseek.com/api_keys"),
+        Provider("Groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", "console.groq.com/keys",
+            "Free, no card. About 30 requests a minute and about 1,000 a day. Not used for training."),
+        Provider("Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.0-flash", "aistudio.google.com/apikey",
+            "Free tier, no card. Limits differ by model. Google may use free-tier data for training outside the EU, UK and EEA."),
+        Provider("OpenRouter", "https://openrouter.ai/api/v1", "openai/gpt-4o-mini", "openrouter.ai/keys",
+            "Models marked :free need no card: about 20 requests a minute and 50 a day (1,000 after a 10 dollar top-up)."),
+        Provider("Mistral", "https://api.mistral.ai/v1", "mistral-small-latest", "console.mistral.ai",
+            "Free experiment tier. Mistral may use your data for training on it."),
+        Provider("Cerebras", "https://api.cerebras.ai/v1", "llama-3.3-70b", "cloud.cerebras.ai",
+            "Free trial credit. Very fast."),
+        Provider("OpenAI", "https://api.openai.com/v1", "gpt-4o-mini", "platform.openai.com/api-keys",
+            "No free tier: needs paid credit."),
+        Provider("Anthropic", "https://api.anthropic.com/v1", "claude-haiku-5-5", "console.anthropic.com",
+            "No free tier: needs paid credit."),
+        Provider("DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "platform.deepseek.com/api_keys",
+            "Small trial credit, then paid and cheap."),
         Provider("Custom", "https://", ""),
     )
 
@@ -45,6 +57,8 @@ object Providers {
     fun detect(key: String): Provider? {
         val k = key.trim()
         return when {
+            k.startsWith("gsk_") -> named("Groq")
+            k.startsWith("csk-") -> named("Cerebras")
             k.startsWith("sk-or-") -> named("OpenRouter")
             k.startsWith("sk-ant-") -> named("Anthropic")
             k.startsWith("AIza") -> named("Gemini")
@@ -61,6 +75,9 @@ object Providers {
         base.contains("generativelanguage.googleapis.com") -> "gemini-api"
         base.contains("api.anthropic.com") -> "anthropic"
         base.contains("api.deepseek.com") -> "deepseek"
+        base.contains("api.groq.com") -> "groq"
+        base.contains("api.cerebras.ai") -> "cerebras"
+        base.contains("api.mistral.ai") -> "mistral"
         else -> null
     }
 }
@@ -68,10 +85,10 @@ object Providers {
 /** Picks and filters the model list the provider returns, so nobody has to type a model name. */
 object Models {
     private val NOT_CHAT = listOf(
-        "embed", "whisper", "tts", "dall-e", "moderation", "image", "audio", "realtime", "transcribe", "davinci", "babbage", "rerank", "imagen", "veo",
+        "embed", "whisper", "tts", "dall-e", "moderation", "image", "audio", "realtime", "transcribe", "davinci", "babbage", "rerank", "imagen", "veo", "guard", "orpheus", "playai", "safeguard",
     )
     private val PREFER = listOf(
-        "gpt-4o-mini", "gpt-4.1-mini", "gpt-5-mini", "deepseek-chat", "gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash", "claude-haiku", "haiku", "flash", "mini",
+        "gpt-4o-mini", "gpt-4.1-mini", "gpt-5-mini", "deepseek-chat", "gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash", "claude-haiku", "haiku", "llama-3.3-70b", "mistral-small", "llama-3.1-8b", "flash", "mini",
     )
 
     fun chatOnly(ids: List<String>): List<String> =
