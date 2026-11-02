@@ -190,6 +190,7 @@ private fun ChatScreen(s: Session, scope: CoroutineScope) {
                 }
             }
         }
+        s.notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) }
         s.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.Bottom) {
             OutlinedTextField(
@@ -393,6 +394,14 @@ private fun SettingsScreen(s: Session, scope: CoroutineScope) {
                 if (shown.size > 40) Text("${shown.size - 40} more: type in the search box to narrow it.", style = MaterialTheme.typography.bodySmall)
             }
             OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text("Or type a model name") }, singleLine = true)
+            Text(
+                "If a model says it is not available or gives \"too many requests\", Study Mate already tries other models for you. You can also test them now.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(
+                onClick = { persist(); note = "Testing models..."; s.findWorking(scope) { m, msg -> if (m != null) model = m; note = msg } },
+                enabled = hasKey && !s.modelsBusy
+            ) { Text("Find a working model") }
         }
 
         StepCard(3, "What is sent") {
@@ -405,6 +414,11 @@ private fun SettingsScreen(s: Session, scope: CoroutineScope) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("I understand and agree", Modifier.weight(1f))
                 Switch(consent, { consent = it; persist() })
+            }
+            var statusOn by rememberSaveable { mutableStateOf(p.statusCheck) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("When a request fails, check the provider's status online (asks prismix.dev; nothing about you or your chat is sent)", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                Switch(statusOn, { statusOn = it; p.statusCheck = it })
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { persist(); note = "Saved." }) { Text("Save") }

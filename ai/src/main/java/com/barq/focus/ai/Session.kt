@@ -35,6 +35,7 @@ class Session(ctx: Context) {
     var cut by mutableStateOf(false)
     var pending by mutableStateOf<Pending?>(null)
     var screen by mutableStateOf("chat")
+    var notice by mutableStateOf<String?>(null)
     var ready by mutableStateOf(false)
     var modelName by mutableStateOf("")
     var models by mutableStateOf<List<String>>(emptyList())
@@ -97,13 +98,44 @@ class Session(ctx: Context) {
     private fun ask(scope: CoroutineScope) {
         val key = prefs.key() ?: run { error = "The key could not be read. Add it again in Settings."; return }
         busy = true
+        notice = null
         val system = StudyPrompts.system(mode, careMode, language())
         val history = messages.takeLast(20).toList()
+        val base = prefs.base
         scope.launch {
-            Api.chat(prefs.base, key, prefs.model, system, history)
-                .onSuccess { messages.add(ChatMsg("assistant", AiReplyParser.clean(it, 4000))) }
-                .onFailure { error = it.message }
+            val r = Auto.chat(base, key, prefs.model, system, history, models)
+            if (r.reply != null) {
+                messages.add(ChatMsg("assistant", AiReplyParser.clean(r.reply, 4000)))
+                if (r.model != prefs.model) { prefs.model = r.model; refresh() }   // keep the model that worked
+                notice = r.note
+            } else error = explain(base, r.error)
             busy = false
+        }
+    }
+
+    /** The error text, plus the provider's status when that could be the cause. */
+    private suspend fun explain(base: String, e: Throwable?): String {
+        val text = e?.message ?: "Something went wrong."
+        val kind = (e as? ApiException)?.kind
+        val hint = when (kind) {
+            ErrKind.MODEL -> "\nTry Settings, then Find a working model."
+            ErrKind.RATE -> "\nWait a minute, or pick another model in Settings."
+            else -> ""
+        }
+        val worthChecking = kind == null || kind == ErrKind.RATE || kind == ErrKind.SERVER || kind == ErrKind.OTHER
+        val status = if (prefs.statusCheck && worthChecking) Status.line(base)?.let { "\nProvider status: $it" } ?: "" else ""
+        return text + hint + status
+    }
+
+    /** Tries the best few models with a tiny request and keeps the first that works. */
+    fun findWorking(scope: CoroutineScope, done: (model: String?, note: String) -> Unit) {
+        val key = prefs.key() ?: run { done(null, "Add a key first."); return }
+        modelsBusy = true
+        scope.launch {
+            val r = Auto.findWorking(prefs.base, key, prefs.model, models) { done(null, it) }
+            modelsBusy = false
+            r.onSuccess { m -> prefs.model = m; refresh(); done(m, "Works. Using $m.") }
+                .onFailure { done(null, explain(prefs.base, it)) }
         }
     }
 
@@ -112,7 +144,7 @@ class Session(ctx: Context) {
         val key = prefs.key() ?: run { done("Add a key first."); return }
         scope.launch {
             val r = Api.chat(prefs.base, key, prefs.model, "Reply with the single word OK.", listOf(ChatMsg("user", "Test")))
-            done(r.fold({ "Works." }, { it.message ?: "Failed." }))
+            done(r.fold({ "Works." }, { explain(prefs.base, it) }))
         }
     }
 

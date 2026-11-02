@@ -69,6 +69,11 @@ class AiPrefs(ctx: Context) {
         get() = p.getBoolean("consent", false)
         set(v) { p.edit().putBoolean("consent", v).apply() }
 
+    /** When a request fails, ask a public status page whether the provider has trouble. On by default; it sends nothing about you. */
+    var statusCheck: Boolean
+        get() = p.getBoolean("status", true)
+        set(x) { p.edit().putBoolean("status", x).apply() }
+
     private var sealed: String?
         get() = p.getString("key", null)
         set(v) { p.edit().putString("key", v).apply() }

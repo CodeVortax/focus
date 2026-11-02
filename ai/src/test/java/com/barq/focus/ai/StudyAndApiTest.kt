@@ -26,7 +26,9 @@ class StudyAndApiTest {
 
     @Test fun errorsAreFriendlyAndShort() {
         assertTrue(Api.errorText(401, "{}").contains("key"))
-        assertTrue(Api.errorText(429, "{}").contains("credit"))
+        assertTrue(Api.errorText(429, "{}").contains("Too many"))
+        assertTrue(Api.errorText(402, "{}").contains("credit"))
+        assertTrue(Api.errorText(429, """{"error":{"message":"You exceeded your current quota"}}""").contains("credit"))
         val long = Api.errorText(400, """{"error":{"message":"${"x".repeat(500)}"}}""")
         assertTrue(long.length < 300)
         assertTrue(Api.errorText(404, "").contains("model"))
@@ -99,6 +101,49 @@ class StudyAndApiTest {
     @Test fun lightMarkdownMakesBulletsAndHidesStars() {
         val r = lightMarkdown("# Title\n- one\n**bold** text").text
         assertEquals("Title\n\u2022 one\nbold text", r)
+    }
+
+    @Test fun errorKindsDecideWhatTheAppDoes() {
+        assertEquals(ErrKind.KEY, Api.kindOf(401, ""))
+        assertEquals(ErrKind.MODEL, Api.kindOf(404, ""))
+        assertEquals(ErrKind.MODEL, Api.kindOf(400, """{"error":{"message":"The model does not exist"}}"""))
+        assertEquals(ErrKind.OTHER, Api.kindOf(400, """{"error":{"message":"bad json"}}"""))
+        assertEquals(ErrKind.RATE, Api.kindOf(429, """{"error":{"message":"Rate limit reached"}}"""))
+        assertEquals(ErrKind.QUOTA, Api.kindOf(402, ""))
+        assertEquals(ErrKind.QUOTA, Api.kindOf(429, """{"error":{"code":"insufficient_quota"}}"""))
+        assertEquals(ErrKind.MODEL, Api.kindOf(429, """{"error":{"message":"Quota exceeded, limit: 0, model: gemini-2.0-flash"}}"""))
+        assertEquals(ErrKind.SERVER, Api.kindOf(503, ""))
+    }
+
+    @Test fun deepSeekKeysAreToldApartFromOpenAiKeys() {
+        assertEquals("DeepSeek", Providers.detect("sk-" + "a1b2c3d4".repeat(4))?.name)
+        assertEquals("OpenAI", Providers.detect("sk-proj-" + "x".repeat(60))?.name)
+        assertEquals("https://api.deepseek.com/v1", Providers.list.first { it.name == "DeepSeek" }.base)
+    }
+
+    @Test fun deepSeekChatIsPreferredOverTheReasoner() {
+        assertEquals("deepseek-chat", Models.best(listOf("deepseek-reasoner", "deepseek-chat")))
+    }
+
+    @Test fun rankingPutsStableAheadOfPreviewAndFreeTier() {
+        val r = Models.ranked(listOf("meta/llama-3:free", "openai/gpt-4o-mini:free", "openai/gpt-4o-mini", "x/other"))
+        assertEquals("openai/gpt-4o-mini", r.first())
+        assertEquals(4, r.size)
+    }
+
+    @Test fun statusLineForAProvider() {
+        val body = """{"services":[{"id":"openai","name":"OpenAI","description":"All Systems Operational","activeIncidents":0},{"id":"deepseek","name":"DeepSeek","description":"Degraded","activeIncidents":2}]}"""
+        assertEquals("OpenAI: All Systems Operational", Status.summarize(body, "openai"))
+        assertEquals("DeepSeek: Degraded (2 active incidents)", Status.summarize(body, "deepseek"))
+        assertNull(Status.summarize(body, "nope"))
+        assertNull(Status.summarize("broken", "openai"))
+    }
+
+    @Test fun statusIdsFollowTheAddress() {
+        assertEquals("openai", Providers.statusId("https://api.openai.com/v1"))
+        assertEquals("gemini-api", Providers.statusId("https://generativelanguage.googleapis.com/v1beta/openai"))
+        assertEquals("deepseek", Providers.statusId("https://api.deepseek.com/v1"))
+        assertNull(Providers.statusId("https://example.com/v1"))
     }
 }
 

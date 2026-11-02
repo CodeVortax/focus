@@ -16,8 +16,8 @@ android {
         applicationId = "com.barq.focus.ai"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0-beta"
+        versionCode = 3
+        versionName = "0.1.2-beta"
     }
 
     // Same signing file as the main app (keystore.properties, git-ignored).
