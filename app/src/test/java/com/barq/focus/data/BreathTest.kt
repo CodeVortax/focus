@@ -23,6 +23,7 @@ class BreathTest {
     @Test fun growsWhileBreathingInAndShrinksWhileBreathingOut() {
         var prev = Breath.at(calm, 0f).scale
         for (i in 1..39) { val s = Breath.at(calm, i / 10f).scale; assertTrue(s >= prev - 0.0001f); prev = s }
+        prev = Breath.at(calm, 4f).scale   // the peak: the out-breath starts here
         for (i in 41..99) { val s = Breath.at(calm, i / 10f).scale; assertTrue(s <= prev + 0.0001f); prev = s }
     }
 
