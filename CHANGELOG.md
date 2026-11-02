@@ -4,6 +4,9 @@ Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
 ## Unreleased
 
+### Added
+- **Focus Study Mate**, a separate optional app (`com.barq.focus.ai`, folder `ai/`): a study tutor that can explain, quiz, summarize and make flashcards from text you share. Your own API key (OpenAI, OpenRouter, Gemini, Anthropic or custom), encrypted on the phone; you see what is sent first. Focus itself still has no internet permission. See [Study Mate](docs/guides/study-mate.md). Build commands are now `gradle :app:assembleRelease` (Focus) and `gradle :ai:assembleRelease` (Study Mate).
+
 ### Fixed
 - **Shorts gate flicker.** The gate pauses the video, a paused feed sends no accessibility events, and the Shorts session timed out after 4 s with the gate on screen: the gate came down, the video resumed, was found again and the gate came back, over and over. While the gate is up, the Shorts app being in front now keeps the session alive.
 - **Gate after Recents.** An unanswered gate that goes out of view (Recents, a system window) now keeps the countdown it had already run when you come back within 90 seconds, instead of starting the wait again. An answered gate is unchanged: your pass still holds through Recents. The gate is never skipped.

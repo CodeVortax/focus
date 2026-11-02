@@ -158,6 +158,7 @@ app/src/main/java/com/barq/focus/
              Reminders, Alerts, Notifier, Music, Widgets, boot
   ui/        Compose screens: Home, Subject, Timer, Notes, Pdf, Music, Games, Trophies, Log (Usage), Setup, Import
   ui/theme/  Colour, type, theme
+ai/          Focus Study Mate: a separate, optional app (com.barq.focus.ai) that is the only part with internet access
 docs/        Architecture and guides (start at docs/README.md)
 ```
 
@@ -181,6 +182,7 @@ docs/        Architecture and guides (start at docs/README.md)
 | Widgets | [docs/guides/widgets.md](docs/guides/widgets.md) |
 | Usage screen | [docs/guides/usage-screen.md](docs/guides/usage-screen.md) |
 | Games | [docs/guides/games.md](docs/guides/games.md) |
+| Focus Study Mate (optional AI app) | [docs/guides/study-mate.md](docs/guides/study-mate.md) |
 | Privacy policy | [PRIVACY.md](PRIVACY.md) |
 | Credits and third-party notices | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) |
 

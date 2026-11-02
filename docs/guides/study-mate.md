@@ -1,4 +1,35 @@
-# AI study mate (experimental, branch `companion-ai`)
+# Focus Study Mate (separate app, optional)
+
+**Focus Study Mate** (`com.barq.focus.ai`) is a second app that lives in this repository in the `ai/` folder. It installs next to Focus and has its own version.
+The main Focus app is unchanged by it: it still has **no internet permission** and sends nothing anywhere. Only Study Mate asks for internet.
+
+## What it does
+
+- **Tutor chat:** asks a guiding question before giving the full answer, short and kind.
+- **Explain / Quiz me / Summary / Flashcards** on text you share from any app (Share, or select text and choose "Study Mate"). You see exactly what will be sent, and the rough size, before it goes.
+- Works with any "OpenAI-compatible" provider: OpenAI, OpenRouter, Gemini, Anthropic or a custom address. You use **your own API key**, stored encrypted in the Android Keystore. No Focus server.
+- Nothing is saved: the chat lives in memory and is cleared with **New** or when the app closes.
+
+## How it keeps you safe
+
+- Off until you add a key **and** switch on "I understand and agree".
+- A worrying message ("I want to die" and similar, in English and Arabic including Egyptian) is answered on the phone with a fixed, kind message and is not sent. Later answers in that chat are told to stay gentle and point to real people. The keyword list is a safety net, not a guarantee.
+- It can only talk. It cannot change Focus's limits, blocks or gate, and it cannot read Focus's data.
+
+## Getting your notes to it
+
+The two apps cannot read each other's data. Share text from Focus (a note's Share button) to Study Mate. A closer link can be added later if it feels clumsy.
+
+## Build
+
+```
+gradle :ai:assembleRelease      # Study Mate
+gradle :app:assembleRelease     # Focus (use this form now that there are two apps)
+```
+
+## The rules in `AiPolicy`, `AiPrompt`, `DaySummary` (phase 0)
+
+These come from the first design, where Focus would nudge you at moments such as leaving the gate. They are not connected to anything yet and are kept, with their tests, for that later step. The original reasons are below.
 
 ## Why this exists, honestly
 
@@ -15,7 +46,7 @@ I'm not sure it will work. It might be annoying, or wrong, or not worth the priv
 
 ## Privacy: what would be sent
 
-Today Focus sends nothing anywhere (see `PRIVACY.md`). This feature would be the first exception, so it follows strict rules:
+Focus itself sends nothing anywhere (see `PRIVACY.md`). Study Mate is the one exception, and it is a separate app, so it follows strict rules:
 
 - **Off until you turn it on and say you understand** (two separate switches: enabled, consent).
 - **Your own API key**, stored on the phone. No Focus server in between.

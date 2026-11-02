@@ -50,9 +50,9 @@ object AiReplyParser {
     }
 
     /** No control characters, no markup tricks, a sensible length. */
-    fun clean(s: String): String {
+    fun clean(s: String, max: Int = MAX_CHARS): String {
         val noControl = s.filter { it == '\n' || !it.isISOControl() }
-        val oneLine = noControl.replace(Regex("\\n{3,}"), "\n\n").trim()
-        return if (oneLine.length <= MAX_CHARS) oneLine else oneLine.take(MAX_CHARS).trimEnd() + "…"
+        val tidy = noControl.replace(Regex("\\n{3,}"), "\n\n").trim()
+        return if (tidy.length <= max) tidy else tidy.take(max).trimEnd() + "…"
     }
 }

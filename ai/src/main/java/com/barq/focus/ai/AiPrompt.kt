@@ -48,6 +48,9 @@ Safety:
 
 Output: reply with JSON only, exactly {"message": "<text for the user>", "action": "none" | "five_minute_start" | "open_timer"}"""
 
+    /** The system prompt plus the app's language, so a nudge the model starts by itself is in the right language. */
+    fun withLanguage(language: String): String = SYSTEM + "\n\nThe app language is $language. When you speak first, use it."
+
     /** One line telling the model why it is speaking now. The app picks the trigger; the model never does. */
     fun forTrigger(t: Trigger): String = when (t) {
         Trigger.LEFT_GATE -> "The user just stepped away from a distracting app instead of opening it. Acknowledge that kindly and ask what they will do next, or offer a 5-minute start."

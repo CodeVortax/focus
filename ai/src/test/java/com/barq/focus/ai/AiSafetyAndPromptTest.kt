@@ -55,4 +55,25 @@ class AiSafetyAndPromptTest {
         assertTrue(t.contains("Longest recent study timer: 1440 minutes")); assertTrue(t.contains("Local hour: 23"))
         assertEquals(7, t.lines().filter { it.isNotBlank() }.size)   // a header and six numbers, nothing else
     }
+
+    @Test fun detectsEgyptianArabicAndSpellingVariants() {
+        listOf("مش عايز أعيش", "عايز اموت", "نفسي أموت", "هقتل نفسي", "أَريدُ أَنْ أمُوت", "أنا أفكر في الإنتحار").forEach {
+            assertTrue(it, AiSafety.needsCare(it))
+        }
+    }
+
+    @Test fun detectsMoreEnglish() {
+        listOf("I feel suicidal", "I don\u2019t want to live like this", "better off dead", "I want to end it all").forEach {
+            assertTrue(it, AiSafety.needsCare(it))
+        }
+    }
+
+    @Test fun studyTalkInArabicIsNotFlagged() {
+        listOf("عايز اذاكر بس مش عارف ابدأ", "الامتحان صعب اوي", "ذاكرت كتير النهارده").forEach { assertFalse(it, AiSafety.needsCare(it)) }
+    }
+
+    @Test fun promptCanCarryTheAppLanguage() {
+        assertTrue(AiPrompt.withLanguage("Arabic").contains("The app language is Arabic"))
+    }
 }
+

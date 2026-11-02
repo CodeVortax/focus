@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Focus"
 include(":app")
+include(":ai")

@@ -2,6 +2,8 @@
 
 **Focus keeps everything on your phone.** The app declares no `INTERNET` permission, so it has no way to send data anywhere. There are no accounts, analytics, telemetry, crash reporting, ads or third-party SDKs.
 
+The optional, separate **Focus Study Mate** app (`com.barq.focus.ai`) is the only exception: it sends the text you type or choose to share to the AI provider you pick, with your own key, and nothing else. It is a different app, and installing or removing it does not change Focus. Details: [docs/guides/study-mate.md](docs/guides/study-mate.md).
+
 You can verify this: read `app/src/main/AndroidManifest.xml` and `app/build.gradle.kts`, and read every line of the source (AGPL-3.0-only).
 
 ## What Focus stores, and where
