@@ -11,8 +11,12 @@
 
 package com.barq.focus.ai
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,9 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -34,10 +36,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -55,15 +60,35 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import java.net.URL
 
+private val LightColors = lightColorScheme(
+    primary = Color(0xFF2F5D50), onPrimary = Color.White,
+    primaryContainer = Color(0xFFD6E8DF), onPrimaryContainer = Color(0xFF0F2A22),
+    secondaryContainer = Color(0xFFF1E8CF), onSecondaryContainer = Color(0xFF2B2410),
+    background = Color(0xFFFBF8F2), surface = Color(0xFFFBF8F2), surfaceVariant = Color(0xFFEFEADF),
+)
+private val DarkColors = darkColorScheme(
+    primary = Color(0xFF8FC7B2), onPrimary = Color(0xFF0B2A20),
+    primaryContainer = Color(0xFF1F4A3C), onPrimaryContainer = Color(0xFFD6E8DF),
+    secondaryContainer = Color(0xFF3A3318), onSecondaryContainer = Color(0xFFF1E8CF),
+    background = Color(0xFF121513), surface = Color(0xFF121513), surfaceVariant = Color(0xFF232925),
+)
+
 @Composable
 fun AiTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme(), content = content)
+    MaterialTheme(colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors, content = content)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,7 +98,12 @@ fun AiApp(s: Session) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Study Mate") },
+                title = {
+                    Column {
+                        Text("Study Mate", fontWeight = FontWeight.Bold)
+                        if (s.ready && s.modelName.isNotBlank()) Text(s.modelName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
                 actions = {
                     if (s.screen == "chat") TextButton(onClick = { s.clear() }) { Text("New") }
                     TextButton(onClick = { s.screen = if (s.screen == "chat") "settings" else "chat" }) {
@@ -92,6 +122,47 @@ fun AiApp(s: Session) {
 private fun host(base: String): String = try { URL(base).host } catch (_: Exception) { base }
 private fun tokens(chars: Int): Int = (chars + 3) / 4
 
+/** Light formatting: **bold**, "- " bullets and # headings, so answers read well without a full Markdown engine. */
+fun lightMarkdown(text: String): AnnotatedString = buildAnnotatedString {
+    val lines = text.lines()
+    lines.forEachIndexed { idx, raw ->
+        var line = raw.trimEnd()
+        var heading = false
+        when {
+            line.startsWith("### ") -> { line = line.drop(4); heading = true }
+            line.startsWith("## ") -> { line = line.drop(3); heading = true }
+            line.startsWith("# ") -> { line = line.drop(2); heading = true }
+            line.startsWith("- ") || line.startsWith("* ") -> line = "\u2022 " + line.drop(2)
+        }
+        if (heading) pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+        var i = 0
+        while (i < line.length) {
+            val a = line.indexOf("**", i)
+            val b = if (a < 0) -1 else line.indexOf("**", a + 2)
+            if (a < 0 || b < 0) { append(line.substring(i)); break }
+            append(line.substring(i, a))
+            pushStyle(SpanStyle(fontWeight = FontWeight.Bold)); append(line.substring(a + 2, b)); pop()
+            i = b + 2
+        }
+        if (heading) pop()
+        if (idx < lines.lastIndex) append("\n")
+    }
+}
+
+/** Reads "Q: ... / A: ..." lines (the flashcard format) into pairs. */
+fun parseCards(text: String): List<Pair<String, String>> {
+    val out = ArrayList<Pair<String, String>>()
+    var q: String? = null
+    for (raw in text.lines()) {
+        val l = raw.replace("*", "").trim().removePrefix("-").trim()
+        val isQ = Regex("^Q\\d*[:.]").containsMatchIn(l)
+        val isA = Regex("^A\\d*[:.]").containsMatchIn(l)
+        if (isQ) q = l.substringAfter(':').substringAfter('.').trim().ifEmpty { l }
+        else if (isA && q != null) { out.add(q to l.substringAfter(':').trim()); q = null }
+    }
+    return out
+}
+
 @Composable
 private fun ChatScreen(s: Session, scope: CoroutineScope) {
     var input by rememberSaveable { mutableStateOf("") }
@@ -101,25 +172,28 @@ private fun ChatScreen(s: Session, scope: CoroutineScope) {
         if (last >= 0) list.animateScrollToItem(last)
     }
     Column(Modifier.fillMaxSize()) {
+        if (!s.ready) SetupCard(s)
         s.incoming?.let { SharedTextCard(s, it) }
+        if (s.mode != Mode.TUTOR && s.messages.isNotEmpty()) {
+            Text("${s.mode.label} - tap New to go back to chat", Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        }
         LazyColumn(
             Modifier.weight(1f).fillMaxWidth(), state = list,
-            contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (s.messages.isEmpty()) item {
-                Text(
-                    "Ask about what you are studying, or share text from any app (Share, or select text and choose Study Mate) " +
-                        "and pick Explain, Quiz me, Summary or Flashcards.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            items(s.messages.size) { i -> Bubble(s.messages[i]) }
+            if (s.messages.isEmpty()) item { Starters { input = it } }
+            items(s.messages.size) { i -> Bubble(s, s.messages[i]) }
             if (s.busy) item { Text("Thinking...", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (!s.busy && s.messages.lastOrNull()?.role == "assistant") item {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    quickReplies(s.mode).forEach { q -> SuggestionChip(onClick = { s.send(scope, q) }, label = { Text(q) }) }
+                }
+            }
         }
-        s.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) }
+        s.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.Bottom) {
             OutlinedTextField(
-                input, { input = it }, Modifier.weight(1f),
+                input, { input = it }, Modifier.weight(1f), shape = RoundedCornerShape(20.dp),
                 placeholder = { Text("Ask or paste what you are studying") }, maxLines = 5
             )
             Spacer(Modifier.width(8.dp))
@@ -146,6 +220,43 @@ private fun ChatScreen(s: Session, scope: CoroutineScope) {
     }
 }
 
+private fun quickReplies(m: Mode): List<String> = when (m) {
+    Mode.QUIZ -> listOf("Give me a hint", "I don't know", "Next question")
+    Mode.CARDS -> listOf("Make 8 more", "Quiz me on these, one at a time")
+    Mode.EXPLAIN -> listOf("Simpler, please", "Give an example", "Quiz me on this")
+    Mode.SUMMARY -> listOf("Shorter", "Explain the key terms")
+    Mode.TUTOR -> listOf("Give me a hint", "Explain it differently", "Test me on this")
+}
+
+@Composable
+private fun Starters(fill: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("What are you studying?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(
+            "Ask anything, or share text from any app (Share, or select text and choose Study Mate) and pick Explain, Quiz me, Summary or Flashcards.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(4.dp))
+        listOf(
+            "Help me start: what is one small step for 5 minutes?",
+            "Explain simply: ",
+            "Make me a revision plan for: ",
+            "Test me on: ",
+        ).forEach { t -> OutlinedButton(onClick = { fill(t) }, Modifier.fillMaxWidth()) { Text(t.trim().removeSuffix(":"), maxLines = 1) } }
+    }
+}
+
+@Composable
+private fun SetupCard(s: Session) {
+    Card(Modifier.fillMaxWidth().padding(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Connect an AI to begin", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Paste your API key in Settings. The provider and model are found for you.", style = MaterialTheme.typography.bodyMedium)
+            Button(onClick = { s.screen = "settings" }) { Text("Set up") }
+        }
+    }
+}
+
 @Composable
 private fun SharedTextCard(s: Session, text: String) {
     Card(Modifier.fillMaxWidth().padding(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
@@ -163,18 +274,45 @@ private fun SharedTextCard(s: Session, text: String) {
 }
 
 @Composable
-private fun Bubble(m: ChatMsg) {
+private fun Bubble(s: Session, m: ChatMsg) {
     val mine = m.role == "user"
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
+    val clip = LocalClipboardManager.current
+    val cards = if (!mine && s.mode == Mode.CARDS) parseCards(m.text) else emptyList()
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
+        if (cards.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { cards.forEachIndexed { i, c -> FlashCard(i, c.first, c.second) } }
+        } else Surface(
+            shape = RoundedCornerShape(18.dp),
             color = if (mine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.padding(start = if (mine) 40.dp else 0.dp, end = if (mine) 0.dp else 40.dp)
         ) {
             Text(
-                m.text, Modifier.padding(12.dp),
+                if (mine) AnnotatedString(m.text) else lightMarkdown(m.text), Modifier.padding(12.dp),
                 style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content)
             )
+        }
+        if (!mine) TextButton(onClick = { clip.setText(AnnotatedString(m.text)) }) { Text("Copy", style = MaterialTheme.typography.labelMedium) }
+    }
+}
+
+@Composable
+private fun FlashCard(i: Int, q: String, a: String) {
+    var shown by rememberSaveable(i, q) { mutableStateOf(false) }
+    Card(Modifier.fillMaxWidth().clickable { shown = !shown }) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(q, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content))
+            if (shown) Text(a, style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content))
+            else Text("Tap to show the answer", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun StepCard(n: Int, title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("$n. $title", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            content()
         }
     }
 }
@@ -185,53 +323,94 @@ private fun SettingsScreen(s: Session, scope: CoroutineScope) {
     var base by rememberSaveable { mutableStateOf(p.base) }
     var model by rememberSaveable { mutableStateOf(p.model) }
     var key by rememberSaveable { mutableStateOf("") }
+    var showKey by rememberSaveable { mutableStateOf(false) }
     var consent by rememberSaveable { mutableStateOf(p.consent) }
     var hasKey by remember { mutableStateOf(p.hasKey()) }
     var note by remember { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf("") }
 
-    fun save() {
+    fun persist() {
         p.base = base; p.model = model; p.consent = consent
         if (key.isNotBlank()) { p.setKey(key); key = ""; hasKey = p.hasKey() }
+        s.refresh()
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Provider", style = MaterialTheme.typography.titleMedium)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Providers.list.forEach { pr ->
-                FilterChip(selected = base == pr.base, onClick = { base = pr.base; if (pr.model.isNotEmpty()) model = pr.model }, label = { Text(pr.name) })
-            }
-        }
-        OutlinedTextField(base, { base = it }, Modifier.fillMaxWidth(), label = { Text("Address (https only)") }, singleLine = true)
-        OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text("Model") }, singleLine = true)
-        OutlinedTextField(
-            key, { key = it }, Modifier.fillMaxWidth(),
-            label = { Text(if (hasKey) "API key (saved, leave empty to keep)" else "API key") },
-            singleLine = true, visualTransformation = PasswordVisualTransformation()
-        )
+    fun connect() {
+        note = "Connecting..."
+        s.connect(scope, base, key, model) { chosen, msg -> model = chosen; note = msg; hasKey = p.hasKey() }
+        key = ""
+    }
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("What is sent", style = MaterialTheme.typography.titleSmall)
-                Text(
-                    "Only what you type, or text you choose to send (you see it first), plus a short fixed instruction, to the address above. " +
-                        "Your key is encrypted on this phone. There is no Focus server. Nothing is saved: the chat is cleared when you tap New or close the app. " +
-                        "The provider you chose handles the data under its own terms. Answers can be wrong: check important facts.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("I understand and agree", Modifier.weight(1f))
-                    Switch(consent, { consent = it })
+    // Reopening Settings with a saved key and consent: load the model list again, without typing anything.
+    LaunchedEffect(Unit) {
+        if (consent && hasKey && s.models.isEmpty() && base.startsWith("https://")) connect()
+    }
+
+    val provider = Providers.byBase(base)
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        StepCard(1, "Your key") {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Providers.list.forEach { pr ->
+                    FilterChip(selected = provider?.name == pr.name, onClick = { base = pr.base; if (pr.model.isNotEmpty()) model = pr.model; s.models = emptyList() }, label = { Text(pr.name) })
                 }
             }
+            if (provider != null && provider.keyHelp.isNotEmpty()) Text("Get a key: ${provider.keyHelp}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(
+                key,
+                { v ->
+                    key = v
+                    // pasting a key is enough: its shape tells which provider it is for
+                    val d = Providers.detect(v)
+                    if (d != null && (provider != null)) { base = d.base; if (d.model.isNotEmpty()) model = d.model; s.models = emptyList() }
+                },
+                Modifier.fillMaxWidth(),
+                label = { Text(if (hasKey) "API key (saved, leave empty to keep)" else "Paste your API key") },
+                singleLine = true,
+                visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation()
+            )
+            if (provider == null) OutlinedTextField(base, { base = it }, Modifier.fillMaxWidth(), label = { Text("Address (https only)") }, singleLine = true)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = { persist(); connect() }, enabled = (key.isNotBlank() || hasKey) && !s.modelsBusy) { Text("Connect") }
+                TextButton(onClick = { showKey = !showKey }) { Text(if (showKey) "Hide key" else "Show key") }
+                TextButton(onClick = { p.setKey(null); hasKey = false; key = ""; s.models = emptyList(); s.refresh(); note = "Key deleted." }) { Text("Delete key") }
+            }
+            if (s.modelsBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (note.isNotEmpty()) Text(note, style = MaterialTheme.typography.bodyMedium)
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { save(); note = "Saved." }) { Text("Save") }
-            OutlinedButton(onClick = { save(); note = "Testing..."; s.test(scope) { note = it } }) { Text("Test") }
-            TextButton(onClick = { p.setKey(null); hasKey = false; key = ""; note = "Key deleted." }) { Text("Delete key") }
+        StepCard(2, "Model") {
+            Text("Using: ${model.ifBlank { "none yet" }}", fontWeight = FontWeight.SemiBold)
+            if (s.models.isNotEmpty()) {
+                OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text("Search ${s.models.size} models") }, singleLine = true)
+                val shown = s.models.filter { query.isBlank() || it.contains(query.trim(), ignoreCase = true) }
+                shown.take(40).forEach { id ->
+                    Row(Modifier.fillMaxWidth().clickable { model = id; p.model = id; s.refresh() }, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = id == model, onClick = { model = id; p.model = id; s.refresh() })
+                        Text(id, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                if (shown.size > 40) Text("${shown.size - 40} more: type in the search box to narrow it.", style = MaterialTheme.typography.bodySmall)
+            }
+            OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text("Or type a model name") }, singleLine = true)
         }
-        if (note.isNotEmpty()) Text(note)
-        Spacer(Modifier.height(8.dp))
+
+        StepCard(3, "What is sent") {
+            Text(
+                "Only what you type, or text you choose to send (you see it first), plus a short fixed instruction, to ${host(base)}. " +
+                    "Your key is encrypted on this phone. There is no Focus server. Nothing is saved: the chat is cleared when you tap New or close the app. " +
+                    "The provider you chose handles the data under its own terms. Answers can be wrong: check important facts.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("I understand and agree", Modifier.weight(1f))
+                Switch(consent, { consent = it; persist() })
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { persist(); note = "Saved." }) { Text("Save") }
+                OutlinedButton(onClick = { persist(); note = "Testing..."; s.test(scope) { note = it } }) { Text("Test") }
+            }
+        }
         Text(
             "If you are ever in a dark place, please talk to someone you trust or a local helpline. This app is a study helper, not a doctor or a therapist.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant

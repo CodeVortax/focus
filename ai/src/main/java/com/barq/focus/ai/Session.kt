@@ -35,6 +35,15 @@ class Session(ctx: Context) {
     var cut by mutableStateOf(false)
     var pending by mutableStateOf<Pending?>(null)
     var screen by mutableStateOf("chat")
+    var ready by mutableStateOf(false)
+    var modelName by mutableStateOf("")
+    var models by mutableStateOf<List<String>>(emptyList())
+    var modelsBusy by mutableStateOf(false)
+
+    init { refresh() }
+
+    /** Re-reads the settings (after they change) so the screens show the right state. */
+    fun refresh() { ready = prefs.ready; modelName = prefs.model }
 
     companion object { const val MAX_MATERIAL = 12_000 }
 
@@ -104,6 +113,29 @@ class Session(ctx: Context) {
         scope.launch {
             val r = Api.chat(prefs.base, key, prefs.model, "Reply with the single word OK.", listOf(ChatMsg("user", "Test")))
             done(r.fold({ "Works." }, { it.message ?: "Failed." }))
+        }
+    }
+
+    /** Saves the address and key, asks the provider for its models and picks a good one, so no model name has to be typed. */
+    fun connect(scope: CoroutineScope, base: String, typedKey: String, model: String, done: (chosen: String, note: String) -> Unit) {
+        prefs.base = base
+        if (typedKey.isNotBlank()) prefs.setKey(typedKey)
+        val key = prefs.key() ?: run { done(model, "Paste your key first."); return }
+        modelsBusy = true
+        scope.launch {
+            val r = Api.listModels(base, key)
+            modelsBusy = false
+            r.onSuccess { ids ->
+                val list = Models.chatOnly(ids)
+                models = list
+                val chosen = if (model.isNotBlank() && model in list) model else Models.best(list) ?: model
+                prefs.model = chosen
+                refresh()
+                done(chosen, if (list.isEmpty()) "Connected, but the provider listed no models. Type a model name below." else "Connected. ${list.size} models found. Using $chosen.")
+            }.onFailure {
+                refresh()
+                done(model, "Saved, but the model list could not be loaded (${it.message}). Type a model name below.")
+            }
         }
     }
 }

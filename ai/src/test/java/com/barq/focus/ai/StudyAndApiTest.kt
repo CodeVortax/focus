@@ -62,4 +62,43 @@ class StudyAndApiTest {
         val r = AiReplyParser.clean("a".repeat(9000), 4000)
         assertTrue(r.length <= 4001)
     }
+
+    @Test fun readsTheModelListAndStripsGeminiPrefixes() {
+        val body = """{"data":[{"id":"gpt-4o-mini"},{"id":"models/gemini-2.0-flash"},{"id":""},{"object":"x"}]}"""
+        assertEquals(listOf("gpt-4o-mini", "gemini-2.0-flash"), Api.parseModels(body))
+        assertEquals(emptyList<String>(), Api.parseModels("nope"))
+    }
+
+    @Test fun nonChatModelsAreHidden() {
+        val ids = listOf("gpt-4o-mini", "text-embedding-3-small", "whisper-1", "dall-e-3", "tts-1", "gpt-4o-audio-preview", "gpt-4o")
+        assertEquals(listOf("gpt-4o", "gpt-4o-mini"), Models.chatOnly(ids))
+    }
+
+    @Test fun picksACheapFastModelAutomatically() {
+        assertEquals("gpt-4o-mini", Models.best(listOf("gpt-4o", "gpt-4o-mini-2024-07-18", "gpt-4o-mini", "o1")))
+        assertEquals("gemini-2.0-flash", Models.best(listOf("gemini-1.5-pro", "gemini-2.0-flash-exp", "gemini-2.0-flash")))
+        assertEquals("claude-haiku-5-5", Models.best(listOf("claude-opus-5-5", "claude-haiku-5-5", "claude-sonnet-5-5")))
+        assertEquals("alpha", Models.best(listOf("alpha", "beta")))
+        assertNull(Models.best(emptyList()))
+    }
+
+    @Test fun guessesTheProviderFromTheKey() {
+        assertEquals("OpenRouter", Providers.detect("sk-or-v1-abc")?.name)
+        assertEquals("Anthropic", Providers.detect("sk-ant-api03-abc")?.name)
+        assertEquals("Gemini", Providers.detect("AIzaSyABC")?.name)
+        assertEquals("OpenAI", Providers.detect("sk-proj-abc")?.name)
+        assertNull(Providers.detect("hello"))
+    }
+
+    @Test fun flashcardsAreReadIntoPairs() {
+        val t = "**Q: What is a cell?**\nA: The basic unit of life.\n\nQ: What is DNA?\nA: The genetic code.\nSome other line"
+        assertEquals(listOf("What is a cell?" to "The basic unit of life.", "What is DNA?" to "The genetic code."), parseCards(t))
+        assertEquals(0, parseCards("no cards here").size)
+    }
+
+    @Test fun lightMarkdownMakesBulletsAndHidesStars() {
+        val r = lightMarkdown("# Title\n- one\n**bold** text").text
+        assertEquals("Title\n\u2022 one\nbold text", r)
+    }
 }
+

@@ -7,6 +7,7 @@ The main Focus app is unchanged by it: it still has **no internet permission** a
 
 - **Tutor chat:** asks a guiding question before giving the full answer, short and kind.
 - **Explain / Quiz me / Summary / Flashcards** on text you share from any app (Share, or select text and choose "Study Mate"). You see exactly what will be sent, and the rough size, before it goes.
+- **No model typing:** paste your key and Study Mate recognises the provider, asks it for its models, and picks a fast, cheap one. You can search the list and switch.
 - Works with any "OpenAI-compatible" provider: OpenAI, OpenRouter, Gemini, Anthropic or a custom address. You use **your own API key**, stored encrypted in the Android Keystore. No Focus server.
 - Nothing is saved: the chat lives in memory and is cleared with **New** or when the app closes.
 
