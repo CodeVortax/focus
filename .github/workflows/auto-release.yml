@@ -94,6 +94,14 @@ jobs:
           name: focus-signed-apks
           path: dist/*
 
+      - name: Prepare release notes
+        if: env.BUMP == 'true'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          F="fastlane/metadata/android/en-US/changelogs/${VERSION_CODE}.txt"
+          if [ -f "$F" ]; then cp "$F" notes.md; else git log "$BEFORE"..HEAD --pretty='- %s' > notes.md; fi
+
       - name: Publish GitHub release (only when versionName changed)
         if: env.BUMP == 'true'
         uses: softprops/action-gh-release@v2
@@ -103,4 +111,4 @@ jobs:
           name: Focus v${{ env.VERSION_NAME }}
           files: dist/*
           prerelease: ${{ contains(env.VERSION_NAME, 'beta') }}
-          body_path: fastlane/metadata/android/en-US/changelogs/${{ env.VERSION_CODE }}.txt
+          body_path: notes.md
