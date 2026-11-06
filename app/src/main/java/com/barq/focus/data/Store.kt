@@ -437,6 +437,17 @@ class Store(ctx: Context) {
         p.edit().remove("act_id").remove("act_end").remove("act_start").remove("act_paused").remove("act_left").apply()
     }
 
+    /**
+     * The wall clock was moved by [jump] ms. The running timer's start and end are wall-clock times, so move them with
+     * the clock: otherwise setting the clock forward and stopping the timer would credit hours of study that never
+     * happened, and setting it back would stretch the budget.
+     */
+    fun shiftTimer(jump: Long) {
+        if (jump == 0L) return
+        if (activeCardId != -1L && !activePaused) { activeStart += jump; activeEnd += jump }
+        if (lastRemind != 0L) lastRemind += jump
+    }
+
     // ---- projects: a named list of apps; a session spends the treat bank while one of them is on screen ----
     fun projects(): List<Project> {
         val s = p.getString("projects", null) ?: return emptyList()
@@ -691,6 +702,11 @@ class Store(ctx: Context) {
         get() = p.getLong("last_nag", 0L)
         set(v) { p.edit().putLong("last_nag", v).apply() }
     val lastCrash: String get() = p.getString("last_crash", "") ?: ""
+
+    // ---- home layout ----
+    var homeLayout: String
+        get() = p.getString("home_layout", "grid") ?: "grid"
+        set(v) { p.edit().putString("home_layout", v).apply() }
 
     // ---- notes prefs ----
     var notesGrid: Boolean

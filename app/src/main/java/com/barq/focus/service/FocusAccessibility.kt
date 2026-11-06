@@ -67,6 +67,7 @@ class FocusAccessibility : AccessibilityService() {
     private val sh get() = resources.displayMetrics.heightPixels
     private var ignoreUntil = 0L
     private var allowedUntil = 0L
+    private var lastRevive = 0L
 
     override fun onServiceConnected() {
         instance = this
@@ -209,6 +210,8 @@ class FocusAccessibility : AccessibilityService() {
         override fun run() {
             try {
                 val now = System.currentTimeMillis()
+                // Android can kill the watcher service and never restart it; this service is brought back by the system, so it can.
+                if (!Shared.watchAlive && now - lastRevive > 15_000L) { lastRevive = now; Perms.ensureService(this@FocusAccessibility) }
                 if (inShorts) {
                     // Our own gate pauses the video (audio focus), and a paused feed sends no accessibility events, so nothing
                     // refreshes lastFoundAt while the gate is up. Without this the session timed out after 4 s, the gate was

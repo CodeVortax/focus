@@ -5,9 +5,18 @@ Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 ## Unreleased
 
 ### Added
+- **Send your day to Study Mate.** In Study Mate, "My day from Focus" opens a Focus screen that shows exactly what would be sent (today's tasks, study time, usage, exams) and returns it only if you tap Send; it lands in Study Mate's message box, where you can edit it. No clipboard, no server, only Study Mate may ask (`BridgeActivity`).
+- **Copy for AI / Ask Study Mate buttons** on Home, in a subject's menu and on the Usage screen: copy the text, or open Study Mate with it in the message box (copies it if Study Mate is not installed).
+- **Home layouts.** A layout button on Home chooses between Grid (default), List, Big cards, Carousel, Agenda, Rings and Mosaic.
+- **Study Mate memory.** Notes about you (how to talk to you, how it can help, what to be careful with, about you), editable, switchable, stored encrypted, sent with your messages and shown in the "what is sent" text. Not used in care mode. The model may propose a note ("Remember this about you?"); nothing is saved unless you tap.
+- **Study Mate navigation.** Bottom bar: Chat, My day, Memory, Settings.
+- **Quick Settings tile.** "Focus timer" shows the study timer; tapping it pauses or resumes, and with no timer running it opens Focus.
+- **Permission warning.** If usage access or the overlay permission is switched off while Focus runs, a notification says the gates are not working (they used to stop silently).
 - **Focus Study Mate**, a separate optional app (`com.barq.focus.ai`, folder `ai/`): a study tutor that can explain, quiz, summarize and make flashcards from text you share. Your own API key (OpenAI, OpenRouter, Gemini, Anthropic or custom), encrypted on the phone; you see what is sent first. Focus itself still has no internet permission. See [Study Mate](docs/guides/study-mate.md). Study Mate 0.1.2: DeepSeek added; a model that is not available or rate-limited is handled automatically (wait, retry, switch to the next best model); a "Find a working model" button; optional provider status line when a request fails. Build commands are now `gradle :app:assembleRelease` (Focus) and `gradle :ai:assembleRelease` (Study Mate).
 
 ### Fixed
+- **Clock changes.** Setting the phone clock forward and stopping the study timer used to credit hours of study that never happened, and setting it back stretched gate passes, treat time and the timer, and left the watcher blind (it looked for usage events from a time that was now in the future, so the gate never came up). Focus now notices a clock change by comparing it with the monotonic clock and moves every running pass and the timer with it (`ClockGuard`). Only while the watcher is running: see "Known gaps".
+- **Watcher revival.** If Android kills the watcher service, the accessibility service now restarts it (checked every 15 s) instead of waiting for you to open Focus.
 - **Shorts gate flicker.** The gate pauses the video, a paused feed sends no accessibility events, and the Shorts session timed out after 4 s with the gate on screen: the gate came down, the video resumed, was found again and the gate came back, over and over. While the gate is up, the Shorts app being in front now keeps the session alive.
 - **Gate after Recents.** An unanswered gate that goes out of view (Recents, a system window) now keeps the countdown it had already run when you come back within 90 seconds, instead of starting the wait again. An answered gate is unchanged: your pass still holds through Recents. The gate is never skipped.
 

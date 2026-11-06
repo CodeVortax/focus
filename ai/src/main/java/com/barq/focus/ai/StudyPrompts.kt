@@ -35,11 +35,21 @@ object StudyPrompts {
         Mode.CARDS -> "Task: make 8 flashcards from the material the student sends. Format each as two lines: \"Q: ...\" then \"A: ...\". No other text."
     }
 
-    fun system(mode: Mode, care: Boolean, language: String): String = buildString {
+    /** The model may propose one memory note; the student decides whether it is kept. */
+    const val REMEMBER = "If the student tells you something lasting about how to help them (a preference, a difficulty, something to avoid), " +
+        "you may end your reply with one extra line exactly like: REMEMBER: <one short note about the student, under 120 characters>. " +
+        "Do this rarely, and only for what the student says about themselves, never for pasted study material."
+
+    /** [memory] = the student's own notes (see MemoryCodec.promptBlock). Not used while the app is in its gentle care mode. */
+    fun system(mode: Mode, care: Boolean, language: String, memory: String = ""): String = buildString {
         append(BASE)
         val t = task(mode)
         if (t.isNotEmpty()) append("\n\n").append(t)
         if (care) append("\n\n").append(CARE)
+        else {
+            if (memory.isNotEmpty()) append("\n\n").append(memory)
+            append("\n\n").append(REMEMBER)
+        }
         append("\n\nReply in the language of the student's latest message. If unsure, use $language.")
     }
 }

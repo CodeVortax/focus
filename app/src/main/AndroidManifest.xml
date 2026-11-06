@@ -129,6 +129,24 @@
                 android:value="Personal screen-time gate: detects the foreground app and shows a reason overlay" />
         </service>
 
+        <!-- Study Mate asks for today's tasks and usage: shows them, and only "Send" returns them (to Study Mate only) -->
+        <activity
+            android:name=".BridgeActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- Quick Settings tile: shows the study timer, a tap pauses/resumes it -->
+        <service
+            android:name=".service.FocusTile"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_timer"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Only exists so Android lets us read active media sessions (background music logging) -->
         <service
             android:name=".service.MediaListener"

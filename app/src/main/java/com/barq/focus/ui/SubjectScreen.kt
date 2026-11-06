@@ -201,6 +201,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
     val done = dayList.count { it.done }
     val col = Color(card.color)
 
+    val aiCtx = androidx.compose.ui.platform.LocalContext.current
     Scaffold(topBar = {
         TopAppBar(
             title = { Text(card.title) },
@@ -209,6 +210,8 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, tr("More")) }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text(tr("Copy for AI")) }, onClick = { menu = false; com.barq.focus.data.AiShare.copy(aiCtx, com.barq.focus.data.DayExport.subject(store, card)) })
+                        DropdownMenuItem(text = { Text(tr("Ask Study Mate")) }, onClick = { menu = false; com.barq.focus.data.AiShare.ask(aiCtx, com.barq.focus.data.DayExport.subject(store, card)) })
                         DropdownMenuItem(text = { Text(tr("Timer sound settings")) }, onClick = { menu = false; onSettings() })
                         DropdownMenuItem(text = { Text(tr("Exam date…")) }, onClick = { menu = false; examDlg = true })
                         DropdownMenuItem(text = { Text(tr("Class days…")) }, onClick = { menu = false; classDlg = true })

@@ -44,6 +44,7 @@ object Notifier {
     const val HEALTH_ID = 5
     const val PIGGY_ID = 6
     const val PROJECT_ID = 7
+    const val PERM_ID = 8
     private const val CH_HEALTH = "focus_health"
     const val CH_STATUS = "focus_watch"
     const val CH_REMIND = "focus_remind"
@@ -134,6 +135,22 @@ object Notifier {
                 android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
                 android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT))
         try { nm.notify(HEALTH_ID, b.build()) } catch (_: SecurityException) {}
+    }
+
+    /** Usage access or the overlay permission was switched off: the gates cannot work. Say so instead of letting them quietly stop. */
+    fun permissionsLost(ctx: Context, lost: Boolean) {
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        if (!lost) { nm.cancel(PERM_ID); return }
+        ensureChannels(ctx)
+        val text = tr("A permission was turned off, so the gates are not working. Open Focus to turn it back on.")
+        val b = NotificationCompat.Builder(ctx, CH_HEALTH)
+            .setSmallIcon(android.R.drawable.stat_sys_warning)
+            .setContentTitle(tr("Focus can't see your apps"))
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setAutoCancel(true).setOnlyAlertOnce(true)
+            .setContentIntent(TimerAlarm.openApp(ctx))
+        try { nm.notify(PERM_ID, b.build()) } catch (_: SecurityException) {}
     }
 
     /** Piggy bank news: a payout, or a (funny) fine. */

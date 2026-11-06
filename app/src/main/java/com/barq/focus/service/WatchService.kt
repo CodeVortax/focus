@@ -33,6 +33,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -63,6 +64,8 @@ class WatchService : Service() {
     private var fg: String? = null
     private var fgRow = -1L
     private var lastEventTs = 0L
+    private val clock = ClockGuard()
+    private var permShown = false
     private val seenAtLast = HashSet<String>()
     private var tick = 0
     private var deadSince = 0L
@@ -204,6 +207,8 @@ class WatchService : Service() {
 
     private fun step() {
         val now = System.currentTimeMillis()
+        val jump = clock.check(now, SystemClock.elapsedRealtime())
+        if (jump != 0L) onClockJump(jump, now)
         // several events can share one millisecond (A paused, B resumed): only skip the ones already handled
         for ((pkg, type, ts) in events(lastEventTs)) {
             if (ts < lastEventTs) continue
@@ -257,7 +262,35 @@ class WatchService : Service() {
         if (tick % 5 == 2 && Reminders.tickEvents(this)) Reminders.rescheduleEvents(this)
         if (tick % 30 == 1) refreshNotifs()
         if (tick % 10 == 3) checkAccessibility(now)
+        if (tick % 30 == 11) checkPermissions()
         if (tick % 30 == 7) com.barq.focus.data.Vault.process(this, store)
+    }
+
+    /**
+     * The wall clock was changed by [jump] ms. Keep every running pass and the study timer exactly as long as it really
+     * has left, and stop reading usage events from a "last event" time that may now be in the future (that made the
+     * watcher blind until the clock caught up, so the gate never came up).
+     */
+    private fun onClockJump(jump: Long, now: Long) {
+        Log.w("Focus", "clock moved by $jump ms")
+        for (k in allowedUntil.keys.toList()) allowedUntil[k] = (allowedUntil[k] ?: 0L) + jump
+        for (k in blockPass.keys.toList()) blockPass[k] = (blockPass[k] ?: 0L) + jump
+        if (Shared.treatUntil > 0L) Shared.treatUntil += jump
+        if (Shared.suppressUntil > 0L) Shared.suppressUntil += jump
+        store.shiftTimer(jump)
+        lastEventTs = now
+        seenAtLast.clear()
+        projLast = now
+        nullSince = 0L
+        gateAwaySince = 0L
+    }
+
+    /** Usage access or the overlay permission was switched off while Focus runs: say so, instead of the gates quietly stopping. */
+    private fun checkPermissions() {
+        val lost = !Perms.ready(this)
+        if (lost == permShown) return
+        permShown = lost
+        Notifier.permissionsLost(this, lost)
     }
 
     /**

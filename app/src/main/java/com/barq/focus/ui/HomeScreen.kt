@@ -105,6 +105,7 @@ import com.barq.focus.service.Shared
 import com.barq.focus.ui.theme.AppTheme
 import com.barq.focus.ui.theme.CardSwatches
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.ViewModule
 import com.barq.focus.ui.theme.FocusBrandFont
 
 fun typeLabel(t: CardType) = tr(when (t) { CardType.STUDY -> "Study"; CardType.TREAT -> "Treat"; CardType.FREE -> "Free" })
@@ -135,6 +136,8 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
         if (got.isNotEmpty()) fresh = got
     }
     var showAddMenu by remember { mutableStateOf(false) }
+    var layoutId by remember { mutableStateOf(store.homeLayout) }
+    var showLayouts by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     var pendingTreat by remember { mutableStateOf<FocusCard?>(null) }
     var treatSetup by remember { mutableStateOf<FocusCard?>(null) }
@@ -165,6 +168,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
             TopAppBar(
                 title = { Text(tr("Focus"), fontFamily = FocusBrandFont, fontWeight = FontWeight.Bold) },
                 actions = {
+                    IconButton(onClick = { showLayouts = true }) { Icon(Icons.Default.ViewModule, "Layout") }
                     IconButton(onClick = { go("notes") }) { Icon(Icons.Default.Description, "Notes") }
                     IconButton(onClick = { go("pdfs") }) { Icon(Icons.AutoMirrored.Filled.MenuBook, "Library") }
                     Box {
@@ -233,6 +237,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                         style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary
                     )
                     TextButton(onClick = { go("games") }, contentPadding = PaddingValues(0.dp)) { Text(tr("Take a break")) }
+                    AiShareRow({ com.barq.focus.data.DayExport.build(ctx, store) })
                     if (total > 0 && done < total) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             TextButton(onClick = { showEnd = true }, contentPadding = PaddingValues(0.dp)) { Text(tr("End day")) }
@@ -244,26 +249,15 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                     }
                 }
             }
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(160.dp),
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp)
-            ) {
-                items(cards, key = { it.id }) { c -> CardTile(c, store.spent(c.id) / 60_000, { open(c) }, { cardMenu = c }) }
-                item {
-                    Box(
-                        Modifier.fillMaxWidth().height(136.dp).clip(RoundedCornerShape(24.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { showAddMenu = true },
-                        contentAlignment = Alignment.Center
-                    ) { Icon(Icons.Default.Add, "Add card") }
-                }
-            }
+            HomeCards(
+                layout = layoutId, cards = cards, spentMin = { store.spent(it.id) / 60_000 },
+                onOpen = { open(it) }, onMenu = { cardMenu = it }, onAdd = { showAddMenu = true },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 
+    if (showLayouts) LayoutPicker(layoutId, { layoutId = it; store.homeLayout = it; showLayouts = false }) { showLayouts = false }
     if (rolling) {
         // "Challenge me": spin through the subjects that still have tasks, land on one, open it (it then picks a task)
         val cand = cards.filter { it.type == CardType.STUDY && it.dayItems.any { i -> !i.done } }
@@ -412,7 +406,7 @@ private fun glowModifier(color: Color, on: Boolean): Modifier {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CardTile(c: FocusCard, spentMin: Long, onClick: () -> Unit, onLong: () -> Unit) {
+internal fun CardTile(c: FocusCard, spentMin: Long, onClick: () -> Unit, onLong: () -> Unit) {
     val col = Color(c.color)
     val t = c.dayItems.size
     val d = c.dayItems.count { it.done }

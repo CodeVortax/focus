@@ -95,6 +95,7 @@ fun AiTheme(content: @Composable () -> Unit) {
 @Composable
 fun AiApp(s: Session) {
     val scope = rememberCoroutineScope()
+    val askDay = rememberDayLauncher(s)
     Scaffold(
         topBar = {
             TopAppBar(
@@ -106,15 +107,18 @@ fun AiApp(s: Session) {
                 },
                 actions = {
                     if (s.screen == "chat") TextButton(onClick = { s.clear() }) { Text("New") }
-                    TextButton(onClick = { s.screen = if (s.screen == "chat") "settings" else "chat" }) {
-                        Text(if (s.screen == "chat") "Settings" else "Chat")
-                    }
                 }
             )
-        }
+        },
+        bottomBar = { BottomNav(s) }
     ) { pad ->
         Surface(Modifier.padding(pad).fillMaxSize()) {
-            if (s.screen == "settings") SettingsScreen(s, scope) else ChatScreen(s, scope)
+            when (s.screen) {
+                "settings" -> SettingsScreen(s, scope)
+                "memory" -> MemoryScreen(s)
+                "day" -> DayScreen(s, askDay)
+                else -> ChatScreen(s, scope, askDay)
+            }
         }
     }
 }
@@ -164,9 +168,13 @@ fun parseCards(text: String): List<Pair<String, String>> {
 }
 
 @Composable
-private fun ChatScreen(s: Session, scope: CoroutineScope) {
+private fun ChatScreen(s: Session, scope: CoroutineScope, askDay: () -> Unit) {
     var input by rememberSaveable { mutableStateOf("") }
     val list = rememberLazyListState()
+    LaunchedEffect(s.pasteTick) {      // text from Focus ("My day") lands in the message box, where it can be edited
+        val p = s.paste
+        if (p != null) { input = if (input.isBlank()) p else input.trimEnd() + "\n\n" + p; s.paste = null }
+    }
     LaunchedEffect(s.messages.size, s.busy) {
         val last = s.messages.size - 1 + (if (s.busy) 1 else 0)
         if (last >= 0) list.animateScrollToItem(last)
@@ -192,6 +200,11 @@ private fun ChatScreen(s: Session, scope: CoroutineScope) {
         }
         s.notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) }
         s.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
+        MemorySuggestCard(s)
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SuggestionChip(onClick = askDay, label = { Text("＋ My day from Focus") })
+            SuggestionChip(onClick = { s.screen = "memory" }, label = { Text("Memory (${s.memory.count { it.on }})") })
+        }
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.Bottom) {
             OutlinedTextField(
                 input, { input = it }, Modifier.weight(1f), shape = RoundedCornerShape(20.dp),
@@ -212,7 +225,7 @@ private fun ChatScreen(s: Session, scope: CoroutineScope) {
                         style = MaterialTheme.typography.labelMedium
                     )
                     Text(p.text.take(1500) + if (p.text.length > 1500) "..." else "")
-                    Text("Plus a short fixed instruction for \"${p.mode.label}\". Nothing else is sent.", style = MaterialTheme.typography.labelMedium)
+                    Text("Plus a short fixed instruction for \"${p.mode.label}\"" + (if (s.memory.any { it.on }) " and your memory notes (${s.memory.count { it.on }})" else "") + ". Nothing else is sent.", style = MaterialTheme.typography.labelMedium)
                 }
             },
             confirmButton = { TextButton(onClick = { val x = p; s.pending = null; s.startMaterial(scope, x) }) { Text("Send") } },
@@ -415,7 +428,7 @@ private fun SettingsScreen(s: Session, scope: CoroutineScope) {
 
         StepCard(3, "What is sent") {
             Text(
-                "Only what you type, or text you choose to send (you see it first), plus a short fixed instruction, to ${host(base)}. " +
+                "Only what you type, or text you choose to send (you see it first), plus a short fixed instruction and the memory notes you wrote (you can read and delete them in Memory), to ${host(base)}. " +
                     "Your key is encrypted on this phone. There is no Focus server. Nothing is saved: the chat is cleared when you tap New or close the app. " +
                     "The provider you chose handles the data under its own terms. Answers can be wrong: check important facts.",
                 style = MaterialTheme.typography.bodyMedium

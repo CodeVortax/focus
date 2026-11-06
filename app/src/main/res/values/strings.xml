@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Focus Study Gate</string>
     <string name="a11y_desc">Focus reads the YouTube / Instagram screen only to notice Shorts and Reels, count them, and close the app when you choose Leave. Nothing leaves your phone.</string>
+    <string name="tile_label">Focus timer</string>
     <string name="widget_treat_name">Focus · Treat bank</string>
     <string name="widget_treat_desc">Treat bank minutes and your work streak</string>
     <string name="widget_today_name">Focus · Today</string>

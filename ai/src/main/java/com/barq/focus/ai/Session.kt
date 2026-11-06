@@ -41,7 +41,56 @@ class Session(ctx: Context) {
     var models by mutableStateOf<List<String>>(emptyList())
     var modelsBusy by mutableStateOf(false)
 
-    init { refresh() }
+    /** The student's memory notes (also stored, encrypted, on this phone). */
+    val memory = mutableStateListOf<MemoryItem>()
+    /** The last day text received from Focus; stays in memory only, like the chat. */
+    var dayText by mutableStateOf<String?>(null)
+    /** Text waiting to be put into the message box (the chat screen takes it and clears it). */
+    var paste by mutableStateOf<String?>(null)
+    var pasteTick by mutableStateOf(0)
+    /** A note the model proposed; shown with buttons, saved only if the student taps one. */
+    var suggest by mutableStateOf<String?>(null)
+
+    init { refresh(); memory.addAll(prefs.memory()) }
+
+    private fun saveMemory() = prefs.setMemory(memory.toList())
+
+    fun addMemory(kind: MemKind, text: String): Boolean {
+        val t = MemoryCodec.clean(text)
+        if (t.length < 3) return false
+        if (memory.size >= MemoryCodec.MAX_ITEMS) { notice = "Memory is full (${MemoryCodec.MAX_ITEMS} notes). Delete one first."; return false }
+        if (memory.any { it.kind == kind && it.text.equals(t, ignoreCase = true) }) return false
+        memory.add(MemoryItem(System.currentTimeMillis(), kind, t))
+        saveMemory()
+        return true
+    }
+
+    fun editMemory(id: Long, text: String) {
+        val t = MemoryCodec.clean(text)
+        val i = memory.indexOfFirst { it.id == id }
+        if (i < 0 || t.length < 3) return
+        memory[i] = memory[i].copy(text = t)
+        saveMemory()
+    }
+
+    fun toggleMemory(id: Long) {
+        val i = memory.indexOfFirst { it.id == id }
+        if (i < 0) return
+        memory[i] = memory[i].copy(on = !memory[i].on)
+        saveMemory()
+    }
+
+    fun removeMemory(id: Long) { memory.removeAll { it.id == id }; saveMemory() }
+
+    /** The day, from Focus (the student saw it and tapped Send there). It goes into the message box, so it can be edited before sending. */
+    fun receiveDay(text: String) {
+        val t = FocusBridge.clean(text)
+        if (t.isEmpty()) return
+        dayText = t
+        paste = "My day from Focus:\n$t\n\n"
+        pasteTick++
+        screen = "chat"
+    }
 
     /** Re-reads the settings (after they change) so the screens show the right state. */
     fun refresh() { ready = prefs.ready; modelName = prefs.model }
@@ -60,7 +109,7 @@ class Session(ctx: Context) {
     }
 
     fun clear() {
-        messages.clear(); error = null; careMode = false; busy = false; mode = Mode.TUTOR
+        messages.clear(); error = null; careMode = false; busy = false; mode = Mode.TUTOR; suggest = null
     }
 
     /** What the student typed. A worrying message gets a fixed kind answer and is not sent anywhere. */
@@ -99,13 +148,16 @@ class Session(ctx: Context) {
         val key = prefs.key() ?: run { error = "The key could not be read. Add it again in Settings."; return }
         busy = true
         notice = null
-        val system = StudyPrompts.system(mode, careMode, language())
+        suggest = null
+        val system = StudyPrompts.system(mode, careMode, language(), MemoryCodec.promptBlock(memory.toList()))
         val history = messages.takeLast(20).toList()
         val base = prefs.base
         scope.launch {
             val r = Auto.chat(base, key, prefs.model, system, history, models)
             if (r.reply != null) {
-                messages.add(ChatMsg("assistant", AiReplyParser.clean(r.reply, 4000)))
+                val (shown, note) = MemorySuggest.split(r.reply)
+                messages.add(ChatMsg("assistant", AiReplyParser.clean(shown, 4000)))
+                suggest = note?.takeIf { n -> memory.none { it.text.equals(n, ignoreCase = true) } }
                 if (r.model != prefs.model) { prefs.model = r.model; refresh() }   // keep the model that worked
                 notice = r.note
             } else error = explain(base, r.error)

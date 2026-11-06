@@ -28,6 +28,11 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+            <!-- Focus's "Ask Study Mate" button: today's tasks and usage, to edit and send from the message box -->
+            <intent-filter>
+                <action android:name="com.barq.focus.ai.action.CONTEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <!-- Select text anywhere, then choose "Study Mate" in the selection menu -->
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />

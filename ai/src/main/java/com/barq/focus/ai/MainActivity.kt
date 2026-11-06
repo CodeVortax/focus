@@ -34,6 +34,10 @@ class MainActivity : ComponentActivity() {
     /** Text shared to the app, or selected in another app and sent with "Study Mate" from the selection menu. */
     private fun take(i: Intent?) {
         i ?: return
+        if (i.action == FocusBridge.ACTION_CONTEXT) {      // Focus's "Ask Study Mate" button: the day text, to be edited and sent from the message box
+            i.getStringExtra(Intent.EXTRA_TEXT)?.let { session.receiveDay(it) }
+            return
+        }
         val text = when (i.action) {
             Intent.ACTION_SEND -> i.getStringExtra(Intent.EXTRA_TEXT)
             Intent.ACTION_PROCESS_TEXT -> i.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()

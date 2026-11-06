@@ -16,3 +16,8 @@ app/build/
 keystore.properties
 *.jks
 *.keystore
+build/
+.gradle/
+build.log
+test.log
+local.properties

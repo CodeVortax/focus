@@ -78,6 +78,13 @@ class AiPrefs(ctx: Context) {
         get() = p.getString("key", null)
         set(v) { p.edit().putString("key", v).apply() }
 
+    /** The student's memory notes, encrypted like the key. */
+    fun memory(): List<MemoryItem> = MemoryCodec.decode(p.getString("memory", null)?.let { Vault.open(it) })
+    fun setMemory(list: List<MemoryItem>) {
+        if (list.isEmpty()) p.edit().remove("memory").apply()
+        else p.edit().putString("memory", Vault.seal(MemoryCodec.encode(list))).apply()
+    }
+
     fun hasKey(): Boolean = sealed != null
     fun key(): String? = sealed?.let { Vault.open(it) }
     fun setKey(k: String?) { sealed = if (k.isNullOrBlank()) null else Vault.seal(k.trim()) }
