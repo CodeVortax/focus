@@ -2,7 +2,9 @@
 
 Versions follow `versionName` in `app/build.gradle.kts`. All releases are betas.
 
-## Unreleased
+## 0.30.0-beta (version code 48)
+
+Study Mate is now `0.2.0-beta` (version code 5).
 
 ### Added
 - **Send your day to Study Mate.** In Study Mate, "My day from Focus" opens a Focus screen that shows exactly what would be sent (today's tasks, study time, usage, exams) and returns it only if you tap Send; it lands in Study Mate's message box, where you can edit it. No clipboard, no server, only Study Mate may ask (`BridgeActivity`).
