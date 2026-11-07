@@ -101,13 +101,8 @@ object SysUsage {
         return out.sortedBy { it.t0 }
     }
 
-    /** Midnight [offset] days ago. */
-    fun dayStart(offset: Int): Long {
-        val c = Calendar.getInstance()
-        c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
-        c.add(Calendar.DAY_OF_YEAR, -offset)
-        return c.timeInMillis
-    }
+    /** When the day [offset] days ago began (midnight, or the hour the user chose in Setup). */
+    fun dayStart(offset: Int): Long = DayClock.dayStart(offset)
 
     private val labels = HashMap<String, String>()
 

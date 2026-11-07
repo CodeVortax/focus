@@ -21,6 +21,18 @@ package com.barq.focus.data
 
 /** Arabic for the strings added after 0.29 (merged into AR when Arabic is selected). Other languages fall back to English until a pack covers them. */
 val AR_V30: Map<String, String> = mapOf(
+    "Free-time cycle" to "دورة الوقت الحر",
+    "Use your distracting apps for a set time, then take a break from them. Hopping between apps doesn't reset the count." to "استخدم تطبيقاتك المشتتة لمدة محددة ثم خذ استراحة منها. التنقل بين التطبيقات لا يعيد العدّ.",
+    "Allowed" to "المسموح",
+    "Then a break of" to "ثم استراحة",
+    "%d min" to "%d دقيقة",
+    "Break" to "استراحة",
+    "Break time: %d min" to "وقت الاستراحة: %d دقيقة",
+    "1 min until your break" to "باقي دقيقة على الاستراحة",
+    "30 s left" to "باقي 30 ثانية",
+    "+2 min" to "+2 دقيقة",
+    "Day starts at" to "يبدأ اليوم عند",
+    "Studying past midnight? Pick when your day resets so the late hours count for the day you started." to "تذاكر بعد منتصف الليل؟ اختر وقت بداية يومك لتُحسب الساعات المتأخرة لليوم الذي بدأته.",
     "Top pill" to "الجزيرة العلوية",
     "A small island at the top of the screen: your running timer, the song playing, charging and ringer changes. Needs the overlay permission." to "جزيرة صغيرة أعلى الشاشة: مؤقتك الجاري، والأغنية الحالية، والشحن وتغيّر وضع الرنين. تحتاج إذن العرض فوق التطبيقات.",
     "Silent" to "صامت",

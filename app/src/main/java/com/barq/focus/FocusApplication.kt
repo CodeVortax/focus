@@ -35,6 +35,7 @@ class FocusApplication : Application() {
             prev?.uncaughtException(t, e)
         }
         com.barq.focus.data.I18n.init(this)
+        com.barq.focus.data.Store(this)   // loads the chosen day-start hour before anything asks for "today"
     }
 
     /** When the screen is hidden only the services stay alive, so give back the cached bitmaps. */

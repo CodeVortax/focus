@@ -161,9 +161,12 @@ class Pill(private val ctx: Context) {
         lastRinger = rm
     }
 
-    private fun flash(text: String, color: Int, now: Long) {
-        flashText = text; flashColor = color; flashUntil = now + 3000L
+    private fun flash(text: String, color: Int, now: Long, ms: Long = 3000L) {
+        flashText = text; flashColor = color; flashUntil = now + ms
     }
+
+    /** Show [text] on the pill for a few seconds (used for the "session ends soon" warning). Only visible while the pill is switched on. */
+    fun notice(text: String, color: Int, ms: Long = 4000L) = flash(text, color, System.currentTimeMillis(), ms)
 
     // ---- drawing ----
 

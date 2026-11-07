@@ -90,11 +90,27 @@ fun hmText(sec: Int): String {
     return if (m >= 60) trf("%d h %d min", m / 60, m % 60) else trf("%s min", minText(sec))
 }
 
-fun startOfDay(): Long {
-    val c = Calendar.getInstance()
-    c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
-    return c.timeInMillis
+/**
+ * When Focus's "day" begins, as hours after midnight (0 = midnight). Someone who studies until 2 AM wants that time to
+ * count for the day they started, so the day can roll over at, say, 4 AM instead. Set by [Store]; read by everything
+ * that needs "today".
+ */
+object DayClock {
+    @Volatile var startHour = 0
+
+    /** The clock moved back by the start hour: its calendar date is Focus's "today". */
+    fun shifted(now: Long = System.currentTimeMillis(), plusDays: Int = 0): Calendar =
+        Calendar.getInstance().apply { timeInMillis = now - startHour * 3_600_000L; if (plusDays != 0) add(Calendar.DAY_OF_YEAR, plusDays) }
+
+    /** Real time at which the day [offset] days ago began. */
+    fun dayStart(offset: Int, now: Long = System.currentTimeMillis()): Long {
+        val c = shifted(now, -offset)
+        c.set(Calendar.HOUR_OF_DAY, startHour); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+        return c.timeInMillis
+    }
 }
+
+fun startOfDay(): Long = DayClock.dayStart(0)
 
 object Config {
     // package -> label. All of these are logged; only the "gated" ones get the overlay.
@@ -141,6 +157,13 @@ object Config {
 
 class Store(ctx: Context) {
     private val p = ctx.applicationContext.getSharedPreferences("focus", Context.MODE_PRIVATE)
+
+    init { DayClock.startHour = p.getInt("day_start_hour", 0).coerceIn(0, 12) }
+
+    /** Hour (0-12) the day rolls over at. */
+    var dayStartHour: Int
+        get() = p.getInt("day_start_hour", 0).coerceIn(0, 12)
+        set(v) { val h = v.coerceIn(0, 12); p.edit().putInt("day_start_hour", h).apply(); DayClock.startHour = h }
 
     // ---- cards ----
     fun cards(): List<FocusCard> {
@@ -227,7 +250,7 @@ class Store(ctx: Context) {
         val last = p.getInt("last_day", 0)
         if (last != d) {
             p.edit().putInt("last_day", d).apply()
-            val dow = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7      // Monday = 0
+            val dow = (DayClock.shifted().get(Calendar.DAY_OF_WEEK) + 5) % 7      // Monday = 0
             val todayStart = startOfDay()
             val pend = try { org.json.JSONArray(ruleMissPending) } catch (_: Exception) { org.json.JSONArray() }
             var misses = 0; var clean = 0
@@ -264,7 +287,7 @@ class Store(ctx: Context) {
     }
 
     private fun dayKeyPlus(n: Int): Int {
-        val c = Calendar.getInstance(); c.add(Calendar.DAY_OF_YEAR, n)
+        val c = DayClock.shifted(plusDays = n)
         return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
     }
 
@@ -346,7 +369,7 @@ class Store(ctx: Context) {
 
     // ---- treat bank ----
     private fun day(): Int {
-        val c = Calendar.getInstance()
+        val c = DayClock.shifted()
         return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
     }
     private fun flag(n: String) = p.getBoolean("${n}_${day()}", false)
@@ -724,6 +747,23 @@ class Store(ctx: Context) {
         get() = p.getLong("last_nag", 0L)
         set(v) { p.edit().putLong("last_nag", v).apply() }
     val lastCrash: String get() = p.getString("last_crash", "") ?: ""
+
+    // ---- free-time cycle: use the distracting apps for a while, then a break (switching apps doesn't reset the count) ----
+    var cycleOn: Boolean
+        get() = p.getBoolean("cycle_on", false)
+        set(v) { p.edit().putBoolean("cycle_on", v).apply() }
+    var cycleAllowMin: Int
+        get() = p.getInt("cycle_allow", 60).coerceIn(5, 240)
+        set(v) { p.edit().putInt("cycle_allow", v.coerceIn(5, 240)).apply() }
+    var cycleBreakMin: Int
+        get() = p.getInt("cycle_break", 30).coerceIn(5, 240)
+        set(v) { p.edit().putInt("cycle_break", v.coerceIn(5, 240)).apply() }
+    var cycleUsed: Long                      // ms of distracting-app time since the last break
+        get() = p.getLong("cycle_used", 0L)
+        set(v) { p.edit().putLong("cycle_used", v).apply() }
+    var cycleBreakUntil: Long                // while in the future, the distracting apps are on a break
+        get() = p.getLong("cycle_break_until", 0L)
+        set(v) { p.edit().putLong("cycle_break_until", v).apply() }
 
     /** The small top-of-screen pill (timer, song, charging). Off until switched on in Setup. */
     var pillOn: Boolean
