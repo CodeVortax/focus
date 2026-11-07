@@ -212,6 +212,14 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                     }
                     Switch(checked = strict, onCheckedChange = { strict = it; store.strictShorts = it })
                 }
+                var pill by remember { mutableStateOf(store.pillOn) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Top pill"))
+                        Text(tr("A small island at the top of the screen: your running timer, the song playing, charging and ringer changes. Needs the overlay permission."), style = MaterialTheme.typography.labelLarge)
+                    }
+                    Switch(checked = pill, onCheckedChange = { pill = it; store.pillOn = it })
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(tr("Picture-in-picture"), style = MaterialTheme.typography.titleMedium)

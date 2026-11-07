@@ -33,6 +33,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -87,6 +88,14 @@ class WatchService : Service() {
     private val sessions = GateSessions()
     private val shownAt = HashMap<String, ArrayList<Long>>()    // when the gate came up for each app (only to notice "hard to get started")
 
+    private val pm by lazy { getSystemService(PowerManager::class.java) }
+    private lateinit var pill: Pill
+
+    /** Screen on and awake. Nothing counts as "in use" while it is off or dozing. */
+    private fun screenOn(): Boolean = try {
+        (pm?.isInteractive ?: true) && getSystemService(android.app.KeyguardManager::class.java)?.isKeyguardLocked != true
+    } catch (_: Exception) { true }
+
     override fun onBind(i: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -94,6 +103,7 @@ class WatchService : Service() {
         store = Store(this)
         db = Db.get(this)
         overlay = Overlay.get(this)
+        pill = Pill(this)
         if (com.barq.focus.BuildConfig.DEBUG) sessions.log = { Log.d("FocusGate", it) }
         db.fixOpen(store.beat)
         always = Apps.alwaysAllowed(this)
@@ -147,6 +157,7 @@ class WatchService : Service() {
         Shared.watchAlive = false
         h.removeCallbacksAndMessages(null)
         overlay.hide()
+        pill.hide()
         val now = System.currentTimeMillis()
         if (fgRow >= 0) db.close(fgRow, now)
         musicRows.values.forEach { db.close(it, now) }
@@ -192,7 +203,7 @@ class WatchService : Service() {
         when (type) {
             1 -> setFg(pkg, ts)                       // ACTIVITY_RESUMED
             2 -> if (pkg == fg) setFg(null, ts)       // ACTIVITY_PAUSED
-            16 -> setFg(null, ts)                     // SCREEN_NON_INTERACTIVE
+            16, 17 -> setFg(null, ts)                 // SCREEN_NON_INTERACTIVE, KEYGUARD_SHOWN
         }
     }
 
@@ -202,7 +213,20 @@ class WatchService : Service() {
         if (fgRow >= 0) { db.close(fgRow, ts); fgRow = -1 }
         fg = p
         Shared.fg = p
-        if (p != null && p in Config.TRACKED) fgRow = openOrMerge("app", p, ts, 90_000L)
+        if (p != null && p in Config.TRACKED && screenOn()) fgRow = openOrMerge("app", p, ts, 90_000L)
+    }
+
+    /**
+     * The events can miss a screen-off or arrive late, so the real screen state has the last word: while the screen is off
+     * nothing is counted, and an app still in front when it comes back on starts counting again.
+     */
+    private fun syncScreen(now: Long) {
+        if (!screenOn()) {
+            if (fgRow >= 0) { db.close(fgRow, now); fgRow = -1 }
+        } else if (fgRow < 0) {
+            val p = fg
+            if (p != null && p in Config.TRACKED) fgRow = openOrMerge("app", p, now, 90_000L)
+        }
     }
 
     private fun step() {
@@ -217,6 +241,7 @@ class WatchService : Service() {
             onEvent(pkg, type, ts)
         }
         if (tick % 10 == 0) store.beat = now
+        syncScreen(now)
 
         val cur = fg
         projectTick(now, cur)
@@ -258,6 +283,7 @@ class WatchService : Service() {
         if (store.activeCardId != -1L) Alerter.check(this, store)
         Notifier.syncTimer(this, store)
         FocusWidgets.refresh(this)
+        pill.update(store, cur, overlay.showing, screenOn())
         if (tick++ % 3 == 0) pollMusic(now)
         if (tick % 5 == 2 && Reminders.tickEvents(this)) Reminders.rescheduleEvents(this)
         if (tick % 30 == 1) refreshNotifs()

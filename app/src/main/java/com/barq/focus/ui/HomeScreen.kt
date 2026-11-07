@@ -106,6 +106,8 @@ import com.barq.focus.ui.theme.AppTheme
 import com.barq.focus.ui.theme.CardSwatches
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import com.barq.focus.ui.theme.FocusBrandFont
 
 fun typeLabel(t: CardType) = tr(when (t) { CardType.STUDY -> "Study"; CardType.TREAT -> "Treat"; CardType.FREE -> "Free" })
@@ -139,6 +141,9 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     var layoutId by remember { mutableStateOf(store.homeLayout) }
     var showLayouts by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
+    var userName by remember { mutableStateOf(store.userName) }
+    var nameDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { if (store.userName.isBlank() && !store.nameAsked) { store.nameAsked = true; nameDialog = true } }
     var pendingTreat by remember { mutableStateOf<FocusCard?>(null) }
     var treatSetup by remember { mutableStateOf<FocusCard?>(null) }
     val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -163,22 +168,12 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     var editing by remember { mutableStateOf<FocusCard?>(null) }
 
     if (menu) HomeMenuPanel(store.menuSide, { menu = false }) { menu = false; go(it) }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(tr("Focus"), fontFamily = FocusBrandFont, fontWeight = FontWeight.Bold) },
-                actions = {
-                    IconButton(onClick = { showLayouts = true }) { Icon(Icons.Default.ViewModule, "Layout") }
-                    IconButton(onClick = { go("notes") }) { Icon(Icons.Default.Description, "Notes") }
-                    IconButton(onClick = { go("pdfs") }) { Icon(Icons.AutoMirrored.Filled.MenuBook, "Library") }
-                    Box {
-                        IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "More") }
-                    }
-                }
-            )
-        }
-    ) { pad ->
+    Scaffold { pad ->
         Column(Modifier.padding(pad).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy((look?.spacingDp ?: 12).dp)) {
+            HomeHeader(
+                name = userName, onName = { nameDialog = true },
+                onLayouts = { showLayouts = true }, onNotes = { go("notes") }, onLibrary = { go("pdfs") }, onMore = { menu = true }
+            )
             if (!setupOk) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
@@ -211,39 +206,55 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                     FilledTonalButton(onClick = { showAdd = true }) { Text(tr("Add something small")) }
                 }
             }
-            if (look?.homeShowProgress != false) Card(Modifier.fillMaxWidth().clickable { go("log") }) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        when {
-                            total == 0 -> tr(Config.freeWord(startOfDay() / 86_400_000L)) + "  ·  " + tr("nothing on your plate")
-                            done == total -> tr("Plate cleared  ·  nothing left")
-                            else -> trf("%d left on your plate (of %d)", total - done, total)
-                        },
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        trf("Treat bank: %s min  ·  Shorts today: %d swiped, %d min", store.bankText(), swipes, shortsMin),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    val (weekLeft, weekAll) = Weekly.progress(cards)
-                    if (weekAll > 0) Text(
-                        trf("This week: %d of %d tasks left", weekLeft, weekAll),
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.tertiary
-                    )
-                    val lvl = Game.level(xp)
-                    Text(
-                        "🔥 $workStreak   🛡️ $lightStreak   " + Game.titleOf(lvl).first + " " +
-                            trf("Lv %d", lvl) + " " + tr(Game.titleOf(lvl).second),
-                        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary
-                    )
-                    TextButton(onClick = { go("games") }, contentPadding = PaddingValues(0.dp)) { Text(tr("Take a break")) }
-                    AiShareRow({ com.barq.focus.data.DayExport.build(ctx, store) })
-                    if (total > 0 && done < total) {
+            if (look?.homeShowProgress != false) {
+                var moreOpen by remember { mutableStateOf(false) }
+                val lvl = Game.level(xp)
+                Card(Modifier.fillMaxWidth().clickable { go("log") }, shape = RoundedCornerShape(22.dp)) {
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { showEnd = true }, contentPadding = PaddingValues(0.dp)) { Text(tr("End day")) }
-                            Spacer(Modifier.weight(1f))
-                            FilledTonalButton(onClick = { rolling = true }) {
-                                Icon(Icons.Default.Casino, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(tr("Challenge me"))
+                            Text(
+                                when {
+                                    total == 0 -> tr(Config.freeWord(startOfDay() / 86_400_000L)) + "  ·  " + tr("nothing on your plate")
+                                    done == total -> tr("Plate cleared  ·  nothing left")
+                                    else -> trf("%d left on your plate (of %d)", total - done, total)
+                                },
+                                style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f), maxLines = 2
+                            )
+                            IconButton(onClick = { moreOpen = !moreOpen }, Modifier.size(32.dp)) {
+                                Icon(if (moreOpen) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, "More")
+                            }
+                        }
+                        if (total > 0) LinearProgressIndicator(
+                            progress = { done / total.toFloat() },
+                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp))
+                        )
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            StatChip("\uD83C\uDF7F " + com.barq.focus.data.hmText(store.bankSec()))
+                            StatChip("\uD83D\uDCF1 $swipes")
+                            StatChip("\uD83D\uDD25 $workStreak")
+                            StatChip(Game.titleOf(lvl).first + " " + trf("Lv %d", lvl))
+                        }
+                        if (moreOpen) {
+                            Text(
+                                trf("Shorts today: %d swiped, %d min", swipes, shortsMin) + "  ·  \uD83D\uDEE1\uFE0F $lightStreak",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            val (weekLeft, weekAll) = Weekly.progress(cards)
+                            if (weekAll > 0) Text(
+                                trf("This week: %d of %d tasks left", weekLeft, weekAll),
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.tertiary
+                            )
+                            Text(tr(Game.titleOf(lvl).second), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                            TextButton(onClick = { go("games") }, contentPadding = PaddingValues(0.dp)) { Text(tr("Take a break")) }
+                            AiShareRow({ com.barq.focus.data.DayExport.build(ctx, store) })
+                            if (total > 0 && done < total) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(onClick = { showEnd = true }, contentPadding = PaddingValues(0.dp)) { Text(tr("End day")) }
+                                    Spacer(Modifier.weight(1f))
+                                    FilledTonalButton(onClick = { rolling = true }) {
+                                        Icon(Icons.Default.Casino, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(tr("Challenge me"))
+                                    }
+                                }
                             }
                         }
                     }
@@ -257,6 +268,16 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
         }
     }
 
+    if (nameDialog) {
+        var draft by remember { mutableStateOf(userName) }
+        AlertDialog(
+            onDismissRequest = { nameDialog = false },
+            title = { Text(tr("What should I call you?")) },
+            text = { OutlinedTextField(draft, { draft = it.take(24) }, singleLine = true, label = { Text(tr("Your name")) }) },
+            confirmButton = { TextButton(onClick = { store.userName = draft.trim(); userName = draft.trim(); nameDialog = false }) { Text(tr("Save")) } },
+            dismissButton = { TextButton(onClick = { nameDialog = false }) { Text(tr("Not now")) } }
+        )
+    }
     if (showLayouts) LayoutPicker(layoutId, { layoutId = it; store.homeLayout = it; showLayouts = false }) { showLayouts = false }
     if (rolling) {
         // "Challenge me": spin through the subjects that still have tasks, land on one, open it (it then picks a task)
@@ -618,4 +639,30 @@ private fun HomeMenuPanel(side: Int, onDismiss: () -> Unit, go: (String) -> Unit
             }
         }
     }
+}
+
+
+/** A slim one-line header: "Welcome back, name" (tap the name to change it) and the few icons that used to fill the top bar. */
+@Composable
+private fun HomeHeader(name: String, onName: () -> Unit, onLayouts: () -> Unit, onNotes: () -> Unit, onLibrary: () -> Unit, onMore: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            if (name.isBlank()) tr("Welcome back") else trf("Welcome back, %s", name),
+            style = MaterialTheme.typography.titleMedium, fontFamily = FocusBrandFont, fontWeight = FontWeight.Bold,
+            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = onName).padding(horizontal = 6.dp, vertical = 8.dp)
+        )
+        IconButton(onClick = onLayouts, Modifier.size(40.dp)) { Icon(Icons.Default.ViewModule, "Layout", Modifier.size(22.dp)) }
+        IconButton(onClick = onNotes, Modifier.size(40.dp)) { Icon(Icons.Default.Description, "Notes", Modifier.size(22.dp)) }
+        IconButton(onClick = onLibrary, Modifier.size(40.dp)) { Icon(Icons.AutoMirrored.Filled.MenuBook, "Library", Modifier.size(22.dp)) }
+        IconButton(onClick = onMore, Modifier.size(40.dp)) { Icon(Icons.Default.MoreVert, "More", Modifier.size(22.dp)) }
+    }
+}
+
+@Composable
+private fun StatChip(text: String) {
+    Text(
+        text, style = MaterialTheme.typography.labelMedium, maxLines = 1,
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 10.dp, vertical = 5.dp)
+    )
 }

@@ -86,7 +86,7 @@ fun TimerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             TimerCardUi(
-                timeText = "%02d:%02d".format(secs / 60, secs % 60),
+                timeText = com.barq.focus.data.clockText(secs),
                 caption = tr(if (done) "Done." else if (running) "Time left" else "Ready"),
                 fraction = if (endAt == 0L) 1f else (remaining.toFloat() / total).coerceIn(0f, 1f),
                 over = false, running = running, paused = false, color = col, compact = compact,

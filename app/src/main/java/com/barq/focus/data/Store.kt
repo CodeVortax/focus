@@ -77,6 +77,19 @@ data class Block(
 fun minText(sec: Int): String =
     if (sec % 60 == 0) "${sec / 60}" else String.format(java.util.Locale.US, "%.1f", sec / 60f)
 
+/** A countdown as MM:SS, or H:MM:SS once it is an hour or more (used by the timer screen, card and notification). */
+fun clockText(totalSec: Long): String {
+    val s = if (totalSec < 0) 0 else totalSec
+    return if (s >= 3600) String.format(java.util.Locale.US, "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
+    else String.format(java.util.Locale.US, "%02d:%02d", s / 60, s % 60)
+}
+
+/** Minutes for short amounts, hours and minutes for long ones: "45 min", "2 h 5 min". */
+fun hmText(sec: Int): String {
+    val m = sec / 60
+    return if (m >= 60) trf("%d h %d min", m / 60, m % 60) else trf("%s min", minText(sec))
+}
+
 fun startOfDay(): Long {
     val c = Calendar.getInstance()
     c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
@@ -702,6 +715,19 @@ class Store(ctx: Context) {
         get() = p.getLong("last_nag", 0L)
         set(v) { p.edit().putLong("last_nag", v).apply() }
     val lastCrash: String get() = p.getString("last_crash", "") ?: ""
+
+    /** The small top-of-screen pill (timer, song, charging). Off until switched on in Setup. */
+    var pillOn: Boolean
+        get() = p.getBoolean("pill_on", false)
+        set(v) { p.edit().putBoolean("pill_on", v).apply() }
+
+    // ---- who the home screen greets ----
+    var userName: String
+        get() = p.getString("user_name", "") ?: ""
+        set(v) { p.edit().putString("user_name", v).apply() }
+    var nameAsked: Boolean
+        get() = p.getBoolean("name_asked", false)
+        set(v) { p.edit().putBoolean("name_asked", v).apply() }
 
     // ---- home layout ----
     var homeLayout: String

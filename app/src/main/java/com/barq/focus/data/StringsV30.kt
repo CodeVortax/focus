@@ -21,6 +21,19 @@ package com.barq.focus.data
 
 /** Arabic for the strings added after 0.29 (merged into AR when Arabic is selected). Other languages fall back to English until a pack covers them. */
 val AR_V30: Map<String, String> = mapOf(
+    "Top pill" to "الجزيرة العلوية",
+    "A small island at the top of the screen: your running timer, the song playing, charging and ringer changes. Needs the overlay permission." to "جزيرة صغيرة أعلى الشاشة: مؤقتك الجاري، والأغنية الحالية، والشحن وتغيّر وضع الرنين. تحتاج إذن العرض فوق التطبيقات.",
+    "Silent" to "صامت",
+    "Vibrate" to "اهتزاز",
+    "Ring" to "رنين",
+    "Shorts today: %d swiped, %d min" to "شورتس اليوم: %d مقطعًا، %d دقيقة",
+    "Welcome back" to "أهلًا بعودتك",
+    "Welcome back, %s" to "أهلًا بعودتك يا %s",
+    "What should I call you?" to "بماذا أناديك؟",
+    "Your name" to "اسمك",
+    "%d h %d min" to "%d س %d د",
+    "h : min" to "ساعة : دقيقة",
+    "h : min saved" to "ساعة : دقيقة محفوظة",
     "Hey, what brought you here? Let's make this a conscious choice." to "مرحبًا، ما الذي جاء بك إلى هنا؟ لنجعل هذا اختيارًا واعيًا.",
     "Quick check-in: what are you here for?" to "وقفة سريعة: لماذا أنت هنا؟",
     "Hi. Let's pick this on purpose." to "أهلًا. لنختر هذا عن قصد.",
