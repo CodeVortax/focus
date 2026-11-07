@@ -144,7 +144,7 @@ class Store(ctx: Context) {
 
     // ---- cards ----
     fun cards(): List<FocusCard> {
-        val s = p.getString("cards", null) ?: return defaultCards().also { saveCards(it) }
+        val s = p.getString("cards", null) ?: return emptyList()
         val a = JSONArray(s)
         return (0 until a.length()).map {
             val o = a.getJSONObject(it)
@@ -197,15 +197,23 @@ class Store(ctx: Context) {
 
     fun updateCard(c: FocusCard) = saveCards(cards().map { if (it.id == c.id) c else it })
 
-    private fun defaultCards(): List<FocusCard> {
-        val t = System.currentTimeMillis()
-        return listOf(
-            FocusCard(t + 1, "Chemistry", CardType.STUDY, 0xFF34A853.toInt(), 60),
-            FocusCard(t + 2, "Math", CardType.STUDY, 0xFF4285F4.toInt(), 60),
-            FocusCard(t + 3, "Physics", CardType.STUDY, 0xFFEA4335.toInt(), 60),
-            FocusCard(t + 4, "Friv project", CardType.STUDY, 0xFFFBBC04.toInt(), 60),
-            FocusCard(t + 5, "Mentalist", CardType.TREAT, 0xFF4285F4.toInt(), 40),
-        )
+    /**
+     * One time: the starter subjects early versions put on a fresh home screen are removed, but only if they were never
+     * touched (no tasks, no episodes, no media, no time spent, not running), so nothing the user really uses is lost.
+     */
+    private fun pruneSeedCards() {
+        if (p.getBoolean("seed_pruned", false)) return
+        p.edit().putBoolean("seed_pruned", true).apply()
+        val seeds = setOf("Chemistry", "Math", "Physics", "Friv project", "Mentalist")
+        val all = cards()
+        val keys = p.all.keys
+        val keep = all.filter { c ->
+            // "never used": no time was ever logged for it on any day
+            val untouched = keys.none { it.startsWith("spent_") && it.endsWith("_${c.id}") }
+            !(c.title in seeds && c.items.isEmpty() && c.eps.isEmpty() && c.media.isEmpty() && c.groups.isEmpty() &&
+                c.id != activeCardId && untouched)
+        }
+        if (keep.size != all.size) saveCards(keep)
     }
 
     /**
@@ -213,6 +221,7 @@ class Store(ctx: Context) {
      * tasks when new work arrives, or a task past its own due day, counts as a miss (a funny fine, settled by the Vault).
      */
     fun rollover() {
+        pruneSeedCards()
         touchDay()
         val d = day()
         val last = p.getInt("last_day", 0)
