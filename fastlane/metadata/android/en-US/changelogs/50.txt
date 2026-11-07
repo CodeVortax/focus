@@ -1,0 +1,7 @@
+- Home: small "Welcome back, name" header with a compact summary; starter subjects removed
+- Timers and widgets show hours:minutes:seconds
+- Usage counts an app only while it is in front and the screen is on and unlocked
+- New top pill: running timer, music, charging and ringer flashes (Setup > Top pill)
+- 30-second warning before a gate session ends, with +2 / +5 min
+- Free-time cycle: use your distracting apps for a set time, then a break
+- Choose the hour your day starts at

@@ -33,6 +33,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -80,12 +81,25 @@ class WatchService : Service() {
     private var warned3 = false
     private var deadShown = false
     private val allowedUntil = HashMap<String, Long>()
+    private var cycLast = 0L
+    private var cycUsed = 0L
+    private var cycLastUse = 0L
+    private var cycWarned = false
+    private val warnedAt = HashMap<String, Long>()      // the pass (by its end time) that already got its "30 s left" warning
     private val blockPass = HashMap<String, Long>()
     private var always: Set<String> = emptySet()
     private val musicRows = HashMap<String, Long>()
     // what an unanswered gate had left when it went out of view (Recents, a system window), so it does not start over
     private val sessions = GateSessions()
     private val shownAt = HashMap<String, ArrayList<Long>>()    // when the gate came up for each app (only to notice "hard to get started")
+
+    private val pm by lazy { getSystemService(PowerManager::class.java) }
+    private lateinit var pill: Pill
+
+    /** Screen on and awake. Nothing counts as "in use" while it is off or dozing. */
+    private fun screenOn(): Boolean = try {
+        (pm?.isInteractive ?: true) && getSystemService(android.app.KeyguardManager::class.java)?.isKeyguardLocked != true
+    } catch (_: Exception) { true }
 
     override fun onBind(i: Intent?): IBinder? = null
 
@@ -94,6 +108,8 @@ class WatchService : Service() {
         store = Store(this)
         db = Db.get(this)
         overlay = Overlay.get(this)
+        pill = Pill(this)
+        cycUsed = store.cycleUsed
         if (com.barq.focus.BuildConfig.DEBUG) sessions.log = { Log.d("FocusGate", it) }
         db.fixOpen(store.beat)
         always = Apps.alwaysAllowed(this)
@@ -147,6 +163,8 @@ class WatchService : Service() {
         Shared.watchAlive = false
         h.removeCallbacksAndMessages(null)
         overlay.hide()
+        pill.hide()
+        store.cycleUsed = cycUsed
         val now = System.currentTimeMillis()
         if (fgRow >= 0) db.close(fgRow, now)
         musicRows.values.forEach { db.close(it, now) }
@@ -192,7 +210,7 @@ class WatchService : Service() {
         when (type) {
             1 -> setFg(pkg, ts)                       // ACTIVITY_RESUMED
             2 -> if (pkg == fg) setFg(null, ts)       // ACTIVITY_PAUSED
-            16 -> setFg(null, ts)                     // SCREEN_NON_INTERACTIVE
+            16, 17 -> setFg(null, ts)                 // SCREEN_NON_INTERACTIVE, KEYGUARD_SHOWN
         }
     }
 
@@ -202,7 +220,20 @@ class WatchService : Service() {
         if (fgRow >= 0) { db.close(fgRow, ts); fgRow = -1 }
         fg = p
         Shared.fg = p
-        if (p != null && p in Config.TRACKED) fgRow = openOrMerge("app", p, ts, 90_000L)
+        if (p != null && p in Config.TRACKED && screenOn()) fgRow = openOrMerge("app", p, ts, 90_000L)
+    }
+
+    /**
+     * The events can miss a screen-off or arrive late, so the real screen state has the last word: while the screen is off
+     * nothing is counted, and an app still in front when it comes back on starts counting again.
+     */
+    private fun syncScreen(now: Long) {
+        if (!screenOn()) {
+            if (fgRow >= 0) { db.close(fgRow, now); fgRow = -1 }
+        } else if (fgRow < 0) {
+            val p = fg
+            if (p != null && p in Config.TRACKED) fgRow = openOrMerge("app", p, now, 90_000L)
+        }
     }
 
     private fun step() {
@@ -217,12 +248,18 @@ class WatchService : Service() {
             onEvent(pkg, type, ts)
         }
         if (tick % 10 == 0) store.beat = now
+        syncScreen(now)
 
         val cur = fg
         projectTick(now, cur)
         val gated = store.gated() - store.projectApps()          // the apps of a running project session skip the gate
-        val lockBlock = store.studyLock(now) ?: store.activeBlock()?.takeIf { it.lock }
-        val blocked = lockBlock != null && cur != null && !isAllowed(lockBlock, cur)
+        cycleTick(now, cur, gated)
+        val lockBlock0 = store.studyLock(now) ?: store.activeBlock()?.takeIf { it.lock }
+        val brk = if (lockBlock0 == null) cycleBreak(now) else null
+        val lockBlock = lockBlock0 ?: brk
+        // a study/focus lock lets only the allowed apps through; a free-time break only stops the distracting (gated) ones
+        val blocked = lockBlock != null && cur != null &&
+            (if (lockBlock === brk) cur in gated && cur !in always && !Apps.callRelated(cur) else !isAllowed(lockBlock, cur))
         // A gated app can also sit in a floating or split window while another app has the focus: gate that one too.
         val gtarget = if (cur != null && cur in gated) cur else if (gated.isNotEmpty()) hiddenGated(gated, cur, now) else null
 
@@ -255,9 +292,11 @@ class WatchService : Service() {
             }
         }
 
+        warnSession(cur, now)
         if (store.activeCardId != -1L) Alerter.check(this, store)
         Notifier.syncTimer(this, store)
         FocusWidgets.refresh(this)
+        pill.update(store, cur, overlay.showing, screenOn())
         if (tick++ % 3 == 0) pollMusic(now)
         if (tick % 5 == 2 && Reminders.tickEvents(this)) Reminders.rescheduleEvents(this)
         if (tick % 30 == 1) refreshNotifs()
@@ -276,6 +315,7 @@ class WatchService : Service() {
         for (k in allowedUntil.keys.toList()) allowedUntil[k] = (allowedUntil[k] ?: 0L) + jump
         for (k in blockPass.keys.toList()) blockPass[k] = (blockPass[k] ?: 0L) + jump
         if (Shared.treatUntil > 0L) Shared.treatUntil += jump
+        if (store.cycleBreakUntil > 0L) store.cycleBreakUntil += jump
         if (Shared.suppressUntil > 0L) Shared.suppressUntil += jump
         store.shiftTimer(jump)
         lastEventTs = now
@@ -368,6 +408,61 @@ class WatchService : Service() {
     /** A treat is one pool of minutes for every gate: the Shorts gate must not ask again for time you already paid. */
     private fun treated(minutes: Int) { Shared.treatUntil = System.currentTimeMillis() + minutes * 60_000L }
 
+    /** The break part of the free-time cycle, as a block that only the distracting apps run into. */
+    private fun cycleBreak(now: Long): Block? {
+        val until = store.cycleBreakUntil
+        if (!store.cycleOn || until <= now) return null
+        val c = java.util.Calendar.getInstance().apply { timeInMillis = until }
+        val end = c.get(java.util.Calendar.HOUR_OF_DAY) * 60 + c.get(java.util.Calendar.MINUTE)
+        return Block(-7L, tr("Break"), end, end, lock = true, strict = false, allowed = emptySet())
+    }
+
+    /**
+     * Counts the time spent in the distracting apps (all of them together, so hopping between them doesn't reset it).
+     * After the allowed time a break starts; a long pause away from them also starts the count over.
+     */
+    private fun cycleTick(now: Long, cur: String?, gated: Set<String>) {
+        val dt = (now - cycLast).coerceIn(0L, 3000L)
+        cycLast = now
+        if (!store.cycleOn || store.cycleBreakUntil > now) { cycWarned = false; return }
+        val allow = store.cycleAllowMin * 60_000L
+        if (cur != null && cur in gated && screenOn()) {
+            cycLastUse = now
+            cycUsed += dt
+            if (cycUsed >= allow) {
+                cycUsed = 0L; cycWarned = false
+                store.cycleUsed = 0L
+                store.cycleBreakUntil = now + store.cycleBreakMin * 60_000L
+                val msg = "\u2615 " + trf("Break time: %d min", store.cycleBreakMin)
+                if (store.pillOn) pill.notice(msg, 0xFFFBBC04.toInt(), 6000L)
+                else try { android.widget.Toast.makeText(applicationContext, msg, android.widget.Toast.LENGTH_LONG).show() } catch (_: Exception) {}
+            } else {
+                if (!cycWarned && allow - cycUsed <= 60_000L) {
+                    cycWarned = true
+                    val msg = "\u2615 " + tr("1 min until your break")
+                    if (store.pillOn) pill.notice(msg, 0xFFFBBC04.toInt(), 5000L)
+                    else try { android.widget.Toast.makeText(applicationContext, msg, android.widget.Toast.LENGTH_SHORT).show() } catch (_: Exception) {}
+                }
+                if (tick % 10 == 0) store.cycleUsed = cycUsed
+            }
+        } else if (cycUsed > 0L && cycLastUse > 0L && now - cycLastUse > 15 * 60_000L) {
+            cycUsed = 0L; cycWarned = false; store.cycleUsed = 0L        // 15 minutes away: a fresh stretch
+        }
+    }
+
+    /** 30 seconds before a gate session ends, say so on the pill (a short toast when the pill is off). */
+    private fun warnSession(cur: String?, now: Long) {
+        if (cur == null) return
+        val until = allowedUntil[cur] ?: return
+        val left = until - now
+        if (left in 1L..30_000L && warnedAt[cur] != until) {
+            warnedAt[cur] = until
+            val msg = "\u23F3 " + (Config.TRACKED[cur] ?: cur) + "  " + tr("30 s left")
+            if (store.pillOn) pill.notice(msg, 0xFFFBBC04.toInt(), 5000L)
+            else try { android.widget.Toast.makeText(applicationContext, msg, android.widget.Toast.LENGTH_SHORT).show() } catch (_: Exception) {}
+        }
+    }
+
     private fun grant(pkg: String, reason: String, minutes: Int) {
         sessions.onPassed(pkg, System.currentTimeMillis())
         allowedUntil[pkg] = System.currentTimeMillis() + minutes * 60_000L
@@ -400,6 +495,11 @@ class WatchService : Service() {
         val ch = ArrayList<Choice>()
         ch += Choice(trf("Just search  ·  %d min", Config.SEARCH_MINUTES), 0xFF4285F4.toInt(), icon = "\uD83D\uDD0D") { grant(cur, "Just search", Config.SEARCH_MINUTES) }
         ch += Choice(trf("A link  ·  %d min", Config.LINK_MINUTES), 0xFF4285F4.toInt(), icon = "\uD83D\uDD17") { grant(cur, "A link", Config.LINK_MINUTES) }
+        if (allowedUntil.containsKey(cur)) {
+            // the session just ended: a small extension is one tap away (after the same short countdown), not a fresh start
+            ch += Choice(tr("+2 min"), 0xFF4285F4.toInt(), icon = "\u23F1") { grant(cur, "+2 min", 2) }
+            ch += Choice(tr("+5 min"), 0xFF4285F4.toInt(), icon = "\u23F1") { grant(cur, "+5 min", 5) }
+        }
         if (bank >= Config.TREAT_STEP) {
             ch += Choice(trf("Treat  ·  %d min  (bank %d)", Config.TREAT_STEP, bank), 0xFF34A853.toInt(), icon = "\uD83C\uDF7F") {
                 store.spend(Config.TREAT_STEP); grant(cur, "Treat", Config.TREAT_STEP); treated(Config.TREAT_STEP)

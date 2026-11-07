@@ -185,7 +185,7 @@ fun SubjectTimerCard(
     }
     val over = running && remaining < 0
     val secs = (kotlin.math.abs(remaining) + 999) / 1000
-    val timeText = (if (over) "+" else "") + "%02d:%02d".format(secs / 60, secs % 60)
+    val timeText = (if (over) "+" else "") + com.barq.focus.data.clockText(secs)
     // a budget of more than one turn (30 min) drains turn by turn: the ring moves from the first second, and the
     // turns still to come sit as a darker full ring underneath
     val turnMs = DIAL_MIN_PER_TURN * 60_000L

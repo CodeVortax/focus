@@ -307,7 +307,7 @@ fun LogScreen(db: Db, onBack: () -> Unit) {
         LongArray(24).also { h ->
             val c = java.util.Calendar.getInstance()
             when (metric) {
-                Metric.OPENS -> sp.forEach { if (it.t0 in dayStart until dayEnd && it.t1 - it.t0 >= 3000L) { c.timeInMillis = it.t0; h[c.get(java.util.Calendar.HOUR_OF_DAY)]++ } }
+                Metric.OPENS -> sp.forEach { if (it.t0 in dayStart until dayEnd && it.t1 - it.t0 >= 3000L) { h[((it.t0 - dayStart) / 3_600_000L).toInt().coerceIn(0, 23)]++ } }
                 Metric.SHORTS -> shortsRows.forEach { r ->
                     for (x in 0 until 24) h[x] += overlap(r.t0, r.t1 ?: now, dayStart + x * 3_600_000L, dayStart + (x + 1) * 3_600_000L)
                 }

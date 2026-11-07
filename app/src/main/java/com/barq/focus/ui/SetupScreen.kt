@@ -212,6 +212,48 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                     }
                     Switch(checked = strict, onCheckedChange = { strict = it; store.strictShorts = it })
                 }
+                var cycle by remember { mutableStateOf(store.cycleOn) }
+                var allow by remember { mutableStateOf(store.cycleAllowMin) }
+                var brk by remember { mutableStateOf(store.cycleBreakMin) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Free-time cycle"))
+                        Text(tr("Use your distracting apps for a set time, then take a break from them. Hopping between apps doesn't reset the count."), style = MaterialTheme.typography.labelLarge)
+                    }
+                    Switch(checked = cycle, onCheckedChange = { cycle = it; store.cycleOn = it })
+                }
+                if (cycle) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("Allowed"), Modifier.weight(1f))
+                        IconButton(onClick = { allow = (allow - 15).coerceAtLeast(15); store.cycleAllowMin = allow }) { Text("\u2212", style = MaterialTheme.typography.titleLarge) }
+                        Text(trf("%d min", allow), style = MaterialTheme.typography.titleMedium)
+                        IconButton(onClick = { allow = (allow + 15).coerceAtMost(240); store.cycleAllowMin = allow }) { Text("+", style = MaterialTheme.typography.titleLarge) }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("Then a break of"), Modifier.weight(1f))
+                        IconButton(onClick = { brk = (brk - 5).coerceAtLeast(5); store.cycleBreakMin = brk }) { Text("\u2212", style = MaterialTheme.typography.titleLarge) }
+                        Text(trf("%d min", brk), style = MaterialTheme.typography.titleMedium)
+                        IconButton(onClick = { brk = (brk + 5).coerceAtMost(240); store.cycleBreakMin = brk }) { Text("+", style = MaterialTheme.typography.titleLarge) }
+                    }
+                }
+                var dayHour by remember { mutableStateOf(store.dayStartHour) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Day starts at"))
+                        Text(tr("Studying past midnight? Pick when your day resets so the late hours count for the day you started."), style = MaterialTheme.typography.labelLarge)
+                    }
+                    IconButton(onClick = { dayHour = (dayHour - 1).coerceAtLeast(0); store.dayStartHour = dayHour }) { Text("\u2212", style = MaterialTheme.typography.titleLarge) }
+                    Text(String.format(java.util.Locale.US, "%02d:00", dayHour), style = MaterialTheme.typography.titleMedium)
+                    IconButton(onClick = { dayHour = (dayHour + 1).coerceAtMost(12); store.dayStartHour = dayHour }) { Text("+", style = MaterialTheme.typography.titleLarge) }
+                }
+                var pill by remember { mutableStateOf(store.pillOn) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Top pill"))
+                        Text(tr("A small island at the top of the screen: your running timer, the song playing, charging and ringer changes. Needs the overlay permission."), style = MaterialTheme.typography.labelLarge)
+                    }
+                    Switch(checked = pill, onCheckedChange = { pill = it; store.pillOn = it })
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(tr("Picture-in-picture"), style = MaterialTheme.typography.titleMedium)

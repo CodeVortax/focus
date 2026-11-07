@@ -37,7 +37,10 @@ class UsageSpan(val pkg: String, val t0: Long, val t1: Long)
 object SysUsage {
     private const val FG = 1          // ACTIVITY_RESUMED / MOVE_TO_FOREGROUND
     private const val BG = 2          // ACTIVITY_PAUSED / MOVE_TO_BACKGROUND
+    private const val SCREEN_ON = 15  // SCREEN_INTERACTIVE
     private const val SCREEN_OFF = 16 // SCREEN_NON_INTERACTIVE
+    private const val KEYGUARD_SHOWN = 17   // lock screen up: the phone is not being used
+    private const val KEYGUARD_HIDDEN = 18  // unlocked
 
     private fun skipped(ctx: Context): Set<String> {
         val s = hashSetOf("android", "com.android.systemui")
@@ -55,15 +58,32 @@ object SysUsage {
         val e = UsageEvents.Event()
         val open = HashMap<String, Long>()
         val raw = ArrayList<UsageSpan>()
+        // An app only counts while it is in front AND the screen is on and unlocked: a wake-up activity while the
+        // screen is off (an alarm, a call screen on the lock screen) or behind the lock screen is not "using the phone".
+        var screenOn = true
+        var locked = false
+        fun usable() = screenOn && !locked
+        fun closeAll(at: Long) {
+            open.forEach { (p, s) -> if (at > s) raw += UsageSpan(p, s, at) }
+            open.clear()
+        }
+        // the app that was last in front when the screen woke up or unlocked starts counting again from that moment
+        var lastFg: String? = null
         while (evs.hasNextEvent()) {
             evs.getNextEvent(e)
             when (e.eventType) {
-                FG -> { val p = e.packageName; if (p !in skip && p !in open) open[p] = e.timeStamp }
-                BG -> open.remove(e.packageName)?.let { s -> if (e.timeStamp > s) raw += UsageSpan(e.packageName, s, e.timeStamp) }
-                SCREEN_OFF -> {
-                    open.forEach { (p, s) -> if (e.timeStamp > s) raw += UsageSpan(p, s, e.timeStamp) }
-                    open.clear()
+                FG -> {
+                    val p = e.packageName
+                    if (p !in skip) { lastFg = p; if (usable() && p !in open) open[p] = e.timeStamp }
                 }
+                BG -> {
+                    if (e.packageName == lastFg) lastFg = null
+                    open.remove(e.packageName)?.let { s -> if (e.timeStamp > s) raw += UsageSpan(e.packageName, s, e.timeStamp) }
+                }
+                SCREEN_OFF -> { screenOn = false; closeAll(e.timeStamp) }
+                SCREEN_ON -> { screenOn = true; if (usable()) lastFg?.let { open[it] = e.timeStamp } }
+                KEYGUARD_SHOWN -> { locked = true; closeAll(e.timeStamp) }
+                KEYGUARD_HIDDEN -> { locked = false; if (usable()) lastFg?.let { open[it] = e.timeStamp } }
             }
         }
         open.forEach { (p, s) -> if (to > s) raw += UsageSpan(p, s, to) }
@@ -81,13 +101,8 @@ object SysUsage {
         return out.sortedBy { it.t0 }
     }
 
-    /** Midnight [offset] days ago. */
-    fun dayStart(offset: Int): Long {
-        val c = Calendar.getInstance()
-        c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
-        c.add(Calendar.DAY_OF_YEAR, -offset)
-        return c.timeInMillis
-    }
+    /** When the day [offset] days ago began (midnight, or the hour the user chose in Setup). */
+    fun dayStart(offset: Int): Long = DayClock.dayStart(offset)
 
     private val labels = HashMap<String, String>()
 

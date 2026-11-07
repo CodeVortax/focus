@@ -66,8 +66,9 @@ object FocusWidgets {
         val s = Store(ctx)
         val v = RemoteViews(ctx.packageName, R.layout.widget_treat)
         v.setTextViewText(R.id.w_label, tr("Treat bank"))
-        v.setTextViewText(R.id.w_big, s.bankText())
-        v.setTextViewText(R.id.w_small, tr("min"))
+        val bank = s.bankSec()
+        v.setTextViewText(R.id.w_big, if (bank >= 3600) com.barq.focus.data.clockText(bank.toLong()).substringBeforeLast(':') else s.bankText())
+        v.setTextViewText(R.id.w_small, if (bank >= 3600) tr("h : min") else tr("min"))
         v.setTextViewText(R.id.w_line, "\uD83D\uDD25 " + days(Game.workStreak(s)))
         v.setTextColor(R.id.w_big, accent(s))
         v.setOnClickPendingIntent(R.id.w_root, open(ctx, "home"))
@@ -97,7 +98,7 @@ object FocusWidgets {
         v.setChronometer(R.id.w_chrono, android.os.SystemClock.elapsedRealtime() + left, null, !s.activePaused)
         v.setTextColor(R.id.w_chrono, card.color)
         v.setTextViewText(R.id.w_small, tr(if (s.activePaused) "Paused" else if (left < 0) "Over budget" else "left"))
-        v.setTextViewText(R.id.w_line, "\uD83C\uDF7F " + trf("%s min", s.bankText()))
+        v.setTextViewText(R.id.w_line, "\uD83C\uDF7F " + com.barq.focus.data.hmText(s.bankSec()))
         v.setOnClickPendingIntent(R.id.w_root, open(ctx, "card:${card.id}"))
         return v
     }
@@ -108,8 +109,8 @@ object FocusWidgets {
         val bal = com.barq.focus.data.Vault.balanceSec(s)
         val next = com.barq.focus.data.Vault.lots(s).minByOrNull { it.release }
         v.setTextViewText(R.id.w_label, tr("Piggy bank"))
-        v.setTextViewText(R.id.w_big, com.barq.focus.data.minText(bal))
-        v.setTextViewText(R.id.w_small, tr("min saved"))
+        v.setTextViewText(R.id.w_big, if (bal >= 3600) com.barq.focus.data.clockText(bal.toLong()).substringBeforeLast(':') else com.barq.focus.data.minText(bal))
+        v.setTextViewText(R.id.w_small, if (bal >= 3600) tr("h : min saved") else tr("min saved"))
         v.setTextViewText(R.id.w_line, if (next == null) tr("Nothing saved yet") else trf("Pays out in %d d", com.barq.focus.data.Vault.daysLeft(next)))
         v.setTextColor(R.id.w_big, accent(s))
         v.setOnClickPendingIntent(R.id.w_root, open(ctx, "piggy"))
@@ -183,13 +184,13 @@ object FocusWidgets {
         v.setTextViewText(R.id.w_empty, tr("Add a subject with tasks in Focus"))
         v.setTextViewText(
             R.id.w_line,
-            "\uD83C\uDF7F " + trf("%s min", s.bankText()) + "   \uD83D\uDD25 " + days(Game.workStreak(s)) +
+            "\uD83C\uDF7F " + com.barq.focus.data.hmText(s.bankSec()) + "   \uD83D\uDD25 " + days(Game.workStreak(s)) +
                 "   \uD83D\uDCF1 " + trf("%d swiped", s.shortsSwipes())
         )
         val nowMs = System.currentTimeMillis()
         cards.filter { it.examDate > nowMs }.minByOrNull { it.examDate }?.let { c ->
             val d = ((c.examDate - nowMs) / 86_400_000L).toInt() + 1
-            v.setTextViewText(R.id.w_line, "\uD83D\uDCC5 ${c.title} " + trf("%d d", d) + "   " + "\uD83C\uDF7F " + trf("%s min", s.bankText()))
+            v.setTextViewText(R.id.w_line, "\uD83D\uDCC5 ${c.title} " + trf("%d d", d) + "   " + "\uD83C\uDF7F " + com.barq.focus.data.hmText(s.bankSec()))
         }
         v.setOnClickPendingIntent(R.id.w_root, open(ctx))
         return v

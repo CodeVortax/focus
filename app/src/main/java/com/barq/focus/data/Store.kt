@@ -77,11 +77,40 @@ data class Block(
 fun minText(sec: Int): String =
     if (sec % 60 == 0) "${sec / 60}" else String.format(java.util.Locale.US, "%.1f", sec / 60f)
 
-fun startOfDay(): Long {
-    val c = Calendar.getInstance()
-    c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
-    return c.timeInMillis
+/** A countdown as MM:SS, or H:MM:SS once it is an hour or more (used by the timer screen, card and notification). */
+fun clockText(totalSec: Long): String {
+    val s = if (totalSec < 0) 0 else totalSec
+    return if (s >= 3600) String.format(java.util.Locale.US, "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
+    else String.format(java.util.Locale.US, "%02d:%02d", s / 60, s % 60)
 }
+
+/** Minutes for short amounts, hours and minutes for long ones: "45 min", "2 h 5 min". */
+fun hmText(sec: Int): String {
+    val m = sec / 60
+    return if (m >= 60) trf("%d h %d min", m / 60, m % 60) else trf("%s min", minText(sec))
+}
+
+/**
+ * When Focus's "day" begins, as hours after midnight (0 = midnight). Someone who studies until 2 AM wants that time to
+ * count for the day they started, so the day can roll over at, say, 4 AM instead. Set by [Store]; read by everything
+ * that needs "today".
+ */
+object DayClock {
+    @Volatile var startHour = 0
+
+    /** The clock moved back by the start hour: its calendar date is Focus's "today". */
+    fun shifted(now: Long = System.currentTimeMillis(), plusDays: Int = 0): Calendar =
+        Calendar.getInstance().apply { timeInMillis = now - startHour * 3_600_000L; if (plusDays != 0) add(Calendar.DAY_OF_YEAR, plusDays) }
+
+    /** Real time at which the day [offset] days ago began. */
+    fun dayStart(offset: Int, now: Long = System.currentTimeMillis()): Long {
+        val c = shifted(now, -offset)
+        c.set(Calendar.HOUR_OF_DAY, startHour); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+        return c.timeInMillis
+    }
+}
+
+fun startOfDay(): Long = DayClock.dayStart(0)
 
 object Config {
     // package -> label. All of these are logged; only the "gated" ones get the overlay.
@@ -129,9 +158,16 @@ object Config {
 class Store(ctx: Context) {
     private val p = ctx.applicationContext.getSharedPreferences("focus", Context.MODE_PRIVATE)
 
+    init { DayClock.startHour = p.getInt("day_start_hour", 0).coerceIn(0, 12) }
+
+    /** Hour (0-12) the day rolls over at. */
+    var dayStartHour: Int
+        get() = p.getInt("day_start_hour", 0).coerceIn(0, 12)
+        set(v) { val h = v.coerceIn(0, 12); p.edit().putInt("day_start_hour", h).apply(); DayClock.startHour = h }
+
     // ---- cards ----
     fun cards(): List<FocusCard> {
-        val s = p.getString("cards", null) ?: return defaultCards().also { saveCards(it) }
+        val s = p.getString("cards", null) ?: return emptyList()
         val a = JSONArray(s)
         return (0 until a.length()).map {
             val o = a.getJSONObject(it)
@@ -184,15 +220,23 @@ class Store(ctx: Context) {
 
     fun updateCard(c: FocusCard) = saveCards(cards().map { if (it.id == c.id) c else it })
 
-    private fun defaultCards(): List<FocusCard> {
-        val t = System.currentTimeMillis()
-        return listOf(
-            FocusCard(t + 1, "Chemistry", CardType.STUDY, 0xFF34A853.toInt(), 60),
-            FocusCard(t + 2, "Math", CardType.STUDY, 0xFF4285F4.toInt(), 60),
-            FocusCard(t + 3, "Physics", CardType.STUDY, 0xFFEA4335.toInt(), 60),
-            FocusCard(t + 4, "Friv project", CardType.STUDY, 0xFFFBBC04.toInt(), 60),
-            FocusCard(t + 5, "Mentalist", CardType.TREAT, 0xFF4285F4.toInt(), 40),
-        )
+    /**
+     * One time: the starter subjects early versions put on a fresh home screen are removed, but only if they were never
+     * touched (no tasks, no episodes, no media, no time spent, not running), so nothing the user really uses is lost.
+     */
+    private fun pruneSeedCards() {
+        if (p.getBoolean("seed_pruned", false)) return
+        p.edit().putBoolean("seed_pruned", true).apply()
+        val seeds = setOf("Chemistry", "Math", "Physics", "Friv project", "Mentalist")
+        val all = cards()
+        val keys = p.all.keys
+        val keep = all.filter { c ->
+            // "never used": no time was ever logged for it on any day
+            val untouched = keys.none { it.startsWith("spent_") && it.endsWith("_${c.id}") }
+            !(c.title in seeds && c.items.isEmpty() && c.eps.isEmpty() && c.media.isEmpty() && c.groups.isEmpty() &&
+                c.id != activeCardId && untouched)
+        }
+        if (keep.size != all.size) saveCards(keep)
     }
 
     /**
@@ -200,12 +244,13 @@ class Store(ctx: Context) {
      * tasks when new work arrives, or a task past its own due day, counts as a miss (a funny fine, settled by the Vault).
      */
     fun rollover() {
+        pruneSeedCards()
         touchDay()
         val d = day()
         val last = p.getInt("last_day", 0)
         if (last != d) {
             p.edit().putInt("last_day", d).apply()
-            val dow = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7      // Monday = 0
+            val dow = (DayClock.shifted().get(Calendar.DAY_OF_WEEK) + 5) % 7      // Monday = 0
             val todayStart = startOfDay()
             val pend = try { org.json.JSONArray(ruleMissPending) } catch (_: Exception) { org.json.JSONArray() }
             var misses = 0; var clean = 0
@@ -242,7 +287,7 @@ class Store(ctx: Context) {
     }
 
     private fun dayKeyPlus(n: Int): Int {
-        val c = Calendar.getInstance(); c.add(Calendar.DAY_OF_YEAR, n)
+        val c = DayClock.shifted(plusDays = n)
         return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
     }
 
@@ -324,7 +369,7 @@ class Store(ctx: Context) {
 
     // ---- treat bank ----
     private fun day(): Int {
-        val c = Calendar.getInstance()
+        val c = DayClock.shifted()
         return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
     }
     private fun flag(n: String) = p.getBoolean("${n}_${day()}", false)
@@ -702,6 +747,36 @@ class Store(ctx: Context) {
         get() = p.getLong("last_nag", 0L)
         set(v) { p.edit().putLong("last_nag", v).apply() }
     val lastCrash: String get() = p.getString("last_crash", "") ?: ""
+
+    // ---- free-time cycle: use the distracting apps for a while, then a break (switching apps doesn't reset the count) ----
+    var cycleOn: Boolean
+        get() = p.getBoolean("cycle_on", false)
+        set(v) { p.edit().putBoolean("cycle_on", v).apply() }
+    var cycleAllowMin: Int
+        get() = p.getInt("cycle_allow", 60).coerceIn(5, 240)
+        set(v) { p.edit().putInt("cycle_allow", v.coerceIn(5, 240)).apply() }
+    var cycleBreakMin: Int
+        get() = p.getInt("cycle_break", 30).coerceIn(5, 240)
+        set(v) { p.edit().putInt("cycle_break", v.coerceIn(5, 240)).apply() }
+    var cycleUsed: Long                      // ms of distracting-app time since the last break
+        get() = p.getLong("cycle_used", 0L)
+        set(v) { p.edit().putLong("cycle_used", v).apply() }
+    var cycleBreakUntil: Long                // while in the future, the distracting apps are on a break
+        get() = p.getLong("cycle_break_until", 0L)
+        set(v) { p.edit().putLong("cycle_break_until", v).apply() }
+
+    /** The small top-of-screen pill (timer, song, charging). Off until switched on in Setup. */
+    var pillOn: Boolean
+        get() = p.getBoolean("pill_on", false)
+        set(v) { p.edit().putBoolean("pill_on", v).apply() }
+
+    // ---- who the home screen greets ----
+    var userName: String
+        get() = p.getString("user_name", "") ?: ""
+        set(v) { p.edit().putString("user_name", v).apply() }
+    var nameAsked: Boolean
+        get() = p.getBoolean("name_asked", false)
+        set(v) { p.edit().putBoolean("name_asked", v).apply() }
 
     // ---- home layout ----
     var homeLayout: String
