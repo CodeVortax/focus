@@ -175,14 +175,15 @@ fun DashGame(store: Store, onBack: () -> Unit) {
                 if (tick.longValue < 0) return@Canvas
                 drawDash(s)
             }
-            Column(Modifier.align(Alignment.TopCenter).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("${s.pct}%", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                Text(trf("Attempt %d", s.attempt), color = Color(0xFFB8C0D8), fontSize = 13.sp)
+            val land = isLandscape()
+            Column(Modifier.align(Alignment.TopCenter).padding(if (land) 6.dp else 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("${s.pct}%", color = Color.White, fontSize = if (land) 22.sp else 30.sp, fontWeight = FontWeight.Bold)
+                Text(trf("Attempt %d", s.attempt), color = Color(0xFFB8C0D8), fontSize = if (land) 11.sp else 13.sp)
             }
             when {
                 s.phase == 0 -> Text(
                     tr("Hold to jump. Time it with the beat."), color = Color.White,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp)
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(if (land) 10.dp else 24.dp)
                 )
                 s.phase == 2 -> GameOverlay(
                     tr("Crashed!"), listOf(trf("Progress: %d%%", s.pct), trf("Best: %d%%", best)),

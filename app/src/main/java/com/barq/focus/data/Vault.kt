@@ -40,6 +40,8 @@ object Vault {
     const val HOLD_DAYS = 7
     private const val MIN_DEPOSIT_SEC = 60
 
+    fun interestPct(s: Store): Int = Game.interestPct(Game.level(Game.xp(s)))
+
     val FINES = listOf(
         Fine(K("Speeding ticket"), K("You flew past your homework at 140 km/h. The officer says: slow down and open a book."), 10),
         Fine(K("Parking ticket"), K("Your tasks sat parked in a no-progress zone all day."), 5),
@@ -110,6 +112,14 @@ object Vault {
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             val n = o.optInt("n", 1); val title = o.optString("c", "")
+            if (s.streakShields > 0) {
+                s.streakShields = s.streakShields - 1
+                s.streakShieldsUsed = s.streakShieldsUsed + 1
+                val msg = "$title: " + tr("Your Piggy Shield blocked this fine. Take a breath and start small.")
+                entries.add(Entry(now, "shield", 0, K("Piggy Shield used"), msg))
+                Notifier.piggy(ctx, tr("Piggy Shield used"), msg)
+                continue
+            }
             val f = RULE_FINES[((o.optInt("d", 0) + i) % RULE_FINES.size + RULE_FINES.size) % RULE_FINES.size]
             var due = minOf(f.min * maxOf(n, 1), 20) * 60
             val kept = ArrayList<Lot>()
@@ -158,27 +168,35 @@ object Vault {
                 entries.add(Entry(now, "dep", dep, K("Saved in the piggy bank"), K("Unused treat time. It is paid out in a week, with interest.")))
             }
             if (st.planned > 0 && st.earnedSec == 0 && !st.allDone) {
-                val fine = FINES[(k % FINES.size + FINES.size) % FINES.size]
-                var due = fine.min * 60
-                val sorted = lots.sortedBy { it.release }
-                val kept = ArrayList<Lot>()
-                for (l in sorted) {
-                    if (due <= 0) { kept.add(l); continue }
-                    val take = minOf(due, l.sec)
-                    due -= take
-                    if (l.sec - take > 0) kept.add(Lot(l.release, l.sec - take, l.dep))
-                }
-                lots = kept
-                val paid = fine.min * 60 - due
-                if (paid > 0) {
-                    s.vaultFines = s.vaultFines + 1
-                    entries.add(Entry(now, "fine", -paid, fine.title, fine.text))
-                    if (k == yesterday) announceFine = fine.title to fine.text
+                if (s.streakShields > 0) {
+                    s.streakShields = s.streakShields - 1
+                    s.streakShieldsUsed = s.streakShieldsUsed + 1
+                    val shieldedMsg = K("Your Piggy Shield blocked a fine. Pick one small step today.")
+                    entries.add(Entry(now, "shield", 0, K("Piggy Shield used"), shieldedMsg))
+                    if (k == yesterday) announceFine = K("Piggy Shield used") to tr(shieldedMsg)
                 } else {
-                    s.setFlagNamed("fine_empty")
-                    val pity = PITY[(k % PITY.size + PITY.size) % PITY.size]
-                    entries.add(Entry(now, "warn", 0, K("Warning"), pity))
-                    if (k == yesterday) announceFine = K("Warning") to pity
+                    val fine = FINES[(k % FINES.size + FINES.size) % FINES.size]
+                    var due = fine.min * 60
+                    val sorted = lots.sortedBy { it.release }
+                    val kept = ArrayList<Lot>()
+                    for (l in sorted) {
+                        if (due <= 0) { kept.add(l); continue }
+                        val take = minOf(due, l.sec)
+                        due -= take
+                        if (l.sec - take > 0) kept.add(Lot(l.release, l.sec - take, l.dep))
+                    }
+                    lots = kept
+                    val paid = fine.min * 60 - due
+                    if (paid > 0) {
+                        s.vaultFines = s.vaultFines + 1
+                        entries.add(Entry(now, "fine", -paid, fine.title, fine.text))
+                        if (k == yesterday) announceFine = fine.title to fine.text
+                    } else {
+                        s.setFlagNamed("fine_empty")
+                        val pity = PITY[(k % PITY.size + PITY.size) % PITY.size]
+                        entries.add(Entry(now, "warn", 0, K("Warning"), pity))
+                        if (k == yesterday) announceFine = K("Warning") to pity
+                    }
                 }
             }
             s.vaultLast = k
@@ -189,8 +207,9 @@ object Vault {
         val due = lots.filter { it.release <= today }
         if (due.isNotEmpty()) {
             changed = true
+            val rate = interestPct(s)
             var base = 0; var extra = 0
-            due.forEach { base += it.sec; extra += it.sec * INTEREST_PCT / 100 }
+            due.forEach { base += it.sec; extra += it.sec * rate / 100 }
             s.addBonusSec(base + extra)
             s.vaultPayouts = s.vaultPayouts + 1
             s.vaultInterestSec += extra

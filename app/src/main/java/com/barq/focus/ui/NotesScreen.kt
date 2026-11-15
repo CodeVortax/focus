@@ -350,7 +350,14 @@ private fun NoteCard(n: Note, selected: Boolean, onClick: () -> Unit, onLong: ()
     val tint = if (n.color == 0) MaterialTheme.colorScheme.surfaceVariant else Color(n.color).copy(alpha = 0.22f)
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(tint)
-            .then(if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(22.dp)) else Modifier)
+            .notePaper(n.paper, n.color, compact = true)
+            .then(
+                when {
+                    selected -> Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(22.dp))
+                    n.color == 0 && n.paper != 0 -> Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(22.dp))
+                    else -> Modifier
+                }
+            )
             .combinedClickable(onClick = onClick, onLongClick = onLong).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {

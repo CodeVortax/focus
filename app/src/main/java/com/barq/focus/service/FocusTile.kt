@@ -19,6 +19,7 @@
 
 package com.barq.focus.service
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
@@ -43,6 +44,7 @@ class FocusTile : TileService() {
         refresh()
     }
 
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     private fun openFocus() {
         try {
             if (Build.VERSION.SDK_INT >= 34) {

@@ -22,7 +22,9 @@ package com.barq.focus.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -134,23 +136,16 @@ fun MinesGame(store: Store, onBack: () -> Unit) {
             if (best == 0L || t < best) { best = t; store.putLong("hs_mines", best) }
         }
     }
+    val land = isLandscape()
     GameScaffold(
         title = tr("Minesweeper"), onBack = onBack,
         actions = { TextButton(onClick = { s.reset() }) { Text(tr("New game")) } }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            Column(
-                Modifier.fillMaxSize().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Row(Modifier.widthIn(max = 420.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ScoreBox(tr("Mines"), "${MINE_COUNT - s.flags}", Modifier.weight(1f))
-                    ScoreBox(tr("Time"), fmtTime(s.seconds), Modifier.weight(1f))
-                    ScoreBox(tr("Best"), if (best > 0L) fmtTime(best.toInt()) else "-", Modifier.weight(1f))
-                }
-                Text(tr("Tap to dig. Long-press or use flag mode to mark a mine. Tap a number to clear around it."), textAlign = TextAlign.Center)
-                Column(Modifier.widthIn(max = 420.dp).fillMaxWidth().aspectRatio(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            val boardGrid: @Composable (Modifier) -> Unit = { m ->
+                val iconSp = if (land) 13.sp else 16.sp
+                val numSp = if (land) 14.sp else 18.sp
+                Column(m, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     for (r in 0 until MINE_N) {
                         Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                             for (c in 0 until MINE_N) {
@@ -172,10 +167,10 @@ fun MinesGame(store: Store, onBack: () -> Unit) {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     when {
-                                        showMine && v != 2 -> Text("💣", fontSize = 16.sp)
-                                        v == 2 -> Text("🚩", fontSize = 16.sp)
+                                        showMine && v != 2 -> Text("💣", fontSize = iconSp)
+                                        v == 2 -> Text("🚩", fontSize = iconSp)
                                         v == 1 && s.adj[i] > 0 -> Text(
-                                            "${s.adj[i]}", fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                                            "${s.adj[i]}", fontWeight = FontWeight.Bold, fontSize = numSp,
                                             color = MINE_NUM_COLORS[s.adj[i]]
                                         )
                                     }
@@ -184,12 +179,49 @@ fun MinesGame(store: Store, onBack: () -> Unit) {
                         }
                     }
                 }
+            }
+            if (land) {
                 Row(
-                    Modifier.widthIn(max = 420.dp).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
+                    Modifier.fillMaxSize().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (s.flagMode) Button(onClick = { s.flagMode = false }) { Text("🚩 " + tr("Flag mode")) }
-                    else OutlinedButton(onClick = { s.flagMode = true }) { Text("🚩 " + tr("Flag mode")) }
+                    Column(
+                        Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ScoreBox(tr("Mines"), "${MINE_COUNT - s.flags}", Modifier.weight(1f))
+                            ScoreBox(tr("Time"), fmtTime(s.seconds), Modifier.weight(1f))
+                            ScoreBox(tr("Best"), if (best > 0L) fmtTime(best.toInt()) else "-", Modifier.weight(1f))
+                        }
+                        if (s.flagMode) Button(onClick = { s.flagMode = false }) { Text("🚩 " + tr("Flag mode")) }
+                        else OutlinedButton(onClick = { s.flagMode = true }) { Text("🚩 " + tr("Flag mode")) }
+                        Text(tr("Tap to dig. Long-press or use flag mode to mark a mine. Tap a number to clear around it."), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
+                    }
+                    boardGrid(Modifier.fillMaxHeight().aspectRatio(1f))
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(Modifier.widthIn(max = 420.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ScoreBox(tr("Mines"), "${MINE_COUNT - s.flags}", Modifier.weight(1f))
+                        ScoreBox(tr("Time"), fmtTime(s.seconds), Modifier.weight(1f))
+                        ScoreBox(tr("Best"), if (best > 0L) fmtTime(best.toInt()) else "-", Modifier.weight(1f))
+                    }
+                    Text(tr("Tap to dig. Long-press or use flag mode to mark a mine. Tap a number to clear around it."), textAlign = TextAlign.Center)
+                    boardGrid(Modifier.widthIn(max = 420.dp).fillMaxWidth().aspectRatio(1f))
+                    Row(
+                        Modifier.widthIn(max = 420.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (s.flagMode) Button(onClick = { s.flagMode = false }) { Text("🚩 " + tr("Flag mode")) }
+                        else OutlinedButton(onClick = { s.flagMode = true }) { Text("🚩 " + tr("Flag mode")) }
+                    }
                 }
             }
             if (s.phase == 2) GameOverlay(

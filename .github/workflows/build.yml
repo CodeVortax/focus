@@ -2,7 +2,6 @@ name: Build Focus APK
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
   workflow_dispatch:
 
@@ -30,11 +29,16 @@ jobs:
         with:
           gradle-version: 8.7
 
-      - name: Build debug APK
+      - name: Run unit tests
+        run: gradle test --console=plain
+
+      - name: Build debug APKs
         run: gradle assembleDebug --stacktrace
 
-      - name: Upload APK artifact
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: focus-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            ai/build/outputs/apk/debug/ai-debug.apk

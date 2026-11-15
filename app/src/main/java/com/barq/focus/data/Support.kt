@@ -60,11 +60,13 @@ object Support {
             m("One small task can get you started.", Tone.WARM),
             m("No treat time yet. Want to begin with something small?", Tone.CALM),
             m("A tiny first step is enough to begin.", Tone.PLAYFUL),
+            m("A 5-minute start unlocks momentum. Want to try one task?", Tone.CALM),
         ),
         Moment.GATE_REPEAT to listOf(
             m("Starting can be hard. Want to try just 5 minutes?", Tone.WARM),
             m("No judgment. Want to try a tiny 5-minute start?", Tone.CALM),
             m("Five minutes together? Just to get the wheels turning.", Tone.PLAYFUL),
+            m("Still deciding? Pick one tiny piece and do just two minutes.", Tone.WARM),
         ),
         Moment.GATE_RETURN to listOf(
             m("Welcome back. Let's pick up where you left off.", Tone.WARM),
@@ -86,21 +88,25 @@ object Support {
             m("I'm here. Let's focus on this one thing.", Tone.WARM),
             m("One minute at a time.", Tone.CALM),
             m("Let's begin. No need to rush.", Tone.CALM),
+            m("Open the page and do two easy minutes. Momentum follows.", Tone.WARM),
         ),
         Moment.STUDY_DURING to listOf(
             m("You're doing better than you think.", Tone.WARM),
             m("Keep going. You don't need to rush.", Tone.CALM),
             m("Take a breath. Then continue.", Tone.CALM),
+            m("Rough beats undone. Keep moving gently forward.", Tone.WARM),
         ),
         Moment.TASK_DONE to listOf(
             m("Nice. That's one step done.", Tone.WARM),
             m("Done. That counts.", Tone.CALM),
             m("One more off the plate. Take a breath.", Tone.PLAYFUL),
+            m("Locked in. Your streak and piggy bank both felt that.", Tone.PLAYFUL),
         ),
         Moment.HOME_GREETING to listOf(
             m("Hey, welcome back.", Tone.WARM),
             m("Ready to take one small step?", Tone.CALM),
             m("Let's make today a little easier.", Tone.WARM),
+            m("Two calm minutes beats waiting for the perfect mood.", Tone.CALM),
         ),
         Moment.HOME_EMPTY to listOf(
             m("Let's make today easier. Add one small thing you want to work on.", Tone.WARM),

@@ -79,7 +79,7 @@ class Pill(private val ctx: Context) {
     private class Show(val key: String, val text: String, val color: Int)
 
     /** Called every second. [gateUp] is true while one of Focus's own full-screen overlays is showing. */
-    fun update(store: Store, fg: String?, gateUp: Boolean, screenOn: Boolean) {
+    fun update(store: Store, @Suppress("UNUSED_PARAMETER") fg: String?, gateUp: Boolean, screenOn: Boolean) {
         try {
             if (!store.pillOn || !screenOn || gateUp || !Settings.canDrawOverlays(ctx) ||
                 ctx.resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_PORTRAIT

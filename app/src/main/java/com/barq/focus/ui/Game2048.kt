@@ -125,24 +125,15 @@ fun Game2048(store: Store, onBack: () -> Unit) {
     LaunchedEffect(s.score) {
         if (s.score > best) { best = s.score.toLong(); store.putLong("hs_2048", best) }
     }
+    val land = isLandscape()
     GameScaffold(
         title = "2048", onBack = onBack,
         actions = { TextButton(onClick = { s.reset() }) { Text(tr("New game")) } }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            Column(
-                Modifier.fillMaxSize().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(Modifier.widthIn(max = 420.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ScoreBox(tr("Score"), "${s.score}", Modifier.weight(1f))
-                    ScoreBox(tr("Best"), "$best", Modifier.weight(1f))
-                }
-                Text(tr("Swipe to slide the tiles. Merge equal numbers to reach 2048."), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            val boardBox: @Composable (Modifier) -> Unit = { m ->
                 Box(
-                    Modifier.widthIn(max = 420.dp).fillMaxWidth().aspectRatio(1f)
-                        .clip(RoundedCornerShape(12.dp)).background(Color(0xFFBBADA0)).padding(6.dp)
+                    m.clip(RoundedCornerShape(12.dp)).background(Color(0xFFBBADA0)).padding(6.dp)
                         .pointerInput(Unit) {
                             var ax = 0f
                             var ay = 0f
@@ -174,7 +165,10 @@ fun Game2048(store: Store, onBack: () -> Unit) {
                                     ) {
                                         if (v != 0) Text(
                                             "$v", fontWeight = FontWeight.Bold,
-                                            fontSize = when { v < 100 -> 32.sp; v < 1000 -> 26.sp; else -> 20.sp },
+                                            fontSize = when {
+                                                land -> when { v < 100 -> 24.sp; v < 1000 -> 20.sp; else -> 15.sp }
+                                                else -> when { v < 100 -> 32.sp; v < 1000 -> 26.sp; else -> 20.sp }
+                                            },
                                             color = if (v <= 4) Color(0xFF776E65) else Color.White
                                         )
                                     }
@@ -182,6 +176,39 @@ fun Game2048(store: Store, onBack: () -> Unit) {
                             }
                         }
                     }
+                }
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        Modifier.weight(1f).fillMaxHeight(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ScoreBox(tr("Score"), "${s.score}", Modifier.weight(1f))
+                            ScoreBox(tr("Best"), "$best", Modifier.weight(1f))
+                        }
+                        Text(tr("Swipe to slide the tiles. Merge equal numbers to reach 2048."), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                    boardBox(Modifier.fillMaxHeight().aspectRatio(1f))
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(Modifier.widthIn(max = 420.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ScoreBox(tr("Score"), "${s.score}", Modifier.weight(1f))
+                        ScoreBox(tr("Best"), "$best", Modifier.weight(1f))
+                    }
+                    Text(tr("Swipe to slide the tiles. Merge equal numbers to reach 2048."), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    boardBox(Modifier.widthIn(max = 420.dp).fillMaxWidth().aspectRatio(1f))
                 }
             }
             if (s.won) GameOverlay(

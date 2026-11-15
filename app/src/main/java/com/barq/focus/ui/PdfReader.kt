@@ -256,8 +256,8 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
 
     val bg = when (mode) { 2 -> Color.Black; 1 -> Color(0xFFD9CBB0); else -> MaterialTheme.colorScheme.surfaceVariant }
 
-    Scaffold(contentWindowInsets = WindowInsets(0)) { _ ->
-        Box(Modifier.fillMaxSize().background(bg)) {
+    Scaffold(contentWindowInsets = WindowInsets(0)) { pad ->
+        Box(Modifier.fillMaxSize().padding(pad).background(bg)) {
             when {
                 doc == null || doc.count == 0 -> Text(tr("Could not open this PDF."), Modifier.align(Alignment.Center))
                 !ready -> CircularProgressIndicator(Modifier.align(Alignment.Center))
@@ -339,16 +339,20 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
                         }
 
                         // page slider on the edge: appears while you scroll, drag it to jump
-                        val trackTop = with(androidx.compose.ui.platform.LocalDensity.current) { 90.dp.toPx() }
-                        val trackH = (hPx - 2 * trackTop).coerceAtLeast(1f)
+                        val density = androidx.compose.ui.platform.LocalDensity.current
+                        val trackMarginDp = minOf(84.dp, maxHeight * 0.14f)
+                        val trackTop = with(density) { trackMarginDp.toPx() }
+                        val thumbHalfPx = with(density) { 18.dp.toPx() }
+                        val trackH = (hPx - 2f * trackTop).coerceAtLeast(1f)
                         AnimatedVisibility(
-                            visible = sliderShown || sliderDrag, modifier = Modifier.align(Alignment.CenterEnd),
+                            visible = sliderShown || sliderDrag,
+                            modifier = Modifier.align(Alignment.CenterEnd).windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End)),
                             enter = fadeIn(), exit = fadeOut()
                         ) {
                             val frac = if (doc.count <= 1) 0f else page.toFloat() / (doc.count - 1)
                             Box(
                                 Modifier.fillMaxHeight().width(56.dp)
-                                    .pointerInput(doc.count) {
+                                    .pointerInput(doc.count, trackTop, trackH) {
                                         detectDragGestures(
                                             onDragStart = { sliderDrag = true },
                                             onDragEnd = { sliderDrag = false }, onDragCancel = { sliderDrag = false }
@@ -360,10 +364,12 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
                                     }
                             ) {
                                 Box(
-                                    Modifier.align(Alignment.TopEnd).padding(end = 10.dp, top = 90.dp).fillMaxHeight().padding(bottom = 90.dp).width(4.dp)
+                                    Modifier.align(Alignment.TopEnd).padding(end = 10.dp, top = trackMarginDp, bottom = trackMarginDp).fillMaxHeight().width(4.dp)
                                         .clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f))
                                 )
-                                val thumbY = (trackTop + frac * trackH) - with(androidx.compose.ui.platform.LocalDensity.current) { 18.dp.toPx() }
+                                val minThumbY = trackTop
+                                val maxThumbY = (trackTop + trackH - thumbHalfPx * 2f).coerceAtLeast(minThumbY)
+                                val thumbY = (trackTop + frac * trackH - thumbHalfPx).coerceIn(minThumbY, maxThumbY)
                                 Row(
                                     Modifier.align(Alignment.TopEnd).offset { IntOffset(0, thumbY.roundToInt()) }.padding(end = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -385,7 +391,8 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
                             pencil, { pencil = it; store.penPencil = it }, straight, { straight = it; store.hiStraight = it },
                             undo.isNotEmpty(), redo.isNotEmpty(), { doUndo() }, { doRedo() }, { clearPage() },
                             stylusOnly, { stylusOnly = it; store.penStylusOnly = it }, { annot = false },
-                            wPx.toFloat(), hPx.toFloat(), store.inkBarX, store.inkBarY, { x, y -> store.inkBarX = x; store.inkBarY = y }
+                            wPx.toFloat(), hPx.toFloat(), store.inkBarX, store.inkBarY, { x, y -> store.inkBarX = x; store.inkBarY = y },
+                            modifier = Modifier.windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                         )
                     }
                 }
@@ -395,6 +402,7 @@ fun PdfReaderScreen(store: Store, entry: PdfEntry, onBack: () -> Unit) {
                 enter = slideInVertically { -it } + fadeIn(), exit = slideOutVertically { -it } + fadeOut()
             ) {
             TopAppBar(
+                windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
                 title = {
                     Column {
                         Text(entry.title, maxLines = 1, style = MaterialTheme.typography.titleMedium)

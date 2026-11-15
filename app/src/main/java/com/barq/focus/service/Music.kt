@@ -36,6 +36,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.CommandButton
@@ -126,6 +127,7 @@ object Music {
     }
     fun kick() { h.removeCallbacks(tick); h.post(tick) }
 
+    @androidx.annotation.OptIn(UnstableApi::class)
     fun get(ctx: Context): ExoPlayer {
         player?.let { return it }
         val p = ExoPlayer.Builder(ctx.applicationContext)
@@ -185,6 +187,7 @@ object Music {
     }
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 class MusicService : MediaSessionService() {
     private var session: MediaSession? = null
     private val cmds = listOf("shuffle", "repeat", "heart", "back10", "fwd10", "sleep", "speed", "close").associateWith { SessionCommand("focus.$it", Bundle.EMPTY) }

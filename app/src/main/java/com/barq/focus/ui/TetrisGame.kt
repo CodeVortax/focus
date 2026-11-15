@@ -217,23 +217,14 @@ fun TetrisGame(store: Store, onBack: () -> Unit) {
     LaunchedEffect(s.phase) {
         if (s.phase == 2 && s.score > best) { best = s.score.toLong(); store.putLong("hs_tetris", best) }
     }
+    val land = isLandscape()
     GameScaffold(
         title = tr("Blocks"), onBack = onBack,
         actions = { if (s.phase == 1) IconButton(onClick = { s.paused = true }) { Icon(Icons.Default.Pause, "Pause") } }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize().background(Color(0xFF0F1420))) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("${s.score}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            trf("Lines: %d", s.lines) + "   " + trf("Level: %d", s.level),
-                            color = Color(0xFFB8C0D8), fontSize = 14.sp
-                        )
-                    }
-                    Canvas(Modifier.size(56.dp)) { drawNext(s) }
-                }
-                Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) {
+            val boardCanvas: @Composable (Modifier) -> Unit = { m ->
+                Box(m) {
                     Canvas(
                         Modifier.fillMaxSize()
                             .pointerInput(Unit) { detectTapGestures { s.rotate() } }
@@ -271,15 +262,63 @@ fun TetrisGame(store: Store, onBack: () -> Unit) {
                         tr("Paused"), emptyList(), tr("Resume"), { s.paused = false }, onBack, tr("Quit")
                     )
                 }
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        HoldButton("◀", Modifier.weight(1f), onDown = { s.pressLeft() }, onUp = { s.left = false }, height = 80.dp, fontSize = 34.sp)
-                        HoldButton("▶", Modifier.weight(1f), onDown = { s.pressRight() }, onUp = { s.right = false }, height = 80.dp, fontSize = 34.sp)
-                        HoldButton("⟳", Modifier.weight(1f), onDown = { s.rotate() }, height = 80.dp, fontSize = 34.sp)
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        Modifier.widthIn(min = 128.dp, max = 164.dp).fillMaxHeight(),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("${s.score}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Text(trf("Lines: %d", s.lines), color = Color(0xFFB8C0D8), fontSize = 13.sp)
+                            Text(trf("Level: %d", s.level), color = Color(0xFFB8C0D8), fontSize = 13.sp)
+                            Canvas(Modifier.padding(top = 4.dp).size(44.dp)) { drawNext(s) }
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                HoldButton("◀", Modifier.weight(1f), onDown = { s.pressLeft() }, onUp = { s.left = false }, height = 60.dp, fontSize = 28.sp)
+                                HoldButton("▶", Modifier.weight(1f), onDown = { s.pressRight() }, onUp = { s.right = false }, height = 60.dp, fontSize = 28.sp)
+                            }
+                            HoldButton("⤓", Modifier.fillMaxWidth(), onDown = { s.hardDrop() }, height = 50.dp, fontSize = 24.sp)
+                        }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        HoldButton("▼", Modifier.weight(1f), onDown = { s.down = true }, onUp = { s.down = false }, height = 54.dp, fontSize = 26.sp)
-                        HoldButton("⤓", Modifier.weight(1f), onDown = { s.hardDrop() }, height = 54.dp, fontSize = 26.sp)
+                    boardCanvas(Modifier.weight(1f).fillMaxHeight())
+                    Column(
+                        Modifier.widthIn(min = 110.dp, max = 148.dp).fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom)
+                    ) {
+                        HoldButton("⟳", Modifier.fillMaxWidth(), onDown = { s.rotate() }, height = 68.dp, fontSize = 30.sp)
+                        HoldButton("▼", Modifier.fillMaxWidth(), onDown = { s.down = true }, onUp = { s.down = false }, height = 68.dp, fontSize = 28.sp)
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${s.score}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                trf("Lines: %d", s.lines) + "   " + trf("Level: %d", s.level),
+                                color = Color(0xFFB8C0D8), fontSize = 14.sp
+                            )
+                        }
+                        Canvas(Modifier.size(56.dp)) { drawNext(s) }
+                    }
+                    boardCanvas(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp))
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            HoldButton("◀", Modifier.weight(1f), onDown = { s.pressLeft() }, onUp = { s.left = false }, height = 80.dp, fontSize = 34.sp)
+                            HoldButton("▶", Modifier.weight(1f), onDown = { s.pressRight() }, onUp = { s.right = false }, height = 80.dp, fontSize = 34.sp)
+                            HoldButton("⟳", Modifier.weight(1f), onDown = { s.rotate() }, height = 80.dp, fontSize = 34.sp)
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            HoldButton("▼", Modifier.weight(1f), onDown = { s.down = true }, onUp = { s.down = false }, height = 54.dp, fontSize = 26.sp)
+                            HoldButton("⤓", Modifier.weight(1f), onDown = { s.hardDrop() }, height = 54.dp, fontSize = 26.sp)
+                        }
                     }
                 }
             }

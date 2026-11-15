@@ -147,55 +147,78 @@ fun YahtzeeGame(store: Store, onBack: () -> Unit) {
         rollsLeft = 3; rolled = false; over = false
     }
 
+    val land = isLandscape()
     GameScaffold(title = tr("Yahtzee"), onBack = onBack) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(trf("Rounds: %d/14", rounds), modifier = Modifier.weight(1f))
-                    Text(trf("Total: %d", total), fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (i in 0 until 5) {
-                        YzDie(dice[i], held[i], rolled, Modifier.weight(1f)) {
-                            if (rolled && rollsLeft > 0 && !over) held[i] = !held[i]
-                        }
+            val dicePanel: @Composable (Modifier) -> Unit = { m ->
+                Column(m, verticalArrangement = Arrangement.spacedBy(12.dp, if (land) Alignment.CenterVertically else Alignment.Top)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(trf("Rounds: %d/14", rounds), modifier = Modifier.weight(1f))
+                        Text(trf("Total: %d", total), fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     }
-                }
-                Button(
-                    onClick = { roll() }, enabled = rollsLeft > 0 && !over,
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
-                ) { Text(trf("Roll (%d left)", rollsLeft), fontSize = 18.sp) }
-                Text(
-                    tr("Tap dice to keep them. Tap a row to score."),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                for (cat in 0 until 14) {
-                    val used = scores[cat]
-                    val maybe = if (rolled && used == null) yzPoints(cat, dice.toList()) else null
-                    Card(
-                        Modifier.fillMaxWidth().clickable(enabled = rolled && used == null && !over) { score(cat) },
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (maybe != null && maybe > 0) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                tr(YZ_NAMES[cat]), modifier = Modifier.weight(1f),
-                                fontWeight = if (used != null) FontWeight.Normal else FontWeight.Medium
-                            )
-                            when {
-                                used != null -> Text("$used", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                maybe != null -> Text("+$maybe", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                else -> Text("–", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (i in 0 until 5) {
+                            YzDie(dice[i], held[i], rolled, Modifier.weight(1f)) {
+                                if (rolled && rollsLeft > 0 && !over) held[i] = !held[i]
                             }
                         }
                     }
+                    Button(
+                        onClick = { roll() }, enabled = rollsLeft > 0 && !over,
+                        modifier = Modifier.fillMaxWidth().height(if (land) 48.dp else 56.dp)
+                    ) { Text(trf("Roll (%d left)", rollsLeft), fontSize = if (land) 16.sp else 18.sp) }
+                    Text(
+                        tr("Tap dice to keep them. Tap a row to score."),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                Spacer(Modifier.height(8.dp))
+            }
+            @Composable
+            fun ScorecardRow(cat: Int) {
+                val used = scores[cat]
+                val maybe = if (rolled && used == null) yzPoints(cat, dice.toList()) else null
+                Card(
+                    Modifier.fillMaxWidth().clickable(enabled = rolled && used == null && !over) { score(cat) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (maybe != null && maybe > 0) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            tr(YZ_NAMES[cat]), modifier = Modifier.weight(1f),
+                            fontWeight = if (used != null) FontWeight.Normal else FontWeight.Medium
+                        )
+                        when {
+                            used != null -> Text("$used", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            maybe != null -> Text("+$maybe", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            else -> Text("–", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    dicePanel(Modifier.weight(0.46f).fillMaxHeight())
+                    Column(
+                        Modifier.weight(0.54f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        for (cat in 0 until 14) ScorecardRow(cat)
+                    }
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    dicePanel(Modifier.fillMaxWidth())
+                    for (cat in 0 until 14) ScorecardRow(cat)
+                    Spacer(Modifier.height(8.dp))
+                }
             }
             if (over) GameOverlay(
                 tr("Game finished!"), listOf(trf("Total: %d", total), trf("Best: %d", best)),

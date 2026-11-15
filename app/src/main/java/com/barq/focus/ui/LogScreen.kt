@@ -305,7 +305,6 @@ fun LogScreen(db: Db, onBack: () -> Unit) {
     val hours = remember(spans, metric, off) {
         val sp = spans ?: emptyList()
         LongArray(24).also { h ->
-            val c = java.util.Calendar.getInstance()
             when (metric) {
                 Metric.OPENS -> sp.forEach { if (it.t0 in dayStart until dayEnd && it.t1 - it.t0 >= 3000L) { h[((it.t0 - dayStart) / 3_600_000L).toInt().coerceIn(0, 23)]++ } }
                 Metric.SHORTS -> shortsRows.forEach { r ->

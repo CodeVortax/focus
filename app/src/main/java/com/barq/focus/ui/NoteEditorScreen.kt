@@ -102,6 +102,7 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onOpenNote: (Long
         }
     }
     var color by remember { mutableIntStateOf(initial.color) }
+    var paper by remember { mutableIntStateOf(initial.paper) }
     var pinned by remember { mutableStateOf(initial.pinned) }
     var archived by remember { mutableStateOf(initial.archived) }
     var labels by remember { mutableStateOf(initial.labels) }
@@ -127,7 +128,7 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onOpenNote: (Long
     var focusIdx by remember { mutableIntStateOf(-1) }
 
     fun snapshot() = Note(
-        id = id, type = type, title = title, body = body, items = items.toList(), color = color, pinned = pinned,
+        id = id, type = type, title = title, body = body, items = items.toList(), color = color, paper = paper, pinned = pinned,
         archived = archived, labels = labels, spans = if (type == 0) spans else emptyList(),
         attachments = atts.toList(), created = created, modified = modified
     )
@@ -157,7 +158,7 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onOpenNote: (Long
     }
 
     // autosave shortly after you stop typing, and once more when you leave
-    LaunchedEffect(title, body, spans, color, pinned, archived, labels, type, atts.toList(), items.toList()) { delay(700); saveAsync() }
+    LaunchedEffect(title, body, spans, color, paper, pinned, archived, labels, type, atts.toList(), items.toList()) { delay(700); saveAsync() }
     DisposableEffect(Unit) { onDispose { save() } }
 
     fun toggle(i: Int, v: Boolean) {
@@ -264,9 +265,12 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onOpenNote: (Long
             )
         }
     ) { pad ->
-        Column(Modifier.padding(pad)) {
+        Column(Modifier.padding(pad).notePaper(paper, color)) {
         Column(
-            Modifier.weight(1f).padding(horizontal = 8.dp).verticalScroll(rememberScrollState()),
+            Modifier.weight(1f)
+                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                .padding(horizontal = 8.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             TextField(
@@ -291,22 +295,30 @@ fun NoteEditorScreen(store: Store, noteId: Long, newType: Int, onOpenNote: (Long
                 }
             }
 
-            if (showColors) Row(
-                Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            if (showColors) Column(
+                Modifier.fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), RoundedCornerShape(16.dp))
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Box(
-                    Modifier.size(34.dp).clip(CircleShape)
-                        .border(if (color == 0) 3.dp else 1.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                        .clickable { color = 0 }
-                )
-                CardSwatches.forEach { c ->
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Box(
-                        Modifier.size(34.dp).clip(CircleShape).background(c)
-                            .border(if (c.toArgb() == color) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                            .clickable { color = c.toArgb() }
+                        Modifier.size(34.dp).clip(CircleShape)
+                            .border(if (color == 0) 3.dp else 1.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                            .clickable { color = 0 }
                     )
+                    CardSwatches.forEach { c ->
+                        Box(
+                            Modifier.size(34.dp).clip(CircleShape).background(c)
+                                .border(if (c.toArgb() == color) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                .clickable { color = c.toArgb() }
+                        )
+                    }
                 }
+                PaperPickerRow(paper, color) { paper = it }
             }
 
             if (type == 0) {

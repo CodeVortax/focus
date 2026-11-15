@@ -122,17 +122,14 @@ fun SnakeGame(store: Store, onBack: () -> Unit) {
     LaunchedEffect(s.phase) {
         if (s.phase == 2 && s.score > best) { best = s.score.toLong(); store.putLong("hs_snake", best) }
     }
+    val land = isLandscape()
     GameScaffold(
         title = tr("Snake"), onBack = onBack,
         actions = { if (s.phase == 1) IconButton(onClick = { s.paused = true }) { Icon(Icons.Default.Pause, "Pause") } }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize().background(Color(0xFF0E1913))) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${s.score}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Text(trf("Best: %d", best), color = Color(0xFFB8D8C0), fontSize = 14.sp)
-                }
-                Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) {
+            val boardCanvas: @Composable (Modifier) -> Unit = { m ->
+                Box(m) {
                     Canvas(
                         Modifier.fillMaxSize().pointerInput(Unit) {
                             var ax = 0f
@@ -166,16 +163,50 @@ fun SnakeGame(store: Store, onBack: () -> Unit) {
                         tr("Paused"), emptyList(), tr("Resume"), { s.paused = false }, onBack, tr("Quit")
                     )
                 }
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Spacer(Modifier.weight(1f))
-                        HoldButton("▲", Modifier.weight(1f), onDown = { s.turn(0) }, height = 60.dp, fontSize = 28.sp)
-                        Spacer(Modifier.weight(1f))
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.widthIn(min = 124.dp, max = 160.dp).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text("${s.score}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                            Text(trf("Best: %d", best), color = Color(0xFFB8D8C0), fontSize = 13.sp)
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            HoldButton("◀", Modifier.weight(1f), onDown = { s.turn(3) }, height = 64.dp, fontSize = 28.sp)
+                            HoldButton("▶", Modifier.weight(1f), onDown = { s.turn(1) }, height = 64.dp, fontSize = 28.sp)
+                        }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        HoldButton("◀", Modifier.weight(1f), onDown = { s.turn(3) }, height = 60.dp, fontSize = 28.sp)
-                        HoldButton("▼", Modifier.weight(1f), onDown = { s.turn(2) }, height = 60.dp, fontSize = 28.sp)
-                        HoldButton("▶", Modifier.weight(1f), onDown = { s.turn(1) }, height = 60.dp, fontSize = 28.sp)
+                    boardCanvas(Modifier.weight(1f).fillMaxHeight())
+                    Column(
+                        Modifier.widthIn(min = 104.dp, max = 140.dp).fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom)
+                    ) {
+                        HoldButton("▲", Modifier.fillMaxWidth(), onDown = { s.turn(0) }, height = 64.dp, fontSize = 28.sp)
+                        HoldButton("▼", Modifier.fillMaxWidth(), onDown = { s.turn(2) }, height = 64.dp, fontSize = 28.sp)
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${s.score}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(trf("Best: %d", best), color = Color(0xFFB8D8C0), fontSize = 14.sp)
+                    }
+                    boardCanvas(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp))
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Spacer(Modifier.weight(1f))
+                            HoldButton("▲", Modifier.weight(1f), onDown = { s.turn(0) }, height = 60.dp, fontSize = 28.sp)
+                            Spacer(Modifier.weight(1f))
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            HoldButton("◀", Modifier.weight(1f), onDown = { s.turn(3) }, height = 60.dp, fontSize = 28.sp)
+                            HoldButton("▼", Modifier.weight(1f), onDown = { s.turn(2) }, height = 60.dp, fontSize = 28.sp)
+                            HoldButton("▶", Modifier.weight(1f), onDown = { s.turn(1) }, height = 60.dp, fontSize = 28.sp)
+                        }
                     }
                 }
             }

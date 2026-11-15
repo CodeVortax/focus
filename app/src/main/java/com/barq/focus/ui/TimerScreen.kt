@@ -22,6 +22,8 @@ package com.barq.focus.ui
 import com.barq.focus.data.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -74,14 +76,19 @@ fun TimerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
     var compact by remember { mutableStateOf(store.timerCompact) }
     val running = endAt != 0L && !done
 
-    Scaffold(topBar = {
-        TopAppBar(
-            title = { Text(card.title) },
-            navigationIcon = { IconButton(onClick = onExit) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
-        )
-    }) { pad ->
+    val land = isLandscape()
+    Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+        topBar = {
+            TopAppBar(
+                windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
+                title = { Text(card.title) },
+                navigationIcon = { IconButton(onClick = onExit) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
+            )
+        }
+    ) { pad ->
         Column(
-            Modifier.padding(pad).fillMaxSize().padding(24.dp),
+            Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(if (land) 12.dp else 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -100,7 +107,7 @@ fun TimerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
                 onToggleCompact = { compact = !compact; store.timerCompact = compact }
             )
             if (done) {
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(if (land) 12.dp else 24.dp))
                 Button(onClick = onExit) { Text(tr("Back")) }
             }
         }

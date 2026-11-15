@@ -107,26 +107,59 @@ object Game {
     fun workStreak(store: Store) = streak(store, true) { workDay(it) }
     fun lightStreak(store: Store) = streak(store, true, true) { it.swipes <= LIGHT }
 
-    fun xp(store: Store): Int {
-        var xp = 0
+    data class XpBreakdown(val workXp: Int, val dietXp: Int, val questXp: Int) {
+        val total: Int get() = workXp + dietXp + questXp
+    }
+
+    fun xpBreakdown(store: Store): XpBreakdown {
+        var workXp = 0
+        var dietXp = 0
+        var questXp = 0
         for (off in 0..365) {
             val d = store.dayStat(off)
-            if (!d.active) continue
-            xp += d.earnedSec / 6
-            if (off >= 1) xp += when {
-                d.swipes == 0 -> 250
-                d.swipes <= 10 -> 150
-                d.swipes <= 20 -> 100
-                d.swipes <= 50 -> 50
-                else -> 0
+            if (d.active) {
+                workXp += d.earnedSec / 6
+                if (d.allDone) workXp += 30
+                if (off >= 1) dietXp += when {
+                    d.swipes == 0 -> 250
+                    d.swipes <= 10 -> 150
+                    d.swipes <= 20 -> 100
+                    d.swipes <= 50 -> 50
+                    else -> 0
+                }
+            }
+            val q = store.questDoneOn(d.key)
+            if (q > 0) {
+                questXp += q * 40
+                if (q >= 4) questXp += 100
             }
         }
-        return xp
+        return XpBreakdown(workXp, dietXp, questXp)
     }
+
+    fun xp(store: Store): Int = xpBreakdown(store).total
 
     fun level(xp: Int) = sqrt(xp / 60.0).toInt() + 1
     fun xpForLevel(level: Int) = 60 * (level - 1) * (level - 1)
     fun titleOf(level: Int) = TITLES[minOf(level - 1, TITLES.size - 1)]
+
+    /** Higher focus levels earn better Piggy Bank interest. */
+    fun interestPct(level: Int): Int = when {
+        level >= 9 -> 20
+        level >= 7 -> 18
+        level >= 5 -> 15
+        level >= 3 -> 12
+        else -> 10
+    }
+
+    /** Returns (nextLevel, nextPct), or null when already at the top 20% tier. */
+    fun nextInterestTier(level: Int): Pair<Int, Int>? = when {
+        level < 3 -> 3 to 12
+        level < 5 -> 5 to 15
+        level < 7 -> 7 to 18
+        level < 9 -> 9 to 20
+        else -> null
+    }
 
     fun quests(store: Store, ctx: Context): List<Quest> {
         val cards = store.cards()
@@ -141,8 +174,32 @@ object Game {
         )
     }
 
+    /** Records daily quest progress and grants a Streak Shield (up to 2) on a 4/4 quest sweep or every 3-day work streak. */
+    fun syncQuestsAndShields(ctx: Context, store: Store): Int {
+        val qDone = quests(store, ctx).count { it.done }
+        store.recordQuestDoneToday(qDone)
+        var granted = 0
+        if (qDone >= 4 && store.lastShieldDay != store.today) {
+            store.lastShieldDay = store.today
+            if (store.streakShields < 2) {
+                store.streakShields = store.streakShields + 1
+                granted++
+            }
+        }
+        val ws = workStreak(store)
+        if (ws >= 3 && ws % 3 == 0 && ws != store.lastShieldStreak) {
+            store.lastShieldStreak = ws
+            if (store.streakShields < 2) {
+                store.streakShields = store.streakShields + 1
+                granted++
+            }
+        }
+        return granted
+    }
+
     /** Unlocks whatever is newly earned and returns it (so the UI can celebrate). */
     fun evaluate(ctx: Context, store: Store): List<Badge> {
+        syncQuestsAndShields(ctx, store)
         val have = store.badges()
         val fresh = ArrayList<Badge>()
         fun unlock(id: String) {

@@ -13,7 +13,13 @@ package com.barq.focus.ai
 
 /** What the student is doing right now. */
 enum class Mode(val label: String) {
-    TUTOR("Tutor"), EXPLAIN("Explain"), QUIZ("Quiz me"), SUMMARY("Summary"), CARDS("Flashcards")
+    TUTOR("Tutor"),
+    COACH("Unblock me"),
+    PLAN("Plan my day"),
+    EXPLAIN("Explain"),
+    QUIZ("Quiz me"),
+    SUMMARY("Summary"),
+    CARDS("Flashcards")
 }
 
 /** The words given to the model, in one place. The "what will be sent" box shows the student's text; these are the fixed instructions. */
@@ -29,10 +35,21 @@ object StudyPrompts {
 
     private fun task(m: Mode): String = when (m) {
         Mode.TUTOR -> ""
-        Mode.EXPLAIN -> "Task: explain the material the student sends. Start with the main idea in one line, then the key points simply, then one small example, then ask one question to check understanding."
-        Mode.QUIZ -> "Task: quiz the student on the material they send. Ask ONE question at a time, starting now with question 1. Wait for the answer, say if it is right, explain briefly, then ask the next. After 5 questions, give a short score and what to review."
-        Mode.SUMMARY -> "Task: summarize the material the student sends in at most 8 short bullet points, then list the 3 most important terms."
-        Mode.CARDS -> "Task: make 8 flashcards from the material the student sends. Format each as two lines: \"Q: ...\" then \"A: ...\". No other text."
+        Mode.COACH -> "Task: help the student beat procrastination and begin without guilt. " +
+            "Acknowledge why starting feels heavy in 1 calm sentence, then offer ONE tiny 2-to-5 minute micro-step they can finish right now " +
+            "with a clear \"If <cue>, then I will <tiny action>\" intention. Ask if that small step feels doable."
+        Mode.PLAN -> "Task: turn the student's tasks or day snapshot into an honest, low-friction plan. " +
+            "Pick 1 priority task (do this first), 2 quick wins (under 10 minutes each) for early momentum, and set the rest aside safely. " +
+            "Include a brief break reminder after the first block. Never overload the list."
+        Mode.EXPLAIN -> "Task: explain the material using the Feynman method. " +
+            "Start with the core idea in one simple sentence without jargon, list key points clearly, give one concrete everyday example, " +
+            "and end with ONE quick check question so the student tests their grasp."
+        Mode.QUIZ -> "Task: quiz the student on the material they send using active recall. Ask ONE question at a time, starting now with question 1. " +
+            "Wait for the answer, say if it is right, clarify briefly why, then ask the next. After 5 questions, give a short score and 1 focus area to review."
+        Mode.SUMMARY -> "Task: summarize the material the student sends in at most 8 short bullet points focused on mechanisms and key ideas, " +
+            "then list the 3 most important terms to test themselves on later."
+        Mode.CARDS -> "Task: make 8 active-recall flashcards from the material the student sends. Format each as two lines: \"Q: ...\" then \"A: ...\". " +
+            "Favor why and how questions over trivia. No other text."
     }
 
     /** The model may propose one memory note; the student decides whether it is kept. */

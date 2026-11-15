@@ -122,17 +122,22 @@ fun TimerCardUi(
             label = "timerSize"
         ) { isCompact ->
         if (!isCompact) {
-            Box(Modifier.fillMaxWidth().height(310.dp).padding(18.dp)) {
-                Box(Modifier.align(Alignment.Center).size(236.dp).then(ringMod), contentAlignment = Alignment.Center) {
-                    Ring(shown, ink, 26.dp, Modifier.fillMaxSize(), laps)
+            val land = isLandscape()
+            val cardH = if (land) 228.dp else 310.dp
+            val ringSize = if (land) 186.dp else 236.dp
+            val ringStroke = if (land) 20.dp else 26.dp
+            val timeSp = if (land) 34.sp else 44.sp
+            Box(Modifier.fillMaxWidth().height(cardH).padding(if (land) 12.dp else 18.dp)) {
+                Box(Modifier.align(Alignment.Center).size(ringSize).then(ringMod), contentAlignment = Alignment.Center) {
+                    Ring(shown, ink, ringStroke, Modifier.fillMaxSize(), laps)
                     Column(
                         Modifier.clickable(interactionSource = src, indication = null, onClick = onToggleCompact).padding(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(timeText, fontSize = 44.sp, fontWeight = FontWeight.Medium, color = if (over) ink else MaterialTheme.colorScheme.onSurface)
+                        Text(timeText, fontSize = timeSp, fontWeight = FontWeight.Medium, color = if (over) ink else MaterialTheme.colorScheme.onSurface)
                         Text(
                             caption, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.widthIn(max = 150.dp)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.widthIn(max = if (land) 130.dp else 150.dp)
                         )
                     }
                 }

@@ -70,6 +70,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.union
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CoroutineScope
 import java.net.URL
 
@@ -97,8 +105,10 @@ fun AiApp(s: Session) {
     val scope = rememberCoroutineScope()
     val askDay = rememberDayLauncher(s)
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
+                windowInsets = androidx.compose.material3.TopAppBarDefaults.windowInsets.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
                 title = {
                     Column {
                         Text("Study Mate", fontWeight = FontWeight.Bold)
@@ -182,14 +192,23 @@ private fun ChatScreen(s: Session, scope: CoroutineScope, askDay: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         if (!s.ready) SetupCard(s)
         s.incoming?.let { SharedTextCard(s, it) }
-        if (s.mode != Mode.TUTOR && s.messages.isNotEmpty()) {
-            Text("${s.mode.label} - tap New to go back to chat", Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Mode.values().forEach { m ->
+                FilterChip(
+                    selected = s.mode == m,
+                    onClick = { s.mode = m },
+                    label = { Text(m.label) }
+                )
+            }
         }
         LazyColumn(
             Modifier.weight(1f).fillMaxWidth(), state = list,
             contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (s.messages.isEmpty()) item { Starters { input = it } }
+            if (s.messages.isEmpty()) item { Starters { m, t -> s.mode = m; input = t } }
             items(s.messages.size) { i -> Bubble(s, s.messages[i]) }
             if (s.busy) item { Text("Thinking...", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             if (!s.busy && s.messages.lastOrNull()?.role == "assistant") item {
@@ -235,6 +254,8 @@ private fun ChatScreen(s: Session, scope: CoroutineScope, askDay: () -> Unit) {
 }
 
 private fun quickReplies(m: Mode): List<String> = when (m) {
+    Mode.COACH -> listOf("Make it even smaller", "Build an If-Then plan", "I started!")
+    Mode.PLAN -> listOf("Pick my first 5-min step", "Too much today, trim it", "Build an If-Then plan")
     Mode.QUIZ -> listOf("Give me a hint", "I don't know", "Next question")
     Mode.CARDS -> listOf("Make 8 more", "Quiz me on these, one at a time")
     Mode.EXPLAIN -> listOf("Simpler, please", "Give an example", "Quiz me on this")
@@ -243,20 +264,20 @@ private fun quickReplies(m: Mode): List<String> = when (m) {
 }
 
 @Composable
-private fun Starters(fill: (String) -> Unit) {
+private fun Starters(fill: (Mode, String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("What are you studying?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(
-            "Ask anything, or share text from any app (Share, or select text and choose Study Mate) and pick Explain, Quiz me, Summary or Flashcards.",
+            "Pick a coaching mode above, paste text, or share straight from Focus. Short, calm steps — zero pressure.",
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
         listOf(
-            "Help me start: what is one small step for 5 minutes?",
-            "Explain simply: ",
-            "Make me a revision plan for: ",
-            "Test me on: ",
-        ).forEach { t -> OutlinedButton(onClick = { fill(t) }, Modifier.fillMaxWidth()) { Text(t.trim().removeSuffix(":"), maxLines = 1) } }
+            Mode.COACH to "I'm overwhelmed and stuck — give me one 5-min start",
+            Mode.PLAN to "Triage my tasks into 1 priority + 2 quick wins: ",
+            Mode.EXPLAIN to "Explain simply with an everyday example: ",
+            Mode.QUIZ to "Test me one question at a time on: ",
+        ).forEach { (m, t) -> OutlinedButton(onClick = { fill(m, t) }, Modifier.fillMaxWidth()) { Text(t.trim().removeSuffix(":"), maxLines = 1) } }
     }
 }
 
@@ -278,7 +299,7 @@ private fun SharedTextCard(s: Session, text: String) {
             Text("Text received (${text.length} characters${if (s.cut) ", cut to the first ${Session.MAX_MATERIAL}" else ""})", style = MaterialTheme.typography.labelLarge)
             Text(text.take(160) + if (text.length > 160) "..." else "", style = MaterialTheme.typography.bodyMedium, maxLines = 3)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(Mode.EXPLAIN, Mode.QUIZ, Mode.SUMMARY, Mode.CARDS).forEach { m ->
+                listOf(Mode.EXPLAIN, Mode.QUIZ, Mode.SUMMARY, Mode.CARDS, Mode.PLAN, Mode.COACH).forEach { m ->
                     OutlinedButton(onClick = { s.pending = Pending(m, text) }) { Text(m.label) }
                 }
                 TextButton(onClick = { s.incoming = null }) { Text("Dismiss") }
@@ -291,6 +312,7 @@ private fun SharedTextCard(s: Session, text: String) {
 private fun Bubble(s: Session, m: ChatMsg) {
     val mine = m.role == "user"
     val clip = LocalClipboardManager.current
+    val ctx = LocalContext.current
     val cards = if (!mine && s.mode == Mode.CARDS) parseCards(m.text) else emptyList()
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
         if (cards.isNotEmpty()) {
@@ -305,7 +327,15 @@ private fun Bubble(s: Session, m: ChatMsg) {
                 style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content)
             )
         }
-        if (!mine) TextButton(onClick = { clip.setText(AnnotatedString(m.text)) }) { Text("Copy", style = MaterialTheme.typography.labelMedium) }
+        if (!mine) Row {
+            TextButton(onClick = { clip.setText(AnnotatedString(m.text)) }) { Text("Copy", style = MaterialTheme.typography.labelMedium) }
+            TextButton(onClick = {
+                try {
+                    val i = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, m.text)
+                    ctx.startActivity(Intent.createChooser(i, "Share"))
+                } catch (_: Exception) {}
+            }) { Text("Share", style = MaterialTheme.typography.labelMedium) }
+        }
     }
 }
 

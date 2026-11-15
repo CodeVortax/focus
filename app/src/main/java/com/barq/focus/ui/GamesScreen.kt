@@ -21,6 +21,7 @@
 
 package com.barq.focus.ui
 
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
@@ -28,8 +29,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -43,6 +50,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +63,9 @@ import com.barq.focus.data.tr
 import com.barq.focus.data.trf
 
 /* ---------- shared bits used by the games ---------- */
+
+@Composable
+fun isLandscape(): Boolean = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
 /** m:ss */
 fun fmtTime(sec: Int): String = "%d:%02d".format(sec / 60, sec % 60)
@@ -87,9 +98,11 @@ fun GameScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
-                title = { Text(title, fontWeight = FontWeight.Bold) },
+                windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
+                title = { Text(title, fontWeight = FontWeight.Bold, maxLines = 1) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Back")) } },
                 actions = actions,
             )
@@ -112,7 +125,10 @@ fun GameOverlay(
         Modifier.fillMaxSize().background(Color(0xCC000000)).pointerInput(Unit) { detectTapGestures { } },
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.widthIn(max = 460.dp).verticalScroll(rememberScrollState()).padding(24.dp)
+        ) {
             Text(title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             lines.forEach {
                 Spacer(Modifier.height(8.dp))
@@ -205,48 +221,74 @@ private fun bestOf(store: Store, key: String): String {
     return if (v > 0L) trf("Best: %d", v.toInt()) else ""
 }
 
+private data class HubEntry(val id: String, val emoji: String, val name: String, val blurb: String, val best: String)
+
 @Composable
 private fun GamesHub(store: Store, listState: androidx.compose.foundation.lazy.LazyListState, onBack: () -> Unit, onPick: (String) -> Unit) {
     // show the record of the hardest Sudoku level played (beginner times would always look "best")
     val sudokuBest = listOf(2, 1, 0, 3).map { store.getLong("sudoku_best_$it") }.firstOrNull { it > 0L }
+    val entries = listOf(
+        HubEntry("breath", "🫧", tr("Calm Breathing"), tr("A slow breathing circle. No score, no pressure."),
+            store.getLong(BREATH_TOTAL_KEY).let { if (it >= 60L) trf("Total: %d min", (it / 60L).toInt()) else "" }),
+        HubEntry("tetris", "🧱", tr("Blocks"), tr("Falling blocks. Find the rhythm and let the noise go quiet."), trf("Best: %d", store.getLong("hs_tetris"))),
+        HubEntry("dash", "🔷", tr("Beat Dash"), tr("Hold to jump in time with the beat. One touch."), trf("Best: %d%%", store.getLong("hs_dash"))),
+        HubEntry("snake", "🐍", tr("Snake"), tr("Eat, grow, and don't hit the walls or yourself."), bestOf(store, "hs_snake")),
+        HubEntry("brick", "🏓", tr("Brick Breaker"), tr("Smash every brick. Colours give power-ups."), bestOf(store, "hs_brick")),
+        HubEntry("flappy", "🐤", tr("Flappy Bird"), tr("Hold to rise, release to sink. Squeeze through the pipes."), bestOf(store, "hs_flappy")),
+        HubEntry("flap", "🐦", tr("Sky Flap"), tr("Tap to flap through the gaps. Simple, tense, addictive."), bestOf(store, "hs_flap")),
+        HubEntry("dino", "🦖", tr("Dino Run"), tr("Jump the cactus, duck the birds. Endless."), bestOf(store, "hs_dino")),
+        HubEntry("invaders", "👾", tr("Space Invasion"), tr("Shoot the fleet before it reaches you."), bestOf(store, "hs_invaders")),
+        HubEntry("stack", "🗼", tr("Stack Tower"), tr("Tap to drop blocks and build the tallest tower. Precision wins."), bestOf(store, "hs_stack")),
+        HubEntry("sudoku", "🔢", tr("Sudoku"), tr("Classic number logic. Three difficulty levels."), if (sudokuBest != null) trf("Best time: %s", fmtTime(sudokuBest.toInt())) else ""),
+        HubEntry("2048", "🔲", tr("2048"), tr("Slide and merge tiles. A calm number puzzle."), bestOf(store, "hs_2048")),
+        HubEntry("mines", "💣", tr("Minesweeper"), tr("Clear the field without hitting a mine."), store.getLong("hs_mines").let { if (it > 0L) trf("Best time: %s", fmtTime(it.toInt())) else "" }),
+        HubEntry("yahtzee", "🎲", tr("Yahtzee"), tr("Roll five dice, three tries a turn, fill the scoreboard."), bestOf(store, "hs_yahtzee")),
+        HubEntry("memory", "🃏", tr("Memory Match"), tr("Flip cards and find the pairs in as few moves as you can."), store.getLong("hs_memory").let { if (it > 0L) trf("Best: %d moves", it.toInt()) else "" }),
+        HubEntry("schulte", "🎯", tr("Schulte Table"), tr("Find 1 to 25 in order. A classic attention drill."), store.getLong("hs_schulte").let { if (it > 0L) trf("Best time: %s", fmtMs(it)) else "" }),
+        HubEntry("nback", "🧠", tr("N-Back"), tr("A working-memory workout. Spot the square from N steps ago."), store.getLong("hs_nback").let { if (it > 0L) trf("Best: %d-back", it.toInt()) else "" }),
+        HubEntry("react", "⚡", tr("Reaction Test"), tr("Tap the moment the screen turns green."), store.getLong("hs_react").let { if (it > 0L) trf("Best average: %d ms", it.toInt()) else "" }),
+    )
+    val land = isLandscape()
+    val gridState = rememberLazyGridState()
     GameScaffold(title = tr("Games"), onBack = onBack) { pad ->
-        LazyColumn(
-            Modifier.padding(pad).fillMaxSize(),
-            state = listState,
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Text(
-                    tr("Short breaks for a busy brain. Play a round, then get back to your plate."),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+        if (land) {
+            LazyVerticalGrid(
+                GridCells.Adaptive(290.dp),
+                Modifier.padding(pad).fillMaxSize(),
+                state = gridState,
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        tr("Short breaks for a busy brain. Play a round, then get back to your plate."),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                items(entries.size, key = { entries[it].id }) { i ->
+                    val e = entries[i]
+                    GameCard(e.emoji, e.name, e.blurb, e.best) { onPick(e.id) }
+                }
             }
-            // calm
-            item {
-                GameCard("🫧", tr("Calm Breathing"), tr("A slow breathing circle. No score, no pressure."),
-                    store.getLong(BREATH_TOTAL_KEY).let { if (it >= 60L) trf("Total: %d min", (it / 60L).toInt()) else "" }) { onPick("breath") }
+        } else {
+            LazyColumn(
+                Modifier.padding(pad).fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Text(
+                        tr("Short breaks for a busy brain. Play a round, then get back to your plate."),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                items(entries.size, key = { entries[it].id }) { i ->
+                    val e = entries[i]
+                    GameCard(e.emoji, e.name, e.blurb, e.best) { onPick(e.id) }
+                }
             }
-            // arcade
-            item { GameCard("🧱", tr("Blocks"), tr("Falling blocks. Find the rhythm and let the noise go quiet."), trf("Best: %d", store.getLong("hs_tetris"))) { onPick("tetris") } }
-            item { GameCard("🔷", tr("Beat Dash"), tr("Hold to jump in time with the beat. One touch."), trf("Best: %d%%", store.getLong("hs_dash"))) { onPick("dash") } }
-            item { GameCard("🐍", tr("Snake"), tr("Eat, grow, and don't hit the walls or yourself."), bestOf(store, "hs_snake")) { onPick("snake") } }
-            item { GameCard("🏓", tr("Brick Breaker"), tr("Smash every brick. Colours give power-ups."), bestOf(store, "hs_brick")) { onPick("brick") } }
-            item { GameCard("🐤", tr("Flappy Bird"), tr("Hold to rise, release to sink. Squeeze through the pipes."), bestOf(store, "hs_flappy")) { onPick("flappy") } }
-            item { GameCard("🐦", tr("Sky Flap"), tr("Tap to flap through the gaps. Simple, tense, addictive."), bestOf(store, "hs_flap")) { onPick("flap") } }
-            item { GameCard("🦖", tr("Dino Run"), tr("Jump the cactus, duck the birds. Endless."), bestOf(store, "hs_dino")) { onPick("dino") } }
-            item { GameCard("👾", tr("Space Invasion"), tr("Shoot the fleet before it reaches you."), bestOf(store, "hs_invaders")) { onPick("invaders") } }
-            item { GameCard("🗼", tr("Stack Tower"), tr("Tap to drop blocks and build the tallest tower. Precision wins."), bestOf(store, "hs_stack")) { onPick("stack") } }
-            // puzzles
-            item { GameCard("🔢", tr("Sudoku"), tr("Classic number logic. Three difficulty levels."), if (sudokuBest != null) trf("Best time: %s", fmtTime(sudokuBest.toInt())) else "") { onPick("sudoku") } }
-            item { GameCard("🔲", tr("2048"), tr("Slide and merge tiles. A calm number puzzle."), bestOf(store, "hs_2048")) { onPick("2048") } }
-            item { GameCard("💣", tr("Minesweeper"), tr("Clear the field without hitting a mine."), store.getLong("hs_mines").let { if (it > 0L) trf("Best time: %s", fmtTime(it.toInt())) else "" }) { onPick("mines") } }
-            item { GameCard("🎲", tr("Yahtzee"), tr("Roll five dice, three tries a turn, fill the scoreboard."), bestOf(store, "hs_yahtzee")) { onPick("yahtzee") } }
-            // brain training
-            item { GameCard("🃏", tr("Memory Match"), tr("Flip cards and find the pairs in as few moves as you can."), store.getLong("hs_memory").let { if (it > 0L) trf("Best: %d moves", it.toInt()) else "" }) { onPick("memory") } }
-            item { GameCard("🎯", tr("Schulte Table"), tr("Find 1 to 25 in order. A classic attention drill."), store.getLong("hs_schulte").let { if (it > 0L) trf("Best time: %s", fmtMs(it)) else "" }) { onPick("schulte") } }
-            item { GameCard("🧠", tr("N-Back"), tr("A working-memory workout. Spot the square from N steps ago."), store.getLong("hs_nback").let { if (it > 0L) trf("Best: %d-back", it.toInt()) else "" }) { onPick("nback") } }
-            item { GameCard("⚡", tr("Reaction Test"), tr("Tap the moment the screen turns green."), store.getLong("hs_react").let { if (it > 0L) trf("Best average: %d ms", it.toInt()) else "" }) { onPick("react") } }
         }
     }
 }

@@ -56,6 +56,15 @@ class StudyAndApiTest {
         assertTrue(StudyPrompts.system(Mode.QUIZ, false, "English").contains("ONE question at a time"))
     }
 
+    @Test fun coachAndPlanModesIncludeMicroStepAndTriage() {
+        val coach = StudyPrompts.system(Mode.COACH, false, "English")
+        assertTrue(coach.contains("2-to-5 minute micro-step"))
+        assertFalse(coach.contains("worried"))
+        val plan = StudyPrompts.system(Mode.PLAN, false, "English")
+        assertTrue(plan.contains("1 priority task"))
+        assertTrue(plan.contains("2 quick wins"))
+    }
+
     @Test fun providersAreHttpsOnly() {
         Providers.list.forEach { assertTrue(it.name, it.base.startsWith("https://")) }
     }

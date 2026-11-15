@@ -265,21 +265,41 @@ fun SudokuGame(store: Store, onBack: () -> Unit) {
 
 @Composable
 private fun SudokuMenu(names: List<String>, bests: List<Long>, generating: Int, onPick: (Int) -> Unit) {
+    val land = isLandscape()
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(if (land) 16.dp else 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(tr("Choose a level"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        for (d in MENU_ORDER) {
-            Card(Modifier.fillMaxWidth().clickable { onPick(d) }) {
-                Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(names[d], style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        if (d == 3) Text(tr("Many numbers filled in. Mistakes never end the game."), style = MaterialTheme.typography.bodySmall)
-                        if (bests[d] > 0L) Text(trf("Best time: %s", fmtTime(bests[d].toInt())), style = MaterialTheme.typography.bodyMedium)
+        if (land) {
+            for (row in MENU_ORDER.toList().chunked(2)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    for (d in row) {
+                        Card(Modifier.weight(1f).clickable { onPick(d) }) {
+                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(names[d], style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    if (d == 3) Text(tr("Many numbers filled in. Mistakes never end the game."), style = MaterialTheme.typography.bodySmall)
+                                    if (bests[d] > 0L) Text(trf("Best time: %s", fmtTime(bests[d].toInt())), style = MaterialTheme.typography.bodyMedium)
+                                }
+                                if (generating == d) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 3.dp)
+                            }
+                        }
                     }
-                    if (generating == d) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
+                }
+            }
+        } else {
+            for (d in MENU_ORDER) {
+                Card(Modifier.fillMaxWidth().clickable { onPick(d) }) {
+                    Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(names[d], style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            if (d == 3) Text(tr("Many numbers filled in. Mistakes never end the game."), style = MaterialTheme.typography.bodySmall)
+                            if (bests[d] > 0L) Text(trf("Best time: %s", fmtTime(bests[d].toInt())), style = MaterialTheme.typography.bodyMedium)
+                        }
+                        if (generating == d) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
+                    }
                 }
             }
         }
@@ -287,65 +307,53 @@ private fun SudokuMenu(names: List<String>, bests: List<Long>, generating: Int, 
 }
 
 @Composable
-private fun SudokuBoard(s: SdState, levelName: String) {
-    val hidden = s.paused
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(levelName, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            Text(trf("Mistakes: %s", if (MISTAKE_LIMIT[s.diff] > 0) "${s.mistakes}/${MISTAKE_LIMIT[s.diff]}" else "${s.mistakes}"), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-            Text(fmtTime(s.seconds), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-        }
-
-        BoxWithConstraints(Modifier.widthIn(max = 460.dp).fillMaxWidth().aspectRatio(1f)) {
-            val digitSp = (maxWidth.value / 9f * 0.58f).sp
-            val noteSp = (maxWidth.value / 9f * 0.25f).sp
-            val scheme = MaterialTheme.colorScheme
-            val rev = s.rev
-            val selV = if (s.sel >= 0) s.cur[s.sel] else 0
-            Column(Modifier.fillMaxSize().background(scheme.surface)) {
-                for (row in 0 until 9) {
-                    Row(Modifier.weight(1f).fillMaxWidth()) {
-                        for (col in 0 until 9) {
-                            val i = row * 9 + col
-                            val sel = s.sel
-                            val peer = sel >= 0 && (sel / 9 == row || sel % 9 == col || boxOf(sel) == boxOf(i))
-                            val same = selV != 0 && s.cur[i] == selV
-                            val bg = when {
-                                i == sel -> scheme.primaryContainer
-                                same && !hidden -> scheme.tertiaryContainer
-                                peer -> scheme.secondaryContainer.copy(alpha = 0.55f)
-                                else -> Color.Transparent
-                            }
-                            Box(
-                                Modifier.weight(1f).fillMaxHeight().background(bg).clickable { s.sel = i },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (rev >= 0 && !hidden) {
-                                    val v = s.cur[i]
-                                    if (v != 0) {
-                                        Text(
-                                            "$v", fontSize = digitSp,
-                                            fontWeight = if (s.isGiven(i)) FontWeight.Bold else FontWeight.Normal,
-                                            color = when {
-                                                s.isWrong(i) -> scheme.error
-                                                s.isGiven(i) -> scheme.onSurface
-                                                else -> scheme.primary
-                                            }
-                                        )
-                                    } else if (s.notes[i] != 0) {
-                                        Column(Modifier.fillMaxSize()) {
-                                            for (nr in 0 until 3) {
-                                                Row(Modifier.weight(1f).fillMaxWidth()) {
-                                                    for (nc in 0 until 3) {
-                                                        val d = nr * 3 + nc + 1
-                                                        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                                                            if ((s.notes[i] shr (d - 1)) and 1 == 1) {
-                                                                Text("$d", fontSize = noteSp, color = scheme.onSurfaceVariant)
-                                                            }
+private fun SudokuGridCanvas(s: SdState, hidden: Boolean, modifier: Modifier) {
+    BoxWithConstraints(modifier) {
+        val boardDp = minOf(maxWidth.value, maxHeight.value)
+        val digitSp = (boardDp / 9f * 0.58f).sp
+        val noteSp = (boardDp / 9f * 0.25f).sp
+        val scheme = MaterialTheme.colorScheme
+        val rev = s.rev
+        val selV = if (s.sel >= 0) s.cur[s.sel] else 0
+        Column(Modifier.fillMaxSize().background(scheme.surface)) {
+            for (row in 0 until 9) {
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                    for (col in 0 until 9) {
+                        val i = row * 9 + col
+                        val sel = s.sel
+                        val peer = sel >= 0 && (sel / 9 == row || sel % 9 == col || boxOf(sel) == boxOf(i))
+                        val same = selV != 0 && s.cur[i] == selV
+                        val bg = when {
+                            i == sel -> scheme.primaryContainer
+                            same && !hidden -> scheme.tertiaryContainer
+                            peer -> scheme.secondaryContainer.copy(alpha = 0.55f)
+                            else -> Color.Transparent
+                        }
+                        Box(
+                            Modifier.weight(1f).fillMaxHeight().background(bg).clickable { s.sel = i },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (rev >= 0 && !hidden) {
+                                val v = s.cur[i]
+                                if (v != 0) {
+                                    Text(
+                                        "$v", fontSize = digitSp,
+                                        fontWeight = if (s.isGiven(i)) FontWeight.Bold else FontWeight.Normal,
+                                        color = when {
+                                            s.isWrong(i) -> scheme.error
+                                            s.isGiven(i) -> scheme.onSurface
+                                            else -> scheme.primary
+                                        }
+                                    )
+                                } else if (s.notes[i] != 0) {
+                                    Column(Modifier.fillMaxSize()) {
+                                        for (nr in 0 until 3) {
+                                            Row(Modifier.weight(1f).fillMaxWidth()) {
+                                                for (nc in 0 until 3) {
+                                                    val d = nr * 3 + nc + 1
+                                                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                                                        if ((s.notes[i] shr (d - 1)) and 1 == 1) {
+                                                            Text("$d", fontSize = noteSp, color = scheme.onSurfaceVariant)
                                                         }
                                                     }
                                                 }
@@ -358,43 +366,94 @@ private fun SudokuBoard(s: SdState, levelName: String) {
                     }
                 }
             }
-            val lineColor = scheme.onSurface
-            Canvas(Modifier.fillMaxSize()) {
-                val cw = size.width / 9f
-                val ch = size.height / 9f
-                for (k in 0..9) {
-                    val thick = k % 3 == 0
-                    val sw = if (thick) 2.5.dp.toPx() else 0.6.dp.toPx()
-                    val a = if (thick) 0.9f else 0.25f
-                    drawLine(lineColor.copy(alpha = a), Offset(k * cw, 0f), Offset(k * cw, size.height), sw)
-                    drawLine(lineColor.copy(alpha = a), Offset(0f, k * ch), Offset(size.width, k * ch), sw)
+        }
+        val lineColor = scheme.onSurface
+        Canvas(Modifier.fillMaxSize()) {
+            val cw = size.width / 9f
+            val ch = size.height / 9f
+            for (k in 0..9) {
+                val thick = k % 3 == 0
+                val sw = if (thick) 2.5.dp.toPx() else 0.6.dp.toPx()
+                val a = if (thick) 0.9f else 0.25f
+                drawLine(lineColor.copy(alpha = a), Offset(k * cw, 0f), Offset(k * cw, size.height), sw)
+                drawLine(lineColor.copy(alpha = a), Offset(0f, k * ch), Offset(size.width, k * ch), sw)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SudokuDigitKey(s: SdState, d: Int, modifier: Modifier) {
+    val left = s.remaining(d)
+    val enabled = left > 0 && s.rev >= 0
+    Column(
+        modifier.height(50.dp).clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 1f else 0.4f))
+            .clickable(enabled = enabled) { s.enter(d) },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("$d", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(if (enabled) "$left" else "", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun SudokuBoard(s: SdState, levelName: String) {
+    val hidden = s.paused
+    val land = isLandscape()
+    if (land) {
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SudokuGridCanvas(s, hidden, Modifier.fillMaxHeight().aspectRatio(1f))
+            Column(
+                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(levelName, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(trf("Mistakes: %s", if (MISTAKE_LIMIT[s.diff] > 0) "${s.mistakes}/${MISTAKE_LIMIT[s.diff]}" else "${s.mistakes}"), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    Text(fmtTime(s.seconds), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ToolButton("✏️ " + tr("Notes") + (if (s.notesMode) " ✓" else ""), Modifier.weight(1f), s.notesMode) { s.notesMode = !s.notesMode }
+                    ToolButton("⌫ " + tr("Erase"), Modifier.weight(1f), false) { s.erase() }
+                    ToolButton("💡 " + tr("Hint") + " ${HINT_MAX[s.diff] - s.hints}", Modifier.weight(1f), false) { s.hint() }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (d in 1..5) SudokuDigitKey(s, d, Modifier.weight(1f))
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (d in 6..9) SudokuDigitKey(s, d, Modifier.weight(1f))
+                    Spacer(Modifier.weight(1f))
                 }
             }
         }
-
-        Row(Modifier.widthIn(max = 460.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ToolButton(
-                "✏️ " + tr("Notes") + (if (s.notesMode) " ✓" else ""),
-                Modifier.weight(1f), s.notesMode
-            ) { s.notesMode = !s.notesMode }
-            ToolButton("⌫ " + tr("Erase"), Modifier.weight(1f), false) { s.erase() }
-            ToolButton("💡 " + tr("Hint") + " ${HINT_MAX[s.diff] - s.hints}", Modifier.weight(1f), false) { s.hint() }
-        }
-
-        Row(Modifier.widthIn(max = 460.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (d in 1..9) {
-                val left = s.remaining(d)
-                val enabled = left > 0 && s.rev >= 0
-                Column(
-                    Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 1f else 0.4f))
-                        .clickable(enabled = enabled) { s.enter(d) },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("$d", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text(if (enabled) "$left" else "", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+    } else {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(levelName, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(trf("Mistakes: %s", if (MISTAKE_LIMIT[s.diff] > 0) "${s.mistakes}/${MISTAKE_LIMIT[s.diff]}" else "${s.mistakes}"), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text(fmtTime(s.seconds), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+            }
+            SudokuGridCanvas(s, hidden, Modifier.widthIn(max = 460.dp).fillMaxWidth().aspectRatio(1f))
+            Row(Modifier.widthIn(max = 460.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ToolButton(
+                    "✏️ " + tr("Notes") + (if (s.notesMode) " ✓" else ""),
+                    Modifier.weight(1f), s.notesMode
+                ) { s.notesMode = !s.notesMode }
+                ToolButton("⌫ " + tr("Erase"), Modifier.weight(1f), false) { s.erase() }
+                ToolButton("💡 " + tr("Hint") + " ${HINT_MAX[s.diff] - s.hints}", Modifier.weight(1f), false) { s.hint() }
+            }
+            Row(Modifier.widthIn(max = 460.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                for (d in 1..9) SudokuDigitKey(s, d, Modifier.weight(1f))
             }
         }
     }

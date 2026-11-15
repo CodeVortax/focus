@@ -55,10 +55,14 @@ import com.barq.focus.ui.theme.FocusBrandFont
 fun TrophiesScreen(store: Store, onBack: () -> Unit) {
     val ctx = LocalContext.current
     val data = remember {
+        Game.syncQuestsAndShields(ctx, store)
+        val breakdown = Game.xpBreakdown(store)
         object {
-            val xp = Game.xp(store)
+            val xp = breakdown.total
+            val breakdown = breakdown
             val work = Game.workStreak(store)
             val light = Game.lightStreak(store)
+            val shields = store.streakShields
             val have = store.badges()
             val quests = Game.quests(store, ctx)
         }
@@ -66,14 +70,18 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
     val normal = Game.BADGES.filter { !it.shame }
     val shame = Game.BADGES.filter { it.shame }
     val level = Game.level(data.xp)
+    val rate = Game.interestPct(level)
+    val nextTier = Game.nextInterestTier(level)
     val (emoji, title) = Game.titleOf(level)
     val from = Game.xpForLevel(level)
     val to = Game.xpForLevel(level + 1)
     val frac = ((data.xp - from).toFloat() / (to - from)).coerceIn(0f, 1f)
 
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
+                windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
                 title = { Text(tr("Trophies"), fontFamily = FocusBrandFont, fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
             )
@@ -89,13 +97,25 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             Text(emoji, fontSize = 44.sp)
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text(tr(title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                 Text(trf("Level %d  ·  %d XP", level, data.xp), style = MaterialTheme.typography.bodyMedium)
+                            }
+                            Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.secondaryContainer) {
+                                Text("\uD83D\uDEE1\uFE0F ${data.shields}/2", Modifier.padding(horizontal = 10.dp, vertical = 4.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
                             }
                         }
                         LinearProgressIndicator(progress = { frac }, modifier = Modifier.fillMaxWidth())
                         Text(trf("%d XP to the next level", to - data.xp), style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            if (nextTier != null) trf("Level %d perk: %d%% interest (next: %d%% at Lv %d)", level, rate, nextTier.second, nextTier.first)
+                            else trf("Top perk active: %d%% piggy interest", rate),
+                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            trf("XP breakdown: %d work · %d Shorts diet · %d quests", data.breakdown.workXp, data.breakdown.dietXp, data.breakdown.questXp),
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -105,7 +125,12 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                     StreakCard("🛡️", data.light, tr("light-Shorts streak (50 or fewer)"), Modifier.weight(1f))
                 }
             }
-            item(span = { GridItemSpan(maxLineSpan) }) { Text(tr("Today's quests"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(tr("Today's quests") + "  (${data.quests.count { it.done }}/${data.quests.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(tr("All 4 daily quests: +100 XP & +1 Shield"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                }
+            }
             items(data.quests, span = { GridItemSpan(maxLineSpan) }) { q ->
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
@@ -115,7 +140,8 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                 ) {
                     Text(if (q.done) "✅" else "⬜", fontSize = 20.sp)
                     Spacer(Modifier.width(12.dp))
-                    Text(tr(q.text), fontWeight = if (q.done) FontWeight.SemiBold else FontWeight.Normal)
+                    Text(tr(q.text), Modifier.weight(1f), fontWeight = if (q.done) FontWeight.SemiBold else FontWeight.Normal)
+                    Text(tr("+40 XP"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {

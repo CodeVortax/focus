@@ -78,6 +78,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -110,6 +111,7 @@ private fun clock(ms: Long): String {
  * Swipe sideways = seek. Double-tap the middle = pause, the sides = skip 10 s. The screen turns to match the video.
  * Every second of playback is paid from the treat bank.
  */
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(store: Store, card0: FocusCard, onExit: () -> Unit, ep: Int = -1) {
     // an episode plays from its own token; a plain treat file is paid for second by second from the bank

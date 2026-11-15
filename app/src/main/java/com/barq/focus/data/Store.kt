@@ -556,11 +556,24 @@ class Store(ctx: Context) {
     var vaultPeakSec: Long
         get() = p.getLong("vault_peak", 0L)
         set(v) { p.edit().putLong("vault_peak", v).apply() }
+    var streakShields: Int
+        get() = p.getInt("streak_shields", 0).coerceIn(0, 2)
+        set(v) { p.edit().putInt("streak_shields", v.coerceIn(0, 2)).apply() }
+    var streakShieldsUsed: Int
+        get() = p.getInt("streak_shields_used", 0)
+        set(v) { p.edit().putInt("streak_shields_used", v).apply() }
+    var lastShieldDay: Int
+        get() = p.getInt("last_shield_day", 0)
+        set(v) { p.edit().putInt("last_shield_day", v).apply() }
+    var lastShieldStreak: Int
+        get() = p.getInt("last_shield_streak", 0)
+        set(v) { p.edit().putInt("last_shield_streak", v).apply() }
     /** What was left unspent on a finished day. Piggy-bank payouts are spent first, so interest is never saved again. */
     fun unusedSecOn(dayKey: Int): Int {
         val earned = p.getInt("earnedS_$dayKey", 0); val bonus = p.getInt("bonusS_$dayKey", 0); val spent = p.getInt("spentS_$dayKey", 0)
         return (earned - (spent - bonus).coerceAtLeast(0)).coerceAtLeast(0)
     }
+    fun todayUnusedSec(): Int = unusedSecOn(day())
 
     // ---- reminders ----
     var lastRemind: Long
@@ -835,8 +848,7 @@ class Store(ctx: Context) {
     }
 
     fun dayStat(offset: Int): DayStat {
-        val c = Calendar.getInstance()
-        c.add(Calendar.DAY_OF_YEAR, -offset)
+        val c = DayClock.shifted(plusDays = -offset)
         val d = c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
         return DayStat(
             d,
@@ -844,6 +856,13 @@ class Store(ctx: Context) {
             p.getBoolean("day_$d", false), p.getBoolean("partial_$d", false),
             p.getInt("shorts_$d", 0), p.getInt("earnedS_$d", 0), p.getInt("planned_$d", 0)
         )
+    }
+
+    fun questDoneOn(dayKey: Int): Int = p.getInt("q_done_$dayKey", 0)
+    fun recordQuestDoneToday(doneCount: Int) {
+        val d = day()
+        val prev = p.getInt("q_done_$d", 0)
+        if (doneCount > prev) p.edit().putInt("q_done_$d", doneCount).apply()
     }
 
     fun badges(): Map<String, Int> {

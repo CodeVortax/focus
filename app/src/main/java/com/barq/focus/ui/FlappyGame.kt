@@ -137,9 +137,10 @@ fun FlappyGame(store: Store, onBack: () -> Unit) {
                 if (tick.longValue < 0) return@Canvas
                 drawFlappy(s)
             }
+            val land = isLandscape()
             Text(
-                "${s.score}", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp)
+                "${s.score}", color = Color.White, fontSize = if (land) 28.sp else 40.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = if (land) 6.dp else 16.dp)
             )
             if (s.phase == 0) GameOverlay(
                 tr("Flappy Bird"), listOf(tr("Hold to rise, release to sink."), trf("Best: %d", best)),

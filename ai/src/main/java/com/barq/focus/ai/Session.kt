@@ -87,6 +87,7 @@ class Session(ctx: Context) {
         val t = FocusBridge.clean(text)
         if (t.isEmpty()) return
         dayText = t
+        if (messages.isEmpty()) mode = Mode.PLAN
         paste = "My day from Focus:\n$t\n\n"
         pasteTick++
         screen = "chat"

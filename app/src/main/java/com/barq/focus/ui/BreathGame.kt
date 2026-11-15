@@ -20,7 +20,10 @@
 package com.barq.focus.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -66,33 +69,32 @@ fun BreathGame(store: Store, onBack: () -> Unit) {
     }
 
     val ink = MaterialTheme.colorScheme.primary
+    val land = isLandscape()
     GameScaffold(title = tr("Calm Breathing"), onBack = onBack) { pad ->
-        Column(
-            Modifier.padding(pad).fillMaxSize().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
-        ) {
-            when (phase) {
-                0 -> {
-                    Text(tr("Breathe with the circle. There is no score. Stop whenever you like."), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
-                    Spacer(Modifier.height(20.dp))
-                    Text(tr("Pattern"), style = MaterialTheme.typography.labelLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Breath.PATTERNS.forEachIndexed { i, p -> FilterChip(selected = patternIx == i, onClick = { patternIx = i }, label = { Text(tr(p.name)) }) }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Text(tr("How long"), style = MaterialTheme.typography.labelLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Breath.LENGTHS_MIN.forEach { m -> FilterChip(selected = minutes == m, onClick = { minutes = m }, label = { Text(trf("%d min", m)) }) }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    FilterChip(selected = still, onClick = { still = !still }, label = { Text(tr("Still (no motion)")) })
-                    Spacer(Modifier.height(24.dp))
-                    Button(onClick = { elapsed = 0f; saved = false; phase = 1 }) { Text(tr("Start")) }
+        when (phase) {
+            0 -> Column(
+                Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(if (land) 16.dp else 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
+            ) {
+                Text(tr("Breathe with the circle. There is no score. Stop whenever you like."), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                Text(tr("Pattern"), style = MaterialTheme.typography.labelLarge)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Breath.PATTERNS.forEachIndexed { i, p -> FilterChip(selected = patternIx == i, onClick = { patternIx = i }, label = { Text(tr(p.name)) }) }
                 }
-                1, 2 -> {
-                    val pos = Breath.at(pattern, elapsed)
-                    val label = tr(pattern.steps[pos.index].label)
-                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(tr("How long"), style = MaterialTheme.typography.labelLarge)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Breath.LENGTHS_MIN.forEach { m -> FilterChip(selected = minutes == m, onClick = { minutes = m }, label = { Text(trf("%d min", m)) }) }
+                }
+                FilterChip(selected = still, onClick = { still = !still }, label = { Text(tr("Still (no motion)")) })
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = { elapsed = 0f; saved = false; phase = 1 }) { Text(tr("Start")) }
+            }
+            1, 2 -> {
+                val pos = Breath.at(pattern, elapsed)
+                val label = tr(pattern.steps[pos.index].label)
+                val circle: @Composable (Modifier) -> Unit = { m ->
+                    Box(m, contentAlignment = Alignment.Center) {
                         Canvas(Modifier.fillMaxSize()) {
                             val r = minOf(size.width, size.height) / 2f * (if (still) 0.7f else pos.scale)
                             drawCircle(ink.copy(alpha = 0.12f), r * 1.18f)
@@ -100,25 +102,55 @@ fun BreathGame(store: Store, onBack: () -> Unit) {
                             drawCircle(ink.copy(alpha = 0.40f), r * 0.82f)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(label, fontSize = 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground)
-                            if (still) Text("${pos.secLeft}", fontSize = 56.sp, fontWeight = FontWeight.Bold, color = ink)
+                            Text(label, fontSize = if (land) 24.sp else 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground)
+                            if (still) Text("${pos.secLeft}", fontSize = if (land) 44.sp else 56.sp, fontWeight = FontWeight.Bold, color = ink)
                         }
                     }
-                    Text(trf("%s left", fmtTime((total - elapsed).toInt().coerceAtLeast(0))), style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedButton(onClick = { phase = if (phase == 1) 2 else 1 }) { Text(tr(if (phase == 1) "Pause" else "Resume")) }
-                        TextButton(onClick = { finish() }) { Text(tr("Finish")) }
+                }
+                if (land) {
+                    Row(
+                        Modifier.padding(pad).fillMaxSize().padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        circle(Modifier.weight(1f).fillMaxHeight())
+                        Column(
+                            Modifier.widthIn(min = 160.dp, max = 240.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(trf("%s left", fmtTime((total - elapsed).toInt().coerceAtLeast(0))), style = MaterialTheme.typography.titleMedium)
+                            OutlinedButton(onClick = { phase = if (phase == 1) 2 else 1 }, modifier = Modifier.fillMaxWidth()) { Text(tr(if (phase == 1) "Pause" else "Resume")) }
+                            TextButton(onClick = { finish() }) { Text(tr("Finish")) }
+                        }
+                    }
+                } else {
+                    Column(
+                        Modifier.padding(pad).fillMaxSize().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        circle(Modifier.weight(1f).fillMaxWidth())
+                        Text(trf("%s left", fmtTime((total - elapsed).toInt().coerceAtLeast(0))), style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedButton(onClick = { phase = if (phase == 1) 2 else 1 }) { Text(tr(if (phase == 1) "Pause" else "Resume")) }
+                            TextButton(onClick = { finish() }) { Text(tr("Finish")) }
+                        }
                     }
                 }
-                else -> {
-                    Text(tr("Well done. Take a moment before you go back."), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                    Spacer(Modifier.height(8.dp))
-                    Text(trf("You breathed for %s.", fmtTime(elapsed.toInt())), style = MaterialTheme.typography.bodyLarge)
-                    Spacer(Modifier.height(24.dp))
-                    Button(onClick = { phase = 0 }) { Text(tr("Once more")) }
-                    TextButton(onClick = onBack) { Text(tr("Back to Games")) }
-                }
+            }
+            else -> Column(
+                Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(tr("Well done. Take a moment before you go back."), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(8.dp))
+                Text(trf("You breathed for %s.", fmtTime(elapsed.toInt())), style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.height(24.dp))
+                Button(onClick = { phase = 0 }) { Text(tr("Once more")) }
+                TextButton(onClick = onBack) { Text(tr("Back to Games")) }
             }
         }
     }

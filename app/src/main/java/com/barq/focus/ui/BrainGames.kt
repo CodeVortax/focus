@@ -22,7 +22,9 @@ package com.barq.focus.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -98,22 +100,14 @@ fun MemoryGame(store: Store, onBack: () -> Unit) {
             }
         }
     }
+    val land = isLandscape()
     GameScaffold(
         title = tr("Memory Match"), onBack = onBack,
         actions = { TextButton(onClick = { s.reset() }) { Text(tr("New game")) } }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            Column(
-                Modifier.fillMaxSize().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(Modifier.widthIn(max = 420.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ScoreBox(tr("Moves"), "${s.moves}", Modifier.weight(1f))
-                    ScoreBox(tr("Best"), if (best > 0L) "$best" else "-", Modifier.weight(1f))
-                }
-                Text(tr("Flip two cards at a time and find all the pairs."), textAlign = TextAlign.Center)
-                Column(Modifier.widthIn(max = 420.dp).fillMaxWidth().aspectRatio(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val boardGrid: @Composable (Modifier) -> Unit = { m ->
+                Column(m, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (r in 0 until 4) {
                         Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             for (c in 0 until 4) {
@@ -130,10 +124,43 @@ fun MemoryGame(store: Store, onBack: () -> Unit) {
                                         )
                                         .clickable { tap(i) },
                                     contentAlignment = Alignment.Center
-                                ) { if (shown) Text(s.face[i], fontSize = 34.sp) }
+                                ) { if (shown) Text(s.face[i], fontSize = if (land) 26.sp else 34.sp) }
                             }
                         }
                     }
+                }
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        Modifier.weight(1f).fillMaxHeight(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ScoreBox(tr("Moves"), "${s.moves}", Modifier.weight(1f))
+                            ScoreBox(tr("Best"), if (best > 0L) "$best" else "-", Modifier.weight(1f))
+                        }
+                        Text(tr("Flip two cards at a time and find all the pairs."), textAlign = TextAlign.Center)
+                    }
+                    boardGrid(Modifier.fillMaxHeight().aspectRatio(1f))
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(Modifier.widthIn(max = 420.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ScoreBox(tr("Moves"), "${s.moves}", Modifier.weight(1f))
+                        ScoreBox(tr("Best"), if (best > 0L) "$best" else "-", Modifier.weight(1f))
+                    }
+                    Text(tr("Flip two cards at a time and find all the pairs."), textAlign = TextAlign.Center)
+                    boardGrid(Modifier.widthIn(max = 420.dp).fillMaxWidth().aspectRatio(1f))
                 }
             }
             if (s.won) GameOverlay(
@@ -180,20 +207,11 @@ fun SchulteGame(store: Store, onBack: () -> Unit) {
         }
         if (s.phase == 2 && (best == 0L || s.elapsed < best)) { best = s.elapsed; store.putLong("hs_schulte", best) }
     }
+    val land = isLandscape()
     GameScaffold(title = tr("Schulte Table"), onBack = onBack) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            Column(
-                Modifier.fillMaxSize().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(Modifier.widthIn(max = 420.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ScoreBox(tr("Find"), if (s.next <= 25) "${s.next}" else "✓", Modifier.weight(1f))
-                    ScoreBox(tr("Time"), fmtMs(s.elapsed), Modifier.weight(1f))
-                    ScoreBox(tr("Best"), if (best > 0L) fmtMs(best) else "-", Modifier.weight(1f))
-                }
-                Text(tr("Tap 1 to 25 in order, as fast as you can. Keep your eyes on the centre."), textAlign = TextAlign.Center)
-                Column(Modifier.widthIn(max = 420.dp).fillMaxWidth().aspectRatio(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            val boardGrid: @Composable (Modifier) -> Unit = { m ->
+                Column(m, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (r in 0 until 5) {
                         Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             for (c in 0 until 5) {
@@ -225,13 +243,48 @@ fun SchulteGame(store: Store, onBack: () -> Unit) {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (s.phase != 0) Text(
-                                        "$n", fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                                        "$n", fontSize = if (land) 18.sp else 22.sp, fontWeight = FontWeight.Bold,
                                         color = if (found) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 }
                             }
                         }
                     }
+                }
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        Modifier.weight(1f).fillMaxHeight(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ScoreBox(tr("Find"), if (s.next <= 25) "${s.next}" else "✓", Modifier.weight(1f))
+                            ScoreBox(tr("Time"), fmtMs(s.elapsed), Modifier.weight(1f))
+                            ScoreBox(tr("Best"), if (best > 0L) fmtMs(best) else "-", Modifier.weight(1f))
+                        }
+                        Text(tr("Tap 1 to 25 in order, as fast as you can. Keep your eyes on the centre."), textAlign = TextAlign.Center)
+                    }
+                    boardGrid(Modifier.fillMaxHeight().aspectRatio(1f))
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(Modifier.widthIn(max = 420.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ScoreBox(tr("Find"), if (s.next <= 25) "${s.next}" else "✓", Modifier.weight(1f))
+                        ScoreBox(tr("Time"), fmtMs(s.elapsed), Modifier.weight(1f))
+                        ScoreBox(tr("Best"), if (best > 0L) fmtMs(best) else "-", Modifier.weight(1f))
+                    }
+                    Text(tr("Tap 1 to 25 in order, as fast as you can. Keep your eyes on the centre."), textAlign = TextAlign.Center)
+                    boardGrid(Modifier.widthIn(max = 420.dp).fillMaxWidth().aspectRatio(1f))
                 }
             }
             if (s.phase == 0) GameOverlay(
@@ -299,16 +352,11 @@ fun NBackGame(store: Store, onBack: () -> Unit) {
         s.phase = 2
         if (s.accuracy() >= 80 && s.n > best) { best = s.n.toLong(); store.putLong("hs_nback", best) }
     }
+    val land = isLandscape()
     GameScaffold(title = tr("N-Back"), onBack = onBack) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            Column(
-                Modifier.fillMaxSize().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                if (s.phase == 1) Text(trf("Step %s", "${s.trial}/${s.total}") + "   " + trf("%d-back", s.n), fontWeight = FontWeight.Bold)
-                else Text(" ")
-                Column(Modifier.widthIn(max = 360.dp).fillMaxWidth().aspectRatio(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val boardGrid: @Composable (Modifier) -> Unit = { m ->
+                Column(m, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (r in 0 until 3) {
                         Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             for (c in 0 until 3) {
@@ -321,13 +369,47 @@ fun NBackGame(store: Store, onBack: () -> Unit) {
                         }
                     }
                 }
-                Box(
-                    Modifier.widthIn(max = 360.dp).fillMaxWidth().height(64.dp).clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.secondaryContainer)
-                        .clickable { if (s.phase == 1) s.responded = true },
-                    contentAlignment = Alignment.Center
-                ) { Text(tr("Match"), fontSize = 22.sp, fontWeight = FontWeight.Bold) }
-                Text(tr("Tap Match when the lit square is in the same place as it was N steps ago."), textAlign = TextAlign.Center)
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        Modifier.weight(1f).fillMaxHeight(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+                    ) {
+                        if (s.phase == 1) Text(trf("Step %s", "${s.trial}/${s.total}") + "   " + trf("%d-back", s.n), fontWeight = FontWeight.Bold)
+                        else Text(" ")
+                        Box(
+                            Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.secondaryContainer)
+                                .clickable { if (s.phase == 1) s.responded = true },
+                            contentAlignment = Alignment.Center
+                        ) { Text(tr("Match"), fontSize = 22.sp, fontWeight = FontWeight.Bold) }
+                        Text(tr("Tap Match when the lit square is in the same place as it was N steps ago."), textAlign = TextAlign.Center)
+                    }
+                    boardGrid(Modifier.fillMaxHeight().aspectRatio(1f))
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (s.phase == 1) Text(trf("Step %s", "${s.trial}/${s.total}") + "   " + trf("%d-back", s.n), fontWeight = FontWeight.Bold)
+                    else Text(" ")
+                    boardGrid(Modifier.widthIn(max = 360.dp).fillMaxWidth().aspectRatio(1f))
+                    Box(
+                        Modifier.widthIn(max = 360.dp).fillMaxWidth().height(64.dp).clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .clickable { if (s.phase == 1) s.responded = true },
+                        contentAlignment = Alignment.Center
+                    ) { Text(tr("Match"), fontSize = 22.sp, fontWeight = FontWeight.Bold) }
+                    Text(tr("Tap Match when the lit square is in the same place as it was N steps ago."), textAlign = TextAlign.Center)
+                }
             }
             when (s.phase) {
                 0 -> NBackMenu(best) { s.start(it) }
@@ -351,8 +433,12 @@ private fun NBackMenu(best: Long, onPick: (Int) -> Unit) {
         Modifier.fillMaxSize().background(Color(0xCC000000)),
         contentAlignment = Alignment.Center
     ) {
-        Card(Modifier.padding(32.dp)) {
-            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Card(Modifier.widthIn(max = 420.dp).padding(16.dp)) {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()).padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text(tr("N-Back"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(tr("A working-memory workout. Pick a level."), textAlign = TextAlign.Center)
                 for (lv in 1..3) {

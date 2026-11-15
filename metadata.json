@@ -1,0 +1,7 @@
+{
+  "name": "Focus Study Gate",
+  "description": "Study on purpose. Turn your study plan into a daily treat bank, manage tasks, notes, music, PDFs, projects, piggy bank, and soft-gate distracting apps.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

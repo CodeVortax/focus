@@ -109,6 +109,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import com.barq.focus.data.Song
 import com.barq.focus.data.MusicLibrary
 import com.barq.focus.data.Store
@@ -167,6 +168,7 @@ private fun Art(song: Song?, modifier: Modifier, px: Int = 300, corner: Dp = 12.
     }
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 private fun openEqualizer(ctx: Context) {
     val i = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
         .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, Music.player?.audioSessionId ?: 0)
@@ -241,15 +243,17 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
         store.savePlaylists(m); playlists = m
     }
 
+    val land = isLandscape()
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         bottomBar = {
             Column {
                 if (current != null && (tab != MTab.NOW || sub != null)) MiniNow(
-                    current, favs.contains(current.id),
+                    current, favs.contains(current.id), land,
                     onOpen = { tab = MTab.NOW; closeSub() },
                     onFav = { favs = store.toggleFavorite(current.id); com.barq.focus.service.MusicService.refresh() }
                 )
-                MusicBar(
+                if (!land) MusicBar(
                     tab, { tab = it; closeSub() },
                     { reload++ }, { showSleep = true }, { showEq = true },
                     { Music.stopAll(ctx); toast(tr("Player closed")) }
@@ -257,7 +261,13 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
             }
         }
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
+        Row(Modifier.padding(pad).fillMaxSize()) {
+        if (land) MusicRail(
+            tab, { tab = it; closeSub() },
+            { reload++ }, { showSleep = true }, { showEq = true },
+            { Music.stopAll(ctx); toast(tr("Player closed")) }
+        )
+        Box(Modifier.weight(1f).fillMaxHeight()) {
             // pages slide sideways, in the direction of the tab you pick; the old page keeps its own content while it leaves
             val page = if (!granted) -1 else if (loading && songs.isEmpty()) -2 else if (subTitle != null) 100 else tab.ordinal
             val lastSubBox = remember { arrayOfNulls<Pair<String, List<Song>>>(1) }
@@ -402,6 +412,7 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
                     IconButton(onClick = { closeSub(); tab = MTab.SEARCH }) { Icon(Icons.Default.Search, tr("Search songs")) }
                 }
             }
+        }
         }
     }
 
@@ -619,6 +630,43 @@ fun MusicScreen(store: Store, onBack: () -> Unit) {
 // ------------------------------------------------------------------------------------------ pieces
 
 @Composable
+private fun MusicRail(tab: MTab, onTab: (MTab) -> Unit, onRefresh: () -> Unit, onSleep: () -> Unit, onEq: () -> Unit, onClose: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    val items = listOf(
+        MTab.QUEUE to Icons.AutoMirrored.Filled.QueueMusic, MTab.NOW to Icons.Default.PlayCircleFilled, MTab.FOLDERS to Icons.Default.Folder,
+        MTab.ALBUMS to Icons.Default.Album, MTab.ARTISTS to Icons.Default.Person, MTab.PLAYLISTS to Icons.Default.LibraryMusic,
+        MTab.SEARCH to Icons.Default.Search,
+    )
+    Surface(tonalElevation = 3.dp) {
+        Column(
+            Modifier.fillMaxHeight().width(56.dp)
+                .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+                .verticalScroll(rememberScrollState()).padding(vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            items.forEach { (t, icon) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(width = 3.dp, height = 18.dp).clip(CircleShape).background(if (tab == t) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent))
+                    IconButton(onClick = { onTab(t) }, modifier = Modifier.size(40.dp)) {
+                        Icon(icon, null, modifier = Modifier.size(22.dp), tint = if (tab == t) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            Box {
+                IconButton(onClick = { menu = true }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.MoreVert, null, modifier = Modifier.size(22.dp)) }
+                DropdownMenu(menu, { menu = false }) {
+                    DropdownMenuItem(text = { Text(tr("Refresh library")) }, onClick = { menu = false; onRefresh() })
+                    DropdownMenuItem(text = { Text(tr("Sleep timer")) }, onClick = { menu = false; onSleep() })
+                    DropdownMenuItem(text = { Text(tr("Equalizer")) }, onClick = { menu = false; onEq() })
+                    DropdownMenuItem(text = { Text(tr("Close player")) }, onClick = { menu = false; onClose() })
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun MusicBar(tab: MTab, onTab: (MTab) -> Unit, onRefresh: () -> Unit, onSleep: () -> Unit, onEq: () -> Unit, onClose: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val items = listOf(
@@ -782,48 +830,52 @@ private fun NowPage(
     val primary = MaterialTheme.colorScheme.primary
     val dim = MaterialTheme.colorScheme.onSurfaceVariant
 
-    val land = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val land = isLandscape()
     val artBox: @Composable (Modifier) -> Unit = { m ->
         Box(m.padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
-            Art(current, Modifier.fillMaxHeight().aspectRatio(1f), 700, 28.dp)
+            Art(current, Modifier.fillMaxHeight().aspectRatio(1f), 700, 24.dp)
         }
     }
-    if (land) Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column(Modifier.fillMaxHeight().weight(0.8f)) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+    if (land) Row(
+        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top)).padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.fillMaxHeight().weight(0.75f)) {
+            IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
             artBox(Modifier.weight(1f).fillMaxWidth())
         }
-        Column(Modifier.fillMaxHeight().weight(1.2f).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Spacer(Modifier.height(14.dp))
+        Column(Modifier.fillMaxHeight().weight(1.25f).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text(
-            current?.title ?: tr("Nothing playing"), textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FocusNoteFont, fontWeight = FontWeight.Bold, textDirection = TextDirection.Content)
+            current?.title ?: tr("Nothing playing"), textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.titleLarge.copy(fontFamily = FocusNoteFont, fontWeight = FontWeight.Bold, textDirection = TextDirection.Content)
         )
-        Text(current?.artist ?: "", color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
         Text(
-            current?.let { it.album + if (it.track > 0) "  -  " + it.track else "" } ?: "",
+            listOfNotNull(current?.artist?.takeIf { it.isNotBlank() }, current?.album?.takeIf { it.isNotBlank() }).joinToString("  ·  "),
             color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium
         )
         if (current == null) TextButton(onClick = onLibrary) { Text(tr("Pick something to play")) }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(4.dp))
         LtrRow(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onFav, enabled = current != null) { Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", Modifier.size(30.dp), tint = if (fav) primary else dim) }
-            IconButton(onClick = onInfo, enabled = current != null) { Icon(Icons.Default.Info, "Info", tint = dim) }
-            IconButton(onClick = onAddPlaylist, enabled = current != null) { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, "Playlist", tint = dim) }
-            IconButton(onClick = onMore, enabled = current != null) { Icon(Icons.Default.MoreHoriz, "More", tint = dim) }
+            IconButton(onClick = onFav, enabled = current != null, modifier = Modifier.size(36.dp)) { Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", Modifier.size(22.dp), tint = if (fav) primary else dim) }
+            IconButton(onClick = onInfo, enabled = current != null, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Info, "Info", Modifier.size(20.dp), tint = dim) }
+            IconButton(onClick = onAddPlaylist, enabled = current != null, modifier = Modifier.size(36.dp)) { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, "Playlist", Modifier.size(20.dp), tint = dim) }
+            IconButton(onClick = onMore, enabled = current != null, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.MoreHoriz, "More", Modifier.size(20.dp), tint = dim) }
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = onRepeat) {
+            IconButton(onClick = onVolume, modifier = Modifier.size(36.dp)) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "Volume", Modifier.size(20.dp), tint = dim) }
+            IconButton(onClick = onEq, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Equalizer, "Equalizer", Modifier.size(20.dp), tint = dim) }
+            IconButton(onClick = onRepeat, modifier = Modifier.size(36.dp)) {
                 Icon(
                     if (Music.repeatMode == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, "Repeat",
-                    tint = if (Music.repeatMode == Player.REPEAT_MODE_OFF) dim.copy(alpha = 0.6f) else primary
+                    Modifier.size(20.dp), tint = if (Music.repeatMode == Player.REPEAT_MODE_OFF) dim.copy(alpha = 0.6f) else primary
                 )
             }
-            IconButton(onClick = onShuffle) { Icon(Icons.Default.Shuffle, "Shuffle", tint = if (Music.shuffle) primary else dim.copy(alpha = 0.6f)) }
+            IconButton(onClick = onShuffle, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Shuffle, "Shuffle", Modifier.size(20.dp), tint = if (Music.shuffle) primary else dim.copy(alpha = 0.6f)) }
         }
 
         LtrRow(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(mmss(drag?.toLong() ?: pos), style = MaterialTheme.typography.labelLarge, color = dim)
+            Text(mmss(drag?.toLong() ?: pos), style = MaterialTheme.typography.labelMedium, color = dim)
             Slider(
                 drag ?: pos.toFloat().coerceAtMost(dur.coerceAtLeast(1L).toFloat()),
                 { drag = it },
@@ -831,21 +883,17 @@ private fun NowPage(
                 valueRange = 0f..dur.coerceAtLeast(1L).toFloat(),
                 onValueChangeFinished = { drag?.let { Music.player?.seekTo(it.toLong()) }; drag = null }
             )
-            Text(mmss(dur), style = MaterialTheme.typography.labelLarge, color = dim)
+            Text(mmss(dur), style = MaterialTheme.typography.labelMedium, color = dim)
         }
 
-        LtrRow(Modifier.fillMaxWidth().padding(bottom = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { Music.player?.seekToPreviousMediaItem() }) { Icon(Icons.Default.SkipPrevious, "Previous", Modifier.size(32.dp)) }
+        LtrRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { Music.player?.seekToPreviousMediaItem() }) { Icon(Icons.Default.SkipPrevious, "Previous", Modifier.size(28.dp)) }
             IconButton(onClick = { Music.player?.let { it.seekTo((it.currentPosition - 10_000L).coerceAtLeast(0L)) } }) { Icon(Icons.Default.FastRewind, "Back 10 s") }
-            FilledIconButton(onClick = { Music.player?.let { if (it.isPlaying) it.pause() else it.play() } }, Modifier.size(84.dp)) {
-                Icon(if (Music.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(48.dp))
+            FilledIconButton(onClick = { Music.player?.let { if (it.isPlaying) it.pause() else it.play() } }, Modifier.size(58.dp)) {
+                Icon(if (Music.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(32.dp))
             }
             IconButton(onClick = { Music.player?.let { it.seekTo(it.currentPosition + 10_000L) } }) { Icon(Icons.Default.FastForward, "Forward 10 s") }
-            IconButton(onClick = { Music.player?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Next", Modifier.size(32.dp)) }
-        }
-        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onVolume) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "Volume", tint = dim) }
-            IconButton(onClick = onEq) { Icon(Icons.Default.Equalizer, "Equalizer", tint = dim) }
+            IconButton(onClick = { Music.player?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Next", Modifier.size(28.dp)) }
         }
         }
     } else Column(Modifier.fillMaxSize().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -910,7 +958,7 @@ private fun NowPage(
 
 /** Small now-playing strip shown above the tabs on every other page: art, title, love, previous, big play/pause, next. */
 @Composable
-private fun MiniNow(song: Song, fav: Boolean, onOpen: () -> Unit, onFav: () -> Unit) {
+private fun MiniNow(song: Song, fav: Boolean, compact: Boolean = false, onOpen: () -> Unit, onFav: () -> Unit) {
     var pos by remember { mutableLongStateOf(0L) }
     var dur by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
@@ -925,23 +973,29 @@ private fun MiniNow(song: Song, fav: Boolean, onOpen: () -> Unit, onFav: () -> U
                 progress = { if (dur > 0L) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f },
                 Modifier.fillMaxWidth().height(2.dp)
             )
-            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = if (compact) 3.dp else 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Row(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen), verticalAlignment = Alignment.CenterVertically) {
-                    Art(song, Modifier.size(48.dp), 120, 10.dp)
+                    Art(song, Modifier.size(if (compact) 36.dp else 48.dp), 120, 10.dp)
                     Column(Modifier.padding(start = 10.dp)) {
                         Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
                         Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                LtrRow {
-                IconButton(onClick = onFav) {
+                LtrRow(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onFav, modifier = if (compact) Modifier.size(36.dp) else Modifier) {
                     Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", tint = if (fav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = { Music.player?.seekToPreviousMediaItem() }) { Icon(Icons.Default.SkipPrevious, "Previous") }
-                FilledIconButton(onClick = { Music.player?.let { if (it.isPlaying) it.pause() else it.play() } }, Modifier.size(52.dp)) {
-                    Icon(if (Music.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(30.dp))
+                IconButton(onClick = { Music.player?.seekToPreviousMediaItem() }, modifier = if (compact) Modifier.size(36.dp) else Modifier) { Icon(Icons.Default.SkipPrevious, "Previous") }
+                FilledIconButton(
+                    onClick = { Music.player?.let { if (it.isPlaying) it.pause() else it.play() } },
+                    Modifier.size(if (compact) 40.dp else 52.dp)
+                ) {
+                    Icon(if (Music.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play / pause", Modifier.size(if (compact) 22.dp else 30.dp))
                 }
-                IconButton(onClick = { Music.player?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Next") }
+                IconButton(onClick = { Music.player?.seekToNextMediaItem() }, modifier = if (compact) Modifier.size(36.dp) else Modifier) { Icon(Icons.Default.SkipNext, "Next") }
                 }
             }
         }

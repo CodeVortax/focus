@@ -178,6 +178,7 @@ fun InvadersGame(store: Store, onBack: () -> Unit) {
     LaunchedEffect(s.phase) {
         if (s.phase == 2 && s.score > best) { best = s.score.toLong(); store.putLong("hs_invaders", best) }
     }
+    val land = isLandscape()
     GameScaffold(
         title = tr("Space Invasion"), onBack = onBack,
         actions = {
@@ -187,12 +188,8 @@ fun InvadersGame(store: Store, onBack: () -> Unit) {
         }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize().background(Color(0xFF070A1A))) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${s.score}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Text(trf("Wave %d", s.wave), color = Color(0xFFB8C0D8), fontSize = 14.sp)
-                }
-                Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) {
+            val arena: @Composable (Modifier) -> Unit = { m ->
+                Box(m) {
                     Canvas(
                         Modifier.fillMaxSize().pointerInput(Unit) {
                             detectDragGestures(
@@ -220,10 +217,40 @@ fun InvadersGame(store: Store, onBack: () -> Unit) {
                         tr("Paused"), emptyList(), tr("Resume"), { s.paused = false }, onBack, tr("Quit")
                     )
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    HoldButton("◀", Modifier.weight(1f), onDown = { s.left = true }, onUp = { s.left = false }, height = 80.dp, fontSize = 34.sp)
-                    HoldButton("▶", Modifier.weight(1f), onDown = { s.right = true }, onUp = { s.right = false }, height = 80.dp, fontSize = 34.sp)
-                    HoldButton(tr("FIRE"), Modifier.weight(1.6f), onDown = { s.firing = true; s.fire() }, onUp = { s.firing = false }, height = 80.dp, fontSize = 22.sp)
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.widthIn(min = 124.dp, max = 160.dp).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text("${s.score}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                            Text(trf("Wave %d", s.wave), color = Color(0xFFB8C0D8), fontSize = 14.sp)
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            HoldButton("◀", Modifier.weight(1f), onDown = { s.left = true }, onUp = { s.left = false }, height = 74.dp, fontSize = 28.sp)
+                            HoldButton("▶", Modifier.weight(1f), onDown = { s.right = true }, onUp = { s.right = false }, height = 74.dp, fontSize = 28.sp)
+                        }
+                    }
+                    arena(Modifier.weight(1f).fillMaxHeight())
+                    Box(Modifier.widthIn(min = 96.dp, max = 132.dp).fillMaxHeight(), contentAlignment = Alignment.BottomCenter) {
+                        HoldButton(tr("FIRE"), Modifier.fillMaxWidth(), onDown = { s.firing = true; s.fire() }, onUp = { s.firing = false }, height = 92.dp, fontSize = 20.sp)
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${s.score}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(trf("Wave %d", s.wave), color = Color(0xFFB8C0D8), fontSize = 14.sp)
+                    }
+                    arena(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        HoldButton("◀", Modifier.weight(1f), onDown = { s.left = true }, onUp = { s.left = false }, height = 80.dp, fontSize = 34.sp)
+                        HoldButton("▶", Modifier.weight(1f), onDown = { s.right = true }, onUp = { s.right = false }, height = 80.dp, fontSize = 34.sp)
+                        HoldButton(tr("FIRE"), Modifier.weight(1.6f), onDown = { s.firing = true; s.fire() }, onUp = { s.firing = false }, height = 80.dp, fontSize = 22.sp)
+                    }
                 }
             }
         }

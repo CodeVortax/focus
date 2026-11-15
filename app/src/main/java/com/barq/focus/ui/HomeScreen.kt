@@ -100,8 +100,12 @@ import com.barq.focus.data.FocusCard
 import com.barq.focus.data.Item
 import com.barq.focus.data.Store
 import com.barq.focus.data.startOfDay
+import com.barq.focus.service.Alerts
+import com.barq.focus.service.FocusWidgets
+import com.barq.focus.service.Notifier
 import com.barq.focus.service.Perms
 import com.barq.focus.service.Shared
+import com.barq.focus.service.TimerAlarm
 import com.barq.focus.ui.theme.AppTheme
 import com.barq.focus.ui.theme.CardSwatches
 import androidx.compose.material.icons.filled.Palette
@@ -168,7 +172,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
     var editing by remember { mutableStateOf<FocusCard?>(null) }
 
     if (menu) HomeMenuPanel(store.menuSide, { menu = false }) { menu = false; go(it) }
-    Scaffold { pad ->
+    Scaffold(contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Vertical)) { pad ->
         Column(Modifier.padding(pad).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy((look?.spacingDp ?: 12).dp)) {
             HomeHeader(
                 name = userName, onName = { nameDialog = true },
@@ -191,13 +195,27 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
             next?.let { n ->
                 val label = if (running != null) trf("Continue: %s", n.title) else trf("Start: %s", n.title)
                 val go1 = { if (running != null) onOpen(n) else open(n) }
+                val spark5 = {
+                    store.startActive(n.id, System.currentTimeMillis() + 5 * 60_000L)
+                    store.challengeAccepted()
+                    Alerts.stop(); TimerAlarm.reschedule(ctx, store); Notifier.syncTimer(ctx, store); FocusWidgets.refresh(ctx, true)
+                    open(n)
+                }
                 val shape = RoundedCornerShape((look?.buttonRadius ?: 20).dp)
-                val mod = Modifier.fillMaxWidth().heightIn(min = if (look?.homePrimaryAction == "normal") 48.dp else 56.dp)
+                val btnHeight = if (look?.homePrimaryAction == "normal") 48.dp else 56.dp
                 val txt: @Composable () -> Unit = {
                     Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
-                if (look?.homePrimaryAction == "subtle") FilledTonalButton(onClick = go1, modifier = mod, shape = shape) { txt() }
-                else Button(onClick = go1, modifier = mod, shape = shape) { txt() }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val mod = Modifier.weight(1f).heightIn(min = btnHeight)
+                    if (look?.homePrimaryAction == "subtle") FilledTonalButton(onClick = go1, modifier = mod, shape = shape) { txt() }
+                    else Button(onClick = go1, modifier = mod, shape = shape) { txt() }
+                    if (running == null) {
+                        FilledTonalButton(onClick = spark5, modifier = Modifier.heightIn(min = btnHeight), shape = shape, contentPadding = PaddingValues(horizontal = 14.dp)) {
+                            Text(tr("⚡ 5m"), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
             // nothing planned: an invitation, not an error (shown even with the companion off, it is a plain empty state)
             if (total == 0) Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
@@ -209,6 +227,7 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
             if (look?.homeShowProgress != false) {
                 var moreOpen by remember { mutableStateOf(false) }
                 val lvl = Game.level(xp)
+                val shields = store.streakShields
                 Card(Modifier.fillMaxWidth().clickable { go("log") }, shape = RoundedCornerShape(22.dp)) {
                     Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -228,11 +247,21 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                             progress = { done / total.toFloat() },
                             modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp))
                         )
+                        if (total > 0 && done < total) {
+                            Text(
+                                if (store.partialEligible(cards)) trf("Halfway milestone reached! Tap End day if you want +%d min now.", Config.PARTIAL_BONUS)
+                                else trf("Next reward: +%d min bonus when all subjects are done", Config.DAY_BONUS),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 2
+                            )
+                        }
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             StatChip("\uD83C\uDF7F " + com.barq.focus.data.hmText(store.bankSec()))
                             StatChip("\uD83D\uDCF1 $swipes")
                             StatChip("\uD83D\uDD25 $workStreak")
-                            StatChip(Game.titleOf(lvl).first + " " + trf("Lv %d", lvl))
+                            if (shields > 0) StatChip("\uD83D\uDEE1\uFE0F $shields")
+                            StatChip(Game.titleOf(lvl).first + " " + trf("Lv %d · %d%% Piggy", lvl, Game.interestPct(lvl)))
                         }
                         if (moreOpen) {
                             Text(

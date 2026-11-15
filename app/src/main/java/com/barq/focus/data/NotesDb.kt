@@ -34,6 +34,7 @@ data class Note(
     val body: String = "",
     val items: List<Item> = emptyList(),
     val color: Int = 0,                   // 0 = none, else ARGB
+    val paper: Int = 0,                   // 0 = plain, 1 = lined, 2 = grid, 3 = dots, 4 = cornell, 5 = parchment
     val pinned: Boolean = false,
     val archived: Boolean = false,
     val trashedAt: Long = 0L,             // 0 = not in trash
@@ -48,12 +49,12 @@ data class Note(
 }
 
 /** Plain SQLite (no Room/KSP needed) so it builds the same way in Termux and GitHub Actions. */
-class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "notes.db", null, 5) {
+class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "notes.db", null, 6) {
 
     override fun onCreate(d: SQLiteDatabase) {
         d.execSQL(
             "CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, type INTEGER, title TEXT, body TEXT, items TEXT, " +
-                "color INTEGER, pinned INTEGER, archived INTEGER, trashed INTEGER, labels TEXT, created INTEGER, modified INTEGER, " +
+                "color INTEGER, paper INTEGER DEFAULT 0, pinned INTEGER, archived INTEGER, trashed INTEGER, labels TEXT, created INTEGER, modified INTEGER, " +
                 "spans TEXT, voices TEXT, attach TEXT)"
         )
     }
@@ -62,12 +63,14 @@ class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
         try { d.execSQL("ALTER TABLE notes ADD COLUMN spans TEXT") } catch (_: Exception) {}
         try { d.execSQL("ALTER TABLE notes ADD COLUMN voices TEXT") } catch (_: Exception) {}
         try { d.execSQL("ALTER TABLE notes ADD COLUMN attach TEXT") } catch (_: Exception) {}
+        try { d.execSQL("ALTER TABLE notes ADD COLUMN paper INTEGER DEFAULT 0") } catch (_: Exception) {}
     }
     // A newer build may have left a higher version on disk: keep the data, just make sure our columns exist.
     override fun onDowngrade(d: SQLiteDatabase, o: Int, n: Int) {
         try { d.execSQL("ALTER TABLE notes ADD COLUMN spans TEXT") } catch (_: Exception) {}
         try { d.execSQL("ALTER TABLE notes ADD COLUMN voices TEXT") } catch (_: Exception) {}
         try { d.execSQL("ALTER TABLE notes ADD COLUMN attach TEXT") } catch (_: Exception) {}
+        try { d.execSQL("ALTER TABLE notes ADD COLUMN paper INTEGER DEFAULT 0") } catch (_: Exception) {}
     }
 
     private fun itemsToJson(l: List<Item>): JSONArray {
@@ -87,7 +90,8 @@ class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
     private fun values(n: Note) = ContentValues().apply {
         put("type", n.type); put("title", n.title); put("body", n.body)
         put("items", itemsToJson(n.items).toString())
-        put("color", n.color); put("pinned", if (n.pinned) 1 else 0); put("archived", if (n.archived) 1 else 0)
+        put("color", n.color); put("paper", n.paper)
+        put("pinned", if (n.pinned) 1 else 0); put("archived", if (n.archived) 1 else 0)
         put("trashed", n.trashedAt); put("labels", labelsToJson(n.labels).toString())
         put("spans", Rich.toJson(n.spans).toString())
         put("voices", Voices.toJson(n.voices).toString())
@@ -97,11 +101,14 @@ class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
 
     private fun read(c: Cursor): Note {
         fun i(n: String) = c.getColumnIndexOrThrow(n)
+        val paperIdx = c.getColumnIndex("paper")
         return Note(
             id = c.getLong(i("id")), type = c.getInt(i("type")),
             title = c.getString(i("title")) ?: "", body = c.getString(i("body")) ?: "",
             items = itemsFromJson(JSONArray(c.getString(i("items")) ?: "[]")),
-            color = c.getInt(i("color")), pinned = c.getInt(i("pinned")) == 1, archived = c.getInt(i("archived")) == 1,
+            color = c.getInt(i("color")),
+            paper = if (paperIdx >= 0) c.getInt(paperIdx) else 0,
+            pinned = c.getInt(i("pinned")) == 1, archived = c.getInt(i("archived")) == 1,
             trashedAt = c.getLong(i("trashed")),
             labels = labelsFromJson(JSONArray(c.getString(i("labels")) ?: "[]")),
             spans = try { Rich.fromJson(JSONArray(c.getString(i("spans")) ?: "[]")) } catch (_: Exception) { emptyList() },
@@ -142,7 +149,7 @@ class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
         all().forEach { n ->
             a.put(
                 JSONObject().put("type", n.type).put("title", n.title).put("body", n.body)
-                    .put("items", itemsToJson(n.items)).put("color", n.color).put("pinned", n.pinned)
+                    .put("items", itemsToJson(n.items)).put("color", n.color).put("paper", n.paper).put("pinned", n.pinned)
                     .put("archived", n.archived).put("trashed", n.trashedAt).put("labels", labelsToJson(n.labels)).put("spans", Rich.toJson(n.spans))
                     .put("created", n.created).put("modified", n.modified)
             )
@@ -159,7 +166,7 @@ class NotesDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
                 Note(
                     type = o.optInt("type", 0), title = o.optString("title", ""), body = o.optString("body", ""),
                     items = itemsFromJson(o.optJSONArray("items") ?: JSONArray()),
-                    color = o.optInt("color", 0), pinned = o.optBoolean("pinned", false),
+                    color = o.optInt("color", 0), paper = o.optInt("paper", 0), pinned = o.optBoolean("pinned", false),
                     archived = o.optBoolean("archived", false), trashedAt = o.optLong("trashed", 0L),
                     labels = labelsFromJson(o.optJSONArray("labels") ?: JSONArray()),
                     spans = Rich.fromJson(o.optJSONArray("spans")),

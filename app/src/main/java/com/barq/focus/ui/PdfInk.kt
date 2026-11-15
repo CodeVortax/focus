@@ -27,13 +27,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BorderColor
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.automirrored.filled.Redo
@@ -112,7 +115,7 @@ private class SidePositioner(val above: Boolean) : PopupPositionProvider {
 }
 
 @Composable
-private fun EraserIcon(tint: Color, modifier: Modifier = Modifier.size(24.dp)) {
+private fun EraserIcon(tint: Color, modifier: Modifier = Modifier.size(22.dp)) {
     Canvas(modifier) {
         val w = size.width; val h = size.height
         rotateAroundCenter(-35f) {
@@ -127,7 +130,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.rotateAroundCenter(
     rotate(deg, center, block)
 
 @Composable
-private fun ToolIcon(tool: Tool, tint: Color, modifier: Modifier = Modifier.size(24.dp)) {
+private fun ToolIcon(tool: Tool, tint: Color, modifier: Modifier = Modifier.size(22.dp)) {
     when (tool) {
         Tool.PEN -> Icon(Icons.Default.Edit, tr("Pen"), modifier, tint = tint)
         Tool.HIGHLIGHT -> Icon(Icons.Default.BorderColor, tr("Highlighter"), modifier, tint = tint)
@@ -139,7 +142,7 @@ private fun ToolIcon(tool: Tool, tint: Color, modifier: Modifier = Modifier.size
 @Composable
 private fun BarButton(selected: Boolean, enabled: Boolean = true, onClick: () -> Unit, content: @Composable () -> Unit) {
     Box(
-        Modifier.size(42.dp).clip(CircleShape)
+        Modifier.size(38.dp).clip(CircleShape)
             .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
@@ -147,9 +150,9 @@ private fun BarButton(selected: Boolean, enabled: Boolean = true, onClick: () ->
 }
 
 /**
- * The drawing bar: one line of icons that floats. Hold it 1.5 s to pick it up and move it anywhere; left alone for
- * 2.5 s it shrinks to one circle showing the tool in use (tap the circle to open it again). Tap the pen or the
- * highlighter again for its options (style, size, colours).
+ * The drawing bar: one line of icons that floats. Hold it briefly (or use the grip) to pick it up and move it anywhere;
+ * left alone for 2.5 s it shrinks to one circle showing the tool in use (tap the circle to open it again).
+ * Scrolls horizontally cleanly on narrow screens and re-clamps safely on rotation/resize.
  */
 @Composable
 fun FloatingInkBar(
@@ -165,51 +168,86 @@ fun FloatingInkBar(
     val haptic = LocalHapticFeedback.current
     var size by remember { mutableStateOf(IntSize.Zero) }
     var pos by remember { mutableStateOf<Offset?>(null) }
+    var normX by remember { mutableFloatStateOf(savedX) }
+    var normY by remember { mutableFloatStateOf(savedY) }
     var collapsed by remember { mutableStateOf(false) }
     var touch by remember { mutableIntStateOf(0) }
     var popup by remember { mutableStateOf(false) }
     var picker by remember { mutableStateOf(false) }
     var confirm by remember { mutableIntStateOf(0) }          // 0 none, 1 first question, 2 second question
     var held by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
 
-    // first placement: where it was last left, or bottom centre
-    LaunchedEffect(size, areaW, areaH) {
-        if (pos == null && size.width > 0 && areaW > 0f) {
-            pos = if (savedX >= 0f) Offset(savedX * (areaW - size.width).coerceAtLeast(0f), savedY * (areaH - size.height).coerceAtLeast(0f))
-            else Offset((areaW - size.width) / 2f, areaH - size.height - with(density) { 28.dp.toPx() })
+    val marginPx = with(density) { 8.dp.toPx() }
+    val bottomDefaultPx = with(density) { 24.dp.toPx() }
+
+    fun clampPos(o: Offset): Offset {
+        if (areaW <= 0f || areaH <= 0f || size.width <= 0 || size.height <= 0) return o
+        val minX = if (size.width + marginPx * 2f <= areaW) marginPx else ((areaW - size.width) / 2f).coerceAtLeast(0f)
+        val maxX = if (size.width + marginPx * 2f <= areaW) (areaW - size.width - marginPx) else minX
+        val minY = if (size.height + marginPx * 2f <= areaH) marginPx else ((areaH - size.height) / 2f).coerceAtLeast(0f)
+        val maxY = if (size.height + marginPx * 2f <= areaH) (areaH - size.height - marginPx) else minY
+        return Offset(o.x.coerceIn(minX, maxX.coerceAtLeast(minX)), o.y.coerceIn(minY, maxY.coerceAtLeast(minY)))
+    }
+
+    // Re-place & re-clamp whenever view dimensions, orientation, or bar collapse state change.
+    LaunchedEffect(size, areaW, areaH, collapsed) {
+        if (size.width > 0 && size.height > 0 && areaW > 0f && areaH > 0f) {
+            val raw = if (normX >= 0f && normY >= 0f) {
+                val spanX = (areaW - size.width - marginPx * 2f).coerceAtLeast(0f)
+                val spanY = (areaH - size.height - marginPx * 2f).coerceAtLeast(0f)
+                val minX = if (spanX > 0f) marginPx else ((areaW - size.width) / 2f).coerceAtLeast(0f)
+                val minY = if (spanY > 0f) marginPx else ((areaH - size.height) / 2f).coerceAtLeast(0f)
+                Offset(minX + normX.coerceIn(0f, 1f) * spanX, minY + normY.coerceIn(0f, 1f) * spanY)
+            } else {
+                Offset((areaW - size.width) / 2f, areaH - size.height - bottomDefaultPx)
+            }
+            pos = clampPos(raw)
         }
     }
-    // idle for 2.5 s (nothing touched, nothing open, not being moved): shrink to the circle
-    LaunchedEffect(touch, collapsed, popup, picker, confirm, held) {
-        if (!collapsed && !popup && !picker && confirm == 0 && !held) { delay(2500); collapsed = true }
+
+    // idle for 2.5 s (nothing touched, not scrolling, nothing open, not being moved): shrink to the circle
+    LaunchedEffect(touch, collapsed, popup, picker, confirm, held, scrollState.isScrollInProgress) {
+        if (!collapsed && !popup && !picker && confirm == 0 && !held && !scrollState.isScrollInProgress) {
+            delay(2500)
+            collapsed = true
+        }
     }
     fun poke() { touch++ }
-    fun clampPos(o: Offset) = Offset(
-        o.x.coerceIn(0f, (areaW - size.width).coerceAtLeast(0f)),
-        o.y.coerceIn(0f, (areaH - size.height).coerceAtLeast(0f))
-    )
+
     val cur = pos
     val lower = (cur?.y ?: 0f) + size.height / 2f > areaH / 2f
+    val maxBarWidth = with(density) { ((areaW - marginPx * 2f).coerceAtLeast(180f)).toDp() }
 
     Box(
         modifier
             .offset { IntOffset((cur?.x ?: -10000f).roundToInt(), (cur?.y ?: 0f).roundToInt()) }
             .onSizeChanged { size = it }
             .holdToDrag(
-                1500L,
+                420L,
                 onPickUp = { held = true; haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
                 onMove = { d -> pos = clampPos((pos ?: Offset.Zero) + d) },
                 onDrop = {
                     held = false; poke()
                     val p = pos
-                    if (p != null && areaW > size.width && areaH > size.height) onMoved(p.x / (areaW - size.width), p.y / (areaH - size.height))
+                    if (p != null && areaW > size.width && areaH > size.height) {
+                        val spanX = (areaW - size.width - marginPx * 2f).coerceAtLeast(1f)
+                        val spanY = (areaH - size.height - marginPx * 2f).coerceAtLeast(1f)
+                        normX = ((p.x - marginPx) / spanX).coerceIn(0f, 1f)
+                        normY = ((p.y - marginPx) / spanY).coerceIn(0f, 1f)
+                        onMoved(normX, normY)
+                    }
                 }
             )
     ) {
         if (collapsed) {
             Surface(
-                Modifier.size(52.dp).clickable { collapsed = false; poke() },
-                shape = CircleShape, tonalElevation = 8.dp, shadowElevation = 10.dp
+                Modifier.size(52.dp)
+                    .then(if (held) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape) else Modifier)
+                    .clickable { collapsed = false; poke() },
+                shape = CircleShape,
+                tonalElevation = if (held) 14.dp else 8.dp,
+                shadowElevation = if (held) 16.dp else 10.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (tool != Tool.ERASER) Box(Modifier.size(44.dp).border(3.dp, Color(color), CircleShape))
@@ -217,8 +255,23 @@ fun FloatingInkBar(
                 }
             }
         } else {
-            Surface(shape = RoundedCornerShape(28.dp), tonalElevation = 8.dp, shadowElevation = 10.dp) {
-                Row(Modifier.padding(horizontal = 6.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                Modifier.widthIn(max = maxBarWidth)
+                    .then(if (held) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(28.dp)) else Modifier),
+                shape = RoundedCornerShape(28.dp),
+                tonalElevation = if (held) 14.dp else 8.dp,
+                shadowElevation = if (held) 16.dp else 10.dp
+            ) {
+                Row(
+                    Modifier.horizontalScroll(scrollState).padding(horizontal = 6.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.DragIndicator,
+                        tr("Hold to move"),
+                        Modifier.padding(start = 2.dp, end = 2.dp).size(18.dp),
+                        tint = if (held) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                    )
                     listOf(Tool.PEN, Tool.HIGHLIGHT, Tool.ERASER).forEach { t ->
                         BarButton(tool == t, onClick = {
                             poke()
@@ -226,24 +279,24 @@ fun FloatingInkBar(
                         }) { ToolIcon(t, if (tool == t) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) }
                     }
                     BarButton(false, onClick = { poke(); picker = false; popup = !popup }, enabled = tool != Tool.ERASER) {
-                        Box(Modifier.size(24.dp).clip(CircleShape).background(if (tool == Tool.ERASER) Color.Transparent else Color(color)).border(2.dp, MaterialTheme.colorScheme.outline, CircleShape))
+                        Box(Modifier.size(22.dp).clip(CircleShape).background(if (tool == Tool.ERASER) Color.Transparent else Color(color)).border(2.dp, MaterialTheme.colorScheme.outline, CircleShape))
                     }
-                    BarButton(false, canUndo, { poke(); onUndo() }) { Icon(Icons.AutoMirrored.Filled.Undo, tr("Undo"), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canUndo) 1f else 0.3f)) }
-                    BarButton(false, canRedo, { poke(); onRedo() }) { Icon(Icons.AutoMirrored.Filled.Redo, tr("Redo"), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canRedo) 1f else 0.3f)) }
-                    BarButton(false, onClick = { poke(); confirm = 1 }) { Icon(Icons.Default.DeleteSweep, tr("Clear page")) }
+                    BarButton(false, canUndo, { poke(); onUndo() }) { Icon(Icons.AutoMirrored.Filled.Undo, tr("Undo"), Modifier.size(21.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canUndo) 1f else 0.3f)) }
+                    BarButton(false, canRedo, { poke(); onRedo() }) { Icon(Icons.AutoMirrored.Filled.Redo, tr("Redo"), Modifier.size(21.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (canRedo) 1f else 0.3f)) }
+                    BarButton(false, onClick = { poke(); confirm = 1 }) { Icon(Icons.Default.DeleteSweep, tr("Clear page"), Modifier.size(21.dp)) }
                     // the hand: pen works with the stylus only. A red hand with a line through it while it is on.
                     BarButton(stylusOnly, onClick = { poke(); onStylus(!stylusOnly) }) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.PanTool, tr("Stylus only"), tint = if (stylusOnly) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurface)
-                            if (stylusOnly) Canvas(Modifier.size(26.dp)) {
-                                drawLine(Color(0xFFE53935), Offset(size.width * 0.1f, size.height * 0.9f), Offset(size.width * 0.9f, size.height * 0.1f), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
+                            Icon(Icons.Default.PanTool, tr("Stylus only"), Modifier.size(20.dp), tint = if (stylusOnly) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurface)
+                            if (stylusOnly) Canvas(Modifier.size(24.dp)) {
+                                drawLine(Color(0xFFE53935), Offset(size.width * 0.1f, size.height * 0.9f), Offset(size.width * 0.9f, size.height * 0.1f), strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
                             }
                         }
                     }
-                    BarButton(false, onClick = onDone) { Icon(Icons.Default.Check, tr("Done"), tint = MaterialTheme.colorScheme.primary) }
+                    BarButton(false, onClick = onDone) { Icon(Icons.Default.Check, tr("Done"), Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary) }
                 }
             }
-            if (popup && tool != Tool.ERASER) Popup(SidePositioner(!lower).let { it }, onDismissRequest = { popup = false }, properties = PopupProperties(focusable = true)) {
+            if (popup && tool != Tool.ERASER) Popup(SidePositioner(!lower), onDismissRequest = { popup = false }, properties = PopupProperties(focusable = true)) {
                 Surface(shape = RoundedCornerShape(22.dp), tonalElevation = 10.dp, shadowElevation = 12.dp) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

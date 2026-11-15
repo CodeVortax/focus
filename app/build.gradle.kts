@@ -25,6 +25,12 @@ android {
     val ksFile = rootProject.file("keystore.properties")
     val ks = Properties().also { if (ksFile.exists()) ksFile.inputStream().use { s -> it.load(s) } }
     signingConfigs {
+        create("debugConfig") {
+            storeFile = file("${rootDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (ksFile.exists()) create("release") {
             storeFile = rootProject.file(ks.getProperty("storeFile"))
             storePassword = ks.getProperty("storePassword")
@@ -34,6 +40,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (rootProject.file("debug.keystore").exists()) {
+                signingConfig = signingConfigs.getByName("debugConfig")
+            }
+        }
         release {
             if (ksFile.exists()) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false

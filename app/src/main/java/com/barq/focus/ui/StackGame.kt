@@ -130,14 +130,15 @@ fun StackGame(store: Store, onBack: () -> Unit) {
                 if (tick.longValue < 0) return@Canvas
                 drawStack(s)
             }
+            val land = isLandscape()
             Text(
-                "${s.score}", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.TopCenter).padding(12.dp)
+                "${s.score}", color = Color.White, fontSize = if (land) 28.sp else 40.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.TopCenter).padding(if (land) 6.dp else 12.dp)
             )
             when {
                 s.phase == 0 -> Text(
                     tr("Tap to drop the block. Line it up!"), color = Color.White,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp)
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(if (land) 10.dp else 24.dp)
                 )
                 s.phase == 2 -> GameOverlay(
                     tr("Tower fell!"), listOf(trf("Score: %d", s.score), trf("Best: %d", best)),

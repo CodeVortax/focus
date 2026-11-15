@@ -28,9 +28,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.barq.focus.data.Game
 import com.barq.focus.data.Store
 import com.barq.focus.data.Vault
 import com.barq.focus.data.minText
@@ -40,7 +40,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** The piggy bank: saved treat time, the payout date, and the ledger of deposits, payouts and funny fines. */
+/** The piggy bank: saved treat time, the payout date, streak shields, and the ledger. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PiggyScreen(store: Store, onBack: () -> Unit) {
@@ -48,24 +48,60 @@ fun PiggyScreen(store: Store, onBack: () -> Unit) {
     val lots = remember { Vault.lots(store).sortedBy { it.release } }
     val ledger = remember { Vault.ledger(store).reversed() }
     val balance = lots.sumOf { it.sec }
+    val xp = remember { Game.xp(store) }
+    val level = Game.level(xp)
+    val rate = Game.interestPct(level)
+    val nextTier = Game.nextInterestTier(level)
+    val shields = remember { store.streakShields }
+    val tonightSec = remember { store.todayUnusedSec() }
     val dateFmt = remember { SimpleDateFormat("d MMM", Locale.getDefault()) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
+                windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
                 title = { Text(tr("Piggy bank")) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
             )
         }
     ) { pad ->
-        LazyColumn(Modifier.padding(pad).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(Modifier.padding(pad).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
             item {
                 Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("\uD83D\uDC37  " + trf("%s min in the piggy", minText(balance)), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         lots.firstOrNull()?.let {
-                            Text(trf("Next payout: %s min in %d days", minText(it.sec + it.sec * Vault.INTEREST_PCT / 100), Vault.daysLeft(it)), style = MaterialTheme.typography.bodyMedium)
+                            Text(trf("Next payout: %s min in %d days", minText(it.sec + it.sec * rate / 100), Vault.daysLeft(it)), style = MaterialTheme.typography.bodyMedium)
                         } ?: Text(tr("Empty for now. Leave some treat time unspent and it lands here tonight."), style = MaterialTheme.typography.bodyMedium)
+                        if (tonightSec >= 60) {
+                            val projected = tonightSec + tonightSec * rate / 100
+                            Text(
+                                "\uD83C\uDF19  " + trf("Going in tonight: %s min (pays %s min in 7 days)", minText(tonightSec), minText(projected)),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Text(
+                            if (nextTier != null) trf("Level %d perk: %d%% interest (next: %d%% at Lv %d)", level, rate, nextTier.second, nextTier.first)
+                            else trf("Top perk active: %d%% piggy interest", rate),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+            item {
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("\uD83D\uDEE1\uFE0F", style = MaterialTheme.typography.headlineMedium)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(trf("Piggy Shields: %d / 2", shields), fontWeight = FontWeight.Bold)
+                            Text(
+                                tr("Earned by finishing all 4 daily quests or every 3-day work streak. Blocks 1 fine automatically."),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
             }
@@ -79,7 +115,7 @@ fun PiggyScreen(store: Store, onBack: () -> Unit) {
                 Text(
                     trf(
                         "Every night the treat time you did not spend goes into the piggy. A week later it is paid into your treat bank with %d%% interest. If you planned tasks and did none, you get a fine, taken from the piggy.",
-                        Vault.INTEREST_PCT
+                        rate
                     ),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -105,6 +141,7 @@ fun PiggyScreen(store: Store, onBack: () -> Unit) {
             items(ledger) { e ->
                 val (icon, tint) = when (e.kind) {
                     "fine" -> "\uD83D\uDEA8" to MaterialTheme.colorScheme.error
+                    "shield" -> "\uD83D\uDEE1\uFE0F" to MaterialTheme.colorScheme.primary
                     "warn" -> "\u26A0\uFE0F" to MaterialTheme.colorScheme.onSurfaceVariant
                     "rel" -> "\uD83D\uDCB0" to MaterialTheme.colorScheme.primary
                     else -> "\uD83D\uDC37" to MaterialTheme.colorScheme.onSurface

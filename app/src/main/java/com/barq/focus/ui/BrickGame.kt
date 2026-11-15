@@ -259,18 +259,14 @@ fun BrickGame(store: Store, onBack: () -> Unit) {
     LaunchedEffect(s.phase) {
         if ((s.phase == 2 || s.phase == 3) && s.score > best) { best = s.score.toLong(); store.putLong("hs_brick", best) }
     }
+    val land = isLandscape()
     GameScaffold(
         title = tr("Brick Breaker"), onBack = onBack,
         actions = { if (s.phase == 1) IconButton(onClick = { s.paused = true }) { Icon(Icons.Default.Pause, "Pause") } }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize().background(Color(0xFF0F1224))) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${s.score}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Text(trf("Level %d", s.level), color = Color(0xFFB8C0D8), fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    Text("♥".repeat(maxOf(0, s.lives)), color = Color(0xFFFF6B6B), fontSize = 18.sp)
-                }
-                Box(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)) {
+            val arena: @Composable (Modifier) -> Unit = { m ->
+                Box(m) {
                     Canvas(
                         Modifier.fillMaxSize()
                             .pointerInput(Unit) { detectTapGestures(onTap = { s.launch() }) }
@@ -302,6 +298,29 @@ fun BrickGame(store: Store, onBack: () -> Unit) {
                     if (s.phase == 1 && s.paused) GameOverlay(
                         tr("Paused"), emptyList(), tr("Resume"), { s.paused = false }, onBack, tr("Quit")
                     )
+                }
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(Modifier.widthIn(min = 104.dp, max = 144.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("${s.score}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                        Text(trf("Level %d", s.level), color = Color(0xFFB8C0D8), fontSize = 14.sp)
+                        Text("♥".repeat(maxOf(0, s.lives)), color = Color(0xFFFF6B6B), fontSize = 18.sp)
+                        if (best > 0L) Text(trf("Best: %d", best), color = Color(0xFF9AA5C4), fontSize = 13.sp)
+                    }
+                    arena(Modifier.weight(1f).fillMaxHeight())
+                }
+            } else {
+                Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${s.score}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(trf("Level %d", s.level), color = Color(0xFFB8C0D8), fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Text("♥".repeat(maxOf(0, s.lives)), color = Color(0xFFFF6B6B), fontSize = 18.sp)
+                    }
+                    arena(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp))
                 }
             }
         }

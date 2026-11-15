@@ -145,13 +145,14 @@ fun DinoGame(store: Store, onBack: () -> Unit) {
     LaunchedEffect(s.phase) {
         if (s.phase == 2 && s.score > best) { best = s.score.toLong(); store.putLong("hs_dino", best) }
     }
+    val land = isLandscape()
     GameScaffold(
         title = tr("Dino Run"), onBack = onBack,
         actions = { if (s.phase == 1) IconButton(onClick = { s.paused = true; s.duck = false }) { Icon(Icons.Default.Pause, "Pause") } }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize().background(Color(0xFF1B1F2A))) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Box(Modifier.weight(1f).fillMaxWidth()) {
+            val arena: @Composable (Modifier) -> Unit = { m ->
+                Box(m) {
                     Canvas(
                         Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onPress = { s.jump() }) }
                     ) {
@@ -159,7 +160,7 @@ fun DinoGame(store: Store, onBack: () -> Unit) {
                         drawDino(s)
                     }
                     Text(
-                        "HI ${best}   ${s.score}", color = Color(0xFFB8C0D8), fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                        "HI ${best}   ${s.score}", color = Color(0xFF424242), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
                     )
                     if (s.phase == 0) GameOverlay(
@@ -174,9 +175,25 @@ fun DinoGame(store: Store, onBack: () -> Unit) {
                         tr("Paused"), emptyList(), tr("Resume"), { s.paused = false }, onBack, tr("Quit")
                     )
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    HoldButton("▼", Modifier.weight(1f), onDown = { s.duck = true }, onUp = { s.duck = false }, height = 84.dp, fontSize = 34.sp)
-                    HoldButton("▲", Modifier.weight(1f), onDown = { s.jump() }, height = 84.dp, fontSize = 34.sp)
+            }
+            if (land) {
+                Row(
+                    Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    HoldButton("▼", Modifier.width(84.dp), onDown = { s.duck = true }, onUp = { s.duck = false }, height = 110.dp, fontSize = 32.sp)
+                    arena(Modifier.weight(1f).fillMaxHeight())
+                    HoldButton("▲", Modifier.width(84.dp), onDown = { s.jump() }, height = 110.dp, fontSize = 32.sp)
+                }
+            } else {
+                Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    arena(Modifier.weight(1f).fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        HoldButton("▼", Modifier.weight(1f), onDown = { s.duck = true }, onUp = { s.duck = false }, height = 84.dp, fontSize = 34.sp)
+                        HoldButton("▲", Modifier.weight(1f), onDown = { s.jump() }, height = 84.dp, fontSize = 34.sp)
+                    }
                 }
             }
         }

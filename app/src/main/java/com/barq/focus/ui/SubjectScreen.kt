@@ -204,6 +204,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
     val aiCtx = androidx.compose.ui.platform.LocalContext.current
     Scaffold(topBar = {
         TopAppBar(
+            windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
             title = { Text(card.title) },
             navigationIcon = { IconButton(onClick = onExit) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
             actions = {
@@ -220,7 +221,7 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
                 }
             }
         )
-    }, contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime)) { pad ->
+    }, contentWindowInsets = WindowInsets.safeDrawing.union(WindowInsets.ime)) { pad ->
         Column(
             Modifier.padding(pad).padding(horizontal = 16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -241,7 +242,14 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
 
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (!running && done < total) {
+                            FilledTonalButton(onClick = {
+                                store.startActive(card.id, System.currentTimeMillis() + 5 * 60_000L)
+                                store.challengeAccepted()
+                                refresh()
+                            }) { Text("⚡ " + tr("5-min spark")) }
+                        }
                         listOf(1, 5, 10).forEach { m -> OutlinedButton(onClick = { addMinutes(m) }) { Text("+${m}m") } }
                     }
                     if (!running) {
