@@ -153,10 +153,11 @@ object ShortsDetector {
 
     /**
      * Structural fallback (needs no view ids, so it survives renamed views): a screen-sized, vertically
-     * scrollable pager with a page that fills it. Only used for YouTube and Instagram.
+     * scrollable pager with a page that fills it. YouTube only, and only in portrait: Instagram's normal feed has
+     * near-screen-sized posts that look the same, and Instagram's ids are checked directly.
      */
     fun isPager(pkg: String, root: AccessibilityNodeInfo, sw: Int, sh: Int): Boolean = try {
-        (pkg == YT || pkg == IG) && pager(root, sw, sh)
+        pkg == YT && sw < sh && pager(root, sw, sh)
     } catch (_: Exception) { false }
 
     private fun pager(root: AccessibilityNodeInfo, sw: Int, sh: Int): Boolean {
@@ -165,17 +166,17 @@ object ShortsDetector {
         val cr = Rect()
         fun go(n: AccessibilityNodeInfo?): Boolean {
             if (n == null || budget-- <= 0) return false
-            if (n.isScrollable && n.childCount in 1..6 && n.actionList.any {
+            if (n.isScrollable && n.childCount in 1..4 && n.actionList.any {
                     it == AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_UP ||
                         it == AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_DOWN
                 }) {
                 n.getBoundsInScreen(r)
-                if (r.width() >= sw * 0.9 && r.height() >= sh * 0.6) {
+                if (r.width() >= sw * 0.95 && r.height() >= sh * 0.7) {
                     for (i in 0 until n.childCount) {
                         val c = n.getChild(i) ?: continue
                         if (!c.isVisibleToUser) continue
                         c.getBoundsInScreen(cr)
-                        if (cr.height() >= r.height() * 0.8) return true
+                        if (cr.height() >= r.height() * 0.9) return true
                     }
                 }
             }

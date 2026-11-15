@@ -183,7 +183,8 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                         })
                     }
                 }
-                var shortsLim by remember { mutableStateOf(store.shortsLimit) }
+                var shortsLim by remember { mutableStateOf(store.shortsLimitShown()) }
+                var waitMin by remember { mutableStateOf(store.shortsLooseningMinutes()) }
                 Column {
                     Text(tr("Daily Shorts limit"), fontWeight = FontWeight.SemiBold)
                     Text(
@@ -191,17 +192,29 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(onClick = { shortsLim = (shortsLim - 5).coerceAtLeast(0); store.shortsLimit = shortsLim }) { Text("−5") }
+                        OutlinedButton(onClick = {
+                            store.shortsLimit = if (shortsLim == 0) 30 else (shortsLim - 5).coerceAtLeast(5)
+                            shortsLim = store.shortsLimitShown(); waitMin = store.shortsLooseningMinutes()
+                        }) { Text("−5") }
                         Text(
                             if (shortsLim == 0) tr("No limit") else shortsLim.toString(),
                             Modifier.weight(1f).padding(horizontal = 8.dp),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             style = MaterialTheme.typography.titleMedium
                         )
-                        OutlinedButton(onClick = { shortsLim = (shortsLim + 5).coerceAtMost(500); store.shortsLimit = shortsLim }) { Text("+5") }
+                        OutlinedButton(onClick = {
+                            store.shortsLimit = if (shortsLim == 0) 0 else if (shortsLim >= 500) 0 else shortsLim + 5
+                            shortsLim = store.shortsLimitShown(); waitMin = store.shortsLooseningMinutes()
+                        }) { Text("+5") }
                     }
                 }
-                var strict by remember { mutableStateOf(store.strictShorts) }
+                var why by remember { mutableStateOf(store.shortsWhy) }
+                OutlinedTextField(
+                    why, { s -> why = s.take(140); store.shortsWhy = why },
+                    Modifier.fillMaxWidth(),
+                    label = { Text(tr("Your reason (shown at the gate)")) }, singleLine = true
+                )
+                var strict by remember { mutableStateOf(store.strictShortsShown()) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(tr("Strict Shorts mode"))
@@ -210,8 +223,15 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
-                    Switch(checked = strict, onCheckedChange = { strict = it; store.strictShorts = it })
+                    Switch(checked = strict, onCheckedChange = {
+                        store.strictShorts = it
+                        strict = store.strictShortsShown(); waitMin = store.shortsLooseningMinutes()
+                    })
                 }
+                if (waitMin > 0) Text(
+                    trf("A looser rule starts in %d min. Tighter rules apply at once.", waitMin),
+                    style = MaterialTheme.typography.labelLarge
+                )
                 var cycle by remember { mutableStateOf(store.cycleOn) }
                 var allow by remember { mutableStateOf(store.cycleAllowMin) }
                 var brk by remember { mutableStateOf(store.cycleBreakMin) }

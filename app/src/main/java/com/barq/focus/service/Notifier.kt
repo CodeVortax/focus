@@ -121,6 +121,24 @@ object Notifier {
 
     /** The running study timer: the system counts it down by itself, so nothing needs updating each second. */
     /** The accessibility switch is on but Android stopped the service (it never restarts it by itself). Say so instead of failing silently. */
+    /** The accessibility service was switched off in Android settings: without it there is no Shorts gate. */
+    fun accessibilityOff(ctx: Context, off: Boolean) {
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        if (!off) { nm.cancel(HEALTH_ID); return }
+        ensureChannels(ctx)
+        val msg = tr("The accessibility service is switched off. Turn it on again so the gate works.")
+        val b = NotificationCompat.Builder(ctx, CH_HEALTH)
+            .setSmallIcon(android.R.drawable.stat_sys_warning)
+            .setContentTitle(tr("Focus is not guarding Shorts"))
+            .setContentText(msg)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(msg))
+            .setAutoCancel(true).setOnlyAlertOnce(true)
+            .setContentIntent(android.app.PendingIntent.getActivity(ctx, 56,
+                android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT))
+        try { nm.notify(HEALTH_ID, b.build()) } catch (_: SecurityException) {}
+    }
+
     fun accessibilityDead(ctx: Context, dead: Boolean) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         if (!dead) { nm.cancel(HEALTH_ID); return }

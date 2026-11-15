@@ -80,6 +80,8 @@ class WatchService : Service() {
     private var warned5 = false
     private var warned3 = false
     private var deadShown = false
+    private var offSince = 0L
+    private var offShown = false
     private val allowedUntil = HashMap<String, Long>()
     private var cycLast = 0L
     private var cycUsed = 0L
@@ -114,6 +116,7 @@ class WatchService : Service() {
         db.fixOpen(store.beat)
         always = Apps.alwaysAllowed(this)
         Shared.watchAlive = true
+        Shared.treatUntil = maxOf(Shared.treatUntil, store.treatUntilSaved)   // minutes already paid for survive a killed service
 
         ServiceCompat.startForeground(
             this, Notifier.STATUS_ID, Notifier.status(this, store),
@@ -406,7 +409,7 @@ class WatchService : Service() {
     private fun openOrMerge(kind: String, pkg: String, ts: Long, gap: Long): Long = db.open(kind, pkg, ts)
 
     /** A treat is one pool of minutes for every gate: the Shorts gate must not ask again for time you already paid. */
-    private fun treated(minutes: Int) { Shared.treatUntil = System.currentTimeMillis() + minutes * 60_000L }
+    private fun treated(minutes: Int) { Shared.treatUntil = System.currentTimeMillis() + minutes * 60_000L; store.treatUntilSaved = Shared.treatUntil }
 
     /** The break part of the free-time cycle, as a block that only the distracting apps run into. */
     private fun cycleBreak(now: Long): Block? {
@@ -537,7 +540,18 @@ class WatchService : Service() {
 
     /** "On" in Settings is not "running": after a crash or a kill Android keeps the switch on but never rebinds the service. */
     private fun checkAccessibility(now: Long) {
-        val dead = Perms.accessibility(this) && FocusAccessibility.instance == null
+        val enabled = Perms.accessibility(this)
+        if (enabled && !store.a11yEverOn) store.a11yEverOn = true
+        // switched off by hand: Android gives an app no way to stop that, so say so loudly after a minute
+        val off = !enabled && store.a11yEverOn
+        if (off) {
+            if (offSince == 0L) offSince = now
+            if (!offShown && now - offSince > 60_000L) { offShown = true; Notifier.accessibilityOff(this, true) }
+        } else {
+            offSince = 0L
+            if (offShown) { offShown = false; Notifier.accessibilityOff(this, false) }
+        }
+        val dead = enabled && FocusAccessibility.instance == null
         if (!dead) { deadSince = 0L; if (deadShown) { deadShown = false; Notifier.accessibilityDead(this, false) }; return }
         if (deadSince == 0L) deadSince = now
         if (!deadShown && now - deadSince > 90_000L) { deadShown = true; Notifier.accessibilityDead(this, true) }

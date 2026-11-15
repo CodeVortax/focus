@@ -135,6 +135,12 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
 
     LaunchedEffect(Unit) { while (true) { sync(); delay(500) } }
 
+    // when the timer ends (or is stopped), ask how it went: a lesson that is not clear comes back for review
+    var wasRunning by remember { mutableStateOf(false) }
+    var checkDlg by remember { mutableStateOf(false) }
+    LaunchedEffect(running) { if (wasRunning && !running) checkDlg = true; wasRunning = running }
+    if (checkDlg) SessionCheckDialog(store, card.title) { checkDlg = false }
+
     fun stopTimer() { store.stopActive(); refresh() }
 
     fun commit(items: List<Item>, extraSec: Int = 0) {

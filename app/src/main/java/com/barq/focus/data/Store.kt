@@ -99,11 +99,11 @@ object DayClock {
     @Volatile var startHour = 0
 
     /** The clock moved back by the start hour: its calendar date is Focus's "today". */
-    fun shifted(now: Long = System.currentTimeMillis(), plusDays: Int = 0): Calendar =
+    fun shifted(now: Long = TrustedClock.now(), plusDays: Int = 0): Calendar =
         Calendar.getInstance().apply { timeInMillis = now - startHour * 3_600_000L; if (plusDays != 0) add(Calendar.DAY_OF_YEAR, plusDays) }
 
     /** Real time at which the day [offset] days ago began. */
-    fun dayStart(offset: Int, now: Long = System.currentTimeMillis()): Long {
+    fun dayStart(offset: Int, now: Long = TrustedClock.now()): Long {
         val c = shifted(now, -offset)
         c.set(Calendar.HOUR_OF_DAY, startHour); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
         return c.timeInMillis
@@ -134,6 +134,13 @@ object Config {
     const val SHORTS_GRACE_MIN = 2
     const val STRICT_EXTEND_MIN = 5
 
+    // Shorts gate: fewer choices, passes that run out, waits that grow, rules that loosen slowly
+    const val SHORTS_PASS_VIDEOS = 3      // the one "watch more" offer
+    const val SHORTS_PASS_MINUTES = 10    // a pass also runs out after this long, even with videos left
+    const val SHORTS_MAX_PASSES = 6       // after this many passes in a day, more needs the typed sentence
+    const val SHORTS_WAIT_MAX = 30        // the gate wait doubles with every pass, up to this many seconds
+    const val LOOSEN_DELAY_MIN = 60       // a looser Shorts rule (higher limit, strict mode off) starts after this long
+
     // treat bank (minutes), resets every day
     const val SUBJECT_BONUS = 10          // every subject whose checklist is fully done
     const val DAY_BONUS = 40              // the episode: every subject done
@@ -158,7 +165,10 @@ object Config {
 class Store(ctx: Context) {
     private val p = ctx.applicationContext.getSharedPreferences("focus", Context.MODE_PRIVATE)
 
-    init { DayClock.startHour = p.getInt("day_start_hour", 0).coerceIn(0, 12) }
+    init {
+        DayClock.startHour = p.getInt("day_start_hour", 0).coerceIn(0, 12)
+        TrustedClock.attach(ctx.applicationContext, p)
+    }
 
     /** Hour (0-12) the day rolls over at. */
     var dayStartHour: Int
@@ -644,10 +654,108 @@ class Store(ctx: Context) {
     // ---- shorts counter ----
     fun shortsSwipes() = p.getInt("shorts_${day()}", 0)
     fun addShortsSwipe() { p.edit().putInt("shorts_${day()}", shortsSwipes() + 1).apply() }
-    /** Daily Shorts limit in videos (0 = no limit). */
+
+    // Loosening a Shorts rule (a higher limit, strict mode off) only starts after Config.LOOSEN_DELAY_MIN minutes;
+    // tightening is instant. A moment of weakness can no longer undo a decision that was made calmly.
+    private fun limitValue(v: Int) = if (v == 0) Int.MAX_VALUE else v      // 0 = no limit = the loosest
+
+    private fun applyPendingRules() {
+        val now = System.currentTimeMillis()
+        val e = p.edit()
+        var changed = false
+        val pl = p.getInt("shorts_limit_pending", -1)
+        if (pl >= 0 && now >= p.getLong("shorts_limit_pending_at", 0L)) {
+            e.putInt("shorts_limit", pl).remove("shorts_limit_pending").remove("shorts_limit_pending_at")
+            changed = true
+        }
+        if (p.contains("strict_off_at") && now >= p.getLong("strict_off_at", 0L)) {
+            e.putBoolean("strict_shorts", false).remove("strict_off_at")
+            changed = true
+        }
+        if (changed) e.apply()
+    }
+
+    /** Daily Shorts limit in videos (0 = no limit). Reading gives the limit in force right now. */
     var shortsLimit: Int
-        get() = p.getInt("shorts_limit", 30)
-        set(v) { p.edit().putInt("shorts_limit", v.coerceIn(0, 500)).apply() }
+        get() { applyPendingRules(); return p.getInt("shorts_limit", 30) }
+        set(v) {
+            applyPendingRules()
+            val nv = v.coerceIn(0, 500)
+            val cur = p.getInt("shorts_limit", 30)
+            if (limitValue(nv) > limitValue(cur)) {
+                p.edit().putInt("shorts_limit_pending", nv)
+                    .putLong("shorts_limit_pending_at", System.currentTimeMillis() + Config.LOOSEN_DELAY_MIN * 60_000L).apply()
+            } else {
+                p.edit().putInt("shorts_limit", nv).remove("shorts_limit_pending").remove("shorts_limit_pending_at").apply()
+            }
+        }
+
+    /** What the settings screen shows: the waiting value if there is one, else the limit in force. */
+    fun shortsLimitShown(): Int {
+        applyPendingRules()
+        val pl = p.getInt("shorts_limit_pending", -1)
+        return if (pl >= 0) pl else p.getInt("shorts_limit", 30)
+    }
+
+    /** Minutes until a looser Shorts rule that is waiting starts, or 0 when none is waiting. */
+    fun shortsLooseningMinutes(): Int {
+        applyPendingRules()
+        val now = System.currentTimeMillis()
+        val a = if (p.getInt("shorts_limit_pending", -1) >= 0) p.getLong("shorts_limit_pending_at", 0L) else 0L
+        val b = if (p.contains("strict_off_at")) p.getLong("strict_off_at", 0L) else 0L
+        val t = maxOf(a, b)
+        return if (t <= now) 0 else ((t - now + 59_999L) / 60_000L).toInt()
+    }
+
+    /** How many "watch more" passes were taken today: every pass makes the next gate wait longer. */
+    fun shortsPasses() = p.getInt("shorts_passes_${day()}", 0)
+    fun addShortsPass() { p.edit().putInt("shorts_passes_${day()}", shortsPasses() + 1).apply() }
+    /** When today's current pass runs out (wall-clock ms, 0 = none). */
+    fun shortsAllowUntil() = p.getLong("shorts_allow_until_${day()}", 0L)
+    fun setShortsAllowUntil(t: Long) { p.edit().putLong("shorts_allow_until_${day()}", t).apply() }
+    /** The person's own reason, one sentence, shown at the gate. */
+    var shortsWhy: String
+        get() = p.getString("shorts_why", "") ?: ""
+        set(v) { p.edit().putString("shorts_why", v.trim().take(140)).apply() }
+    /** End of a bought treat, kept so that a killed service does not eat minutes that were already paid for. */
+    var treatUntilSaved: Long
+        get() = p.getLong("treat_until", 0L)
+        set(v) { p.edit().putLong("treat_until", v).apply() }
+
+    /** The accessibility service has been on at least once: switching it off afterwards is worth a warning. */
+    var a11yEverOn: Boolean
+        get() = p.getBoolean("a11y_ever_on", false)
+        set(v) { p.edit().putBoolean("a11y_ever_on", v).apply() }
+
+    // ---- mistake log ----
+    fun mistakes(): List<Mistake> {
+        val s = p.getString("mistakes", null) ?: return emptyList()
+        return try {
+            val a = JSONArray(s)
+            (0 until a.length()).map { i ->
+                val o = a.getJSONObject(i)
+                Mistake(
+                    id = o.optLong("id"), subject = o.optString("s"), text = o.optString("t"), mine = o.optString("m"),
+                    correct = o.optString("c"), cause = o.optInt("w", -1), avoid = o.optString("a"), kind = o.optInt("k"),
+                    created = o.optLong("cr"), step = o.optInt("st"), due = o.optLong("d"), done = o.optBoolean("dn")
+                )
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+
+    fun saveMistakes(l: List<Mistake>) {
+        val a = JSONArray()
+        l.forEach { m ->
+            a.put(
+                JSONObject().put("id", m.id).put("s", m.subject).put("t", m.text).put("m", m.mine).put("c", m.correct)
+                    .put("w", m.cause).put("a", m.avoid).put("k", m.kind).put("cr", m.created).put("st", m.step)
+                    .put("d", m.due).put("dn", m.done)
+            )
+        }
+        p.edit().putString("mistakes", a.toString()).apply()
+    }
+
+    fun addMistake(m: Mistake) = saveMistakes(mistakes() + m)
     /** The swipe count up to which Shorts are allowed today (-1 = the gate has not been passed yet). */
     fun shortsAllow() = p.getInt("shorts_allow_${day()}", -1)
     fun setShortsAllow(n: Int) { p.edit().putInt("shorts_allow_${day()}", n).apply() }
@@ -897,8 +1005,19 @@ class Store(ctx: Context) {
 
     /** Strict Shorts mode: gate at once, no "finish this one", no swipe count, extending needs a typed sentence (no paste). */
     var strictShorts: Boolean
-        get() = p.getBoolean("strict_shorts", false)
-        set(v) { p.edit().putBoolean("strict_shorts", v).apply() }
+        get() { applyPendingRules(); return p.getBoolean("strict_shorts", false) }
+        set(v) {
+            applyPendingRules()
+            if (v) p.edit().putBoolean("strict_shorts", true).remove("strict_off_at").apply()
+            else if (p.getBoolean("strict_shorts", false) && !p.contains("strict_off_at"))
+                p.edit().putLong("strict_off_at", System.currentTimeMillis() + Config.LOOSEN_DELAY_MIN * 60_000L).apply()
+        }
+
+    /** What the switch shows: off as soon as turning it off was asked for, even while it still guards. */
+    fun strictShortsShown(): Boolean {
+        applyPendingRules()
+        return p.getBoolean("strict_shorts", false) && !p.contains("strict_off_at")
+    }
 
     var pdfReader: String                          // "episteme" or "builtin"
         get() = p.getString("pdf_reader", "episteme") ?: "episteme"

@@ -34,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -575,6 +576,7 @@ private fun HomeMenuPanel(side: Int, onDismiss: () -> Unit, go: (String) -> Unit
         Triple("projects", Icons.Default.Build, "Projects"),
         Triple("piggy", Icons.Default.Savings, "Piggy bank"),
         Triple("log", Icons.Default.History, "Log"),
+        Triple("mistakes", Icons.Default.Edit, "Mistake log"),
         Triple("events", Icons.Default.Event, "Events & meetings"),
         Triple("schedule", Icons.Default.Schedule, "Not-free blocks"),
         Triple("launcher", Icons.Default.Home, "Study launcher"),

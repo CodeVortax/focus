@@ -45,6 +45,8 @@ import kotlin.math.abs
 class FocusAccessibility : AccessibilityService() {
     companion object {
         @Volatile var instance: FocusAccessibility? = null
+        /** How long the feed may go unseen before the session ends (a paused Short sends no events). */
+        private const val FOUND_TIMEOUT_MS = 8_000L
     }
 
     private val h = Handler(Looper.getMainLooper())
@@ -68,10 +70,15 @@ class FocusAccessibility : AccessibilityService() {
     private var ignoreUntil = 0L
     private var allowedUntil = 0L
     private var lastRevive = 0L
+    private var landingCounted = false     // startShorts already counted the video you landed on
+    private var pagerSince = 0L            // the id-free fallback must hold for a moment before it starts a session
+    private var pagerLastAt = 0L
+    private var lastFailToast = 0L
 
     override fun onServiceConnected() {
         instance = this
         store = Store(this); db = Db.get(this); ov = Overlay.get(this)
+        Shared.treatUntil = maxOf(Shared.treatUntil, store.treatUntilSaved)   // minutes already paid for survive a killed service
         Gray.recover(this)
         h.post(tick)
     }
@@ -91,6 +98,16 @@ class FocusAccessibility : AccessibilityService() {
         val pkg = e.packageName?.toString() ?: return
         if (pkg !in ShortsDetector.PACKAGES) return
         val now = System.currentTimeMillis()
+        // a swipe that arrives while no session is open (it timed out, or you came back within 90 s) must still count
+        if (e.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && !inShorts && now >= ignoreUntil &&
+            now - lastScan >= 700 && !sideways(e) && bigSource(e)
+        ) {
+            lastScan = now
+            try { scan(pkg) } catch (_: Exception) {}
+            if (inShorts && !landingCounted) { store.addShortsSwipe(); if (row >= 0) db.addCount(row, 1) }
+            checkGate()
+            return
+        }
         if (e.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && inShorts &&
             pkg == shortsPkg && !sideways(e) && bigSource(e)
         ) {
@@ -138,6 +155,22 @@ class FocusAccessibility : AccessibilityService() {
         lastFp = fp
         burstIdx = -1; burstPending = false
         repeat(steps) { store.addShortsSwipe(); if (row >= 0) db.addCount(row, 1) }
+        if (steps > 0) { lastOneCue(); checkGate() }
+    }
+
+    /** One quiet cue when the pass is about to run out, so the end is a known point and not a sudden wall. */
+    private fun lastOneCue() {
+        if (store.strictShorts) return
+        val allow = store.shortsAllow()
+        if (allow >= 0 && store.shortsSwipes() == allow) {
+            try { android.widget.Toast.makeText(this, tr("Last one in this pass"), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Exception) {}
+        }
+    }
+
+    /** Shows the gate at once when a swipe crosses the limit, not only on the next one-second tick. */
+    private fun checkGate() {
+        val now = System.currentTimeMillis()
+        if (inShorts && !ov.showing && now > Shared.suppressUntil && shortsGateDue(now)) showShortsOverlay()
     }
 
     /** Every app that has a window on screen right now: split screen, pop-up view, freeform and floating windows included. */
@@ -169,7 +202,16 @@ class FocusAccessibility : AccessibilityService() {
     private fun scan(pkg: String) {
         val root = rootFor(pkg) ?: return
 
-        val found = ShortsDetector.isShorts(pkg, root) || ShortsDetector.isPager(pkg, root, sw, sh)
+        val byId = ShortsDetector.isShorts(pkg, root)
+        var found = byId
+        if (!byId && ShortsDetector.isPager(pkg, root, sw, sh)) {
+            // id-free fallback: it keeps a session alive at once, but starts one only if it holds for a moment, so
+            // scrolling past a full-screen post in a normal feed cannot trigger the gate
+            val t = System.currentTimeMillis()
+            if (t - pagerLastAt > 3000L) pagerSince = t
+            pagerLastAt = t
+            found = inShorts || t - pagerSince >= 1200L
+        }
 
         if (store.debug && pkg == ShortsDetector.YT) {
             store.debugIds = "shortsDetected=$found\n" + ShortsDetector.harvestIds(root).joinToString("\n")
@@ -193,7 +235,8 @@ class FocusAccessibility : AccessibilityService() {
         val last = db.lastRow("shorts", pkg)
         val end = last?.t1
         row = db.open("shorts", pkg, now)
-        if (!(last != null && end != null && now - end in 0..90_000L)) {
+        landingCounted = !(last != null && end != null && now - end in 0..90_000L)
+        if (landingCounted) {
             db.addCount(row, 1); store.addShortsSwipe() // the video you landed on (not again when you just stepped out and back)
         }
     }
@@ -218,7 +261,9 @@ class FocusAccessibility : AccessibilityService() {
                     // taken down, the video resumed, was found again, and the gate came back: the Shorts flicker.
                     // While the gate covers the app, being in front is the proof the feed is still there.
                     if (ov.showing && ov.tag == "shorts" && coveredByGate()) lastFoundAt = now
-                    if (now - lastFoundAt > 4000L || (Shared.watchAlive && Shared.fg != null && Shared.fg != shortsPkg && shortsPkg !in visiblePackages())) endShorts()
+                    // a paused or still Short sends no events: look for the feed ourselves every few seconds
+                    if (!ov.showing && now - lastScan > 3000L) { lastScan = now; shortsPkg?.let { try { scan(it) } catch (_: Exception) {} } }
+                    if (now - lastFoundAt > FOUND_TIMEOUT_MS || (Shared.watchAlive && Shared.fg != null && Shared.fg != shortsPkg && shortsPkg !in visiblePackages())) endShorts()
                     else if (shortsGateDue(now) && now > Shared.suppressUntil && !ov.showing) showShortsOverlay()
                     // keep the baseline fresh while nothing moves, so autoplay or a like is not mistaken for a swipe
                     if (inShorts && !burstPending && now - lastScrollAt > 800L) {
@@ -237,17 +282,29 @@ class FocusAccessibility : AccessibilityService() {
         return p in visiblePackages()
     }
 
-    /** Strict mode keeps its timed pass; otherwise Shorts are counted in videos, and a bought treat covers everything. */
+    /**
+     * A bought treat covers everything and a typed pass covers its minutes. Otherwise Shorts are counted in videos,
+     * and a "watch more" pass also runs out with time, so an unused allowance cannot be saved for later.
+     */
     private fun shortsGateDue(now: Long): Boolean {
         if (now < Shared.treatUntil) return false
-        if (store.strictShorts) return now > allowedUntil
+        if (now < allowedUntil) return false
+        if (store.strictShorts) return true
         val allow = store.shortsAllow()
-        return allow < 0 || store.shortsSwipes() > allow
+        return allow < 0 || store.shortsSwipes() > allow || now >= store.shortsAllowUntil()
     }
 
     private fun grantCount(reason: String, n: Int) {
         store.setShortsAllow(store.shortsSwipes() + n)
+        store.setShortsAllowUntil(System.currentTimeMillis() + Config.SHORTS_PASS_MINUTES * 60_000L)
+        store.addShortsPass()
         if (row >= 0) db.setReason(row, reason)
+    }
+
+    /** A treat: its minutes cover every gate, and the end time is saved so a killed service does not lose it. */
+    private fun giveTreat(minutes: Int) {
+        Shared.treatUntil = System.currentTimeMillis() + minutes * 60_000L
+        store.treatUntilSaved = Shared.treatUntil
     }
 
     private fun grant(reason: String, minutes: Int) {
@@ -256,46 +313,67 @@ class FocusAccessibility : AccessibilityService() {
     }
 
     private fun showShortsOverlay() {
-        if (store.strictShorts) { showStrictOverlay(); return }
+        // the gate cannot be drawn without the overlay permission: leave the feed instead of letting it through
+        if (!android.provider.Settings.canDrawOverlays(this)) { failClosed(); return }
+        if (store.strictShorts) { showStrictOverlay(tr("Strict mode")); return }
         val bank = store.bank()
         val ch = ArrayList<Choice>()
         val swiped = store.shortsSwipes()
         val limit = store.shortsLimit
         val left = if (limit <= 0) Int.MAX_VALUE else (limit - swiped).coerceAtLeast(0)
-        for (n in listOf(3, 5, 10, 20)) {
-            if (n <= left) ch += Choice(trf("Watch %d more", n), 0xFF4285F4.toInt()) { grantCount("Shorts x$n", n) }
-        }
-        if (left in 1..2) ch += Choice(trf("Watch %d more", left), 0xFF4285F4.toInt()) { grantCount("Shorts x$left", left) }
-        if (left == 0) ch += Choice(tr("Daily limit reached"), 0xFF555866.toInt(), enabled = false) {}
+        val passes = store.shortsPasses()
+        // the bargaining ends: after enough passes in one day, more needs the typed sentence
+        if (passes >= Config.SHORTS_MAX_PASSES && left > 0) { showStrictOverlay(tr("Many passes today")); return }
+        // one small offer, no big numbers to bargain for
+        val n = minOf(Config.SHORTS_PASS_VIDEOS, left)
+        if (n > 0) ch += Choice(trf("Watch %d more", n), 0xFF4285F4.toInt()) { grantCount("Shorts x$n", n) }
+        else ch += Choice(tr("Daily limit reached"), 0xFF555866.toInt(), enabled = false) {}
         if (bank >= Config.TREAT_STEP) {
             ch += Choice(trf("Treat  ·  %d min  (bank %d)", Config.TREAT_STEP, bank), 0xFF34A853.toInt()) {
-                store.spend(Config.TREAT_STEP); Shared.treatUntil = System.currentTimeMillis() + Config.TREAT_STEP * 60_000L; if (row >= 0) db.setReason(row, "Treat")
-            }
-            if (bank > Config.TREAT_STEP) ch += Choice(trf("Use all  ·  %d min", bank), 0xFF34A853.toInt()) {
-                store.spend(bank); Shared.treatUntil = System.currentTimeMillis() + bank * 60_000L; if (row >= 0) db.setReason(row, "Treat (all)")
+                store.spend(Config.TREAT_STEP); giveTreat(Config.TREAT_STEP); if (row >= 0) db.setReason(row, "Treat")
             }
         } else {
             ch += Choice(tr("Treat bank empty: finish tasks to earn"), 0xFF555866.toInt(), enabled = false) {}
         }
         val mins = db.totalsSince("shorts", startOfDay()).values.sum() / 60_000
+        // the person's own reason first, then the companion's line
+        val why = store.shortsWhy
+        val note = listOfNotNull(
+            if (why.isNotBlank()) tr("Your why") + ": " + why else null,
+            store.support(if (bank >= Config.TREAT_STEP) Moment.GATE_EARNED else Moment.GATE_EMPTY),
+        ).joinToString("\n\n").ifBlank { null }
         ov.show(
             tag = "shorts",
             title = tr(if (shortsPkg in ShortsDetector.TIKTOK) "TikTok" else "Shorts"),
             subtitle = if (limit > 0) trf("%d of %d today  ·  %d min", swiped, limit, mins) else trf("%d swiped today  ·  %d min", swiped, mins),
-            delaySec = Config.DELAY_SECONDS,
+            // the wait doubles with every pass taken today: 3, 6, 12, 24, 30 s
+            delaySec = minOf(Config.DELAY_SECONDS shl passes.coerceAtMost(4), Config.SHORTS_WAIT_MAX),
             choices = ch,
             leaveLabel = tr("Back out"),
-            note = store.support(if (bank >= Config.TREAT_STEP) Moment.GATE_EARNED else Moment.GATE_EMPTY),
-            onLeave = { if (shortsPkg in ShortsDetector.TIKTOK) { exitApp(shortsPkg!!); endShorts() } else backOut() }
+            note = note,
+            onLeave = {
+                if (row >= 0) db.setReason(row, "Backed out")
+                if (shortsPkg in ShortsDetector.TIKTOK) { exitApp(shortsPkg!!); endShorts() } else backOut()
+            }
         )
     }
 
+    /** The overlay permission was taken away: say so (rarely) and leave the feed, so that revoking it is not a way round the gate. */
+    private fun failClosed() {
+        val now = System.currentTimeMillis()
+        if (now - lastFailToast > 30_000L) {
+            lastFailToast = now
+            try { android.widget.Toast.makeText(this, tr("Focus needs the Display over other apps permission to guard Shorts"), android.widget.Toast.LENGTH_LONG).show() } catch (_: Exception) {}
+        }
+        backOut()
+    }
+
     /** Strict mode: no "finish this one", no treat button, no swipe count. The only way on is a sentence typed by hand. */
-    private fun showStrictOverlay() {
+    private fun showStrictOverlay(reason: String) {
         ov.show(
             tag = "shorts",
             title = tr(if (shortsPkg in ShortsDetector.TIKTOK) "TikTok" else "Shorts"),
-            subtitle = tr("Strict mode"),
+            subtitle = reason,
             delaySec = 0,
             choices = emptyList(),
             strictPhrase = tr("I am choosing to scroll right now, and I know it takes time from what matters to me."),

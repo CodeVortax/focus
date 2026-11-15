@@ -172,6 +172,7 @@ fun FocusApp() {
                         "games" -> GamesScreen(store, back)
                         "trophies" -> TrophiesScreen(store, back)
                         "log" -> LogScreen(db, back)
+                        "mistakes" -> MistakesScreen(store, back)
                         "schedule" -> ScheduleScreen(store, back)
                         "events" -> EventsScreen(back)
                         "launcher" -> LauncherScreen(store, back)
