@@ -286,6 +286,7 @@ class FocusAccessibility : AccessibilityService() {
             choices = ch,
             leaveLabel = tr("Back out"),
             note = store.support(if (bank >= Config.TREAT_STEP) Moment.GATE_EARNED else Moment.GATE_EMPTY),
+            targetPkg = shortsPkg,
             onLeave = { if (shortsPkg in ShortsDetector.TIKTOK) { exitApp(shortsPkg!!); endShorts() } else backOut() }
         )
     }
@@ -302,6 +303,7 @@ class FocusAccessibility : AccessibilityService() {
             typedLabel = trf("Typing it unlocks %d min. You have to type it every time.", Config.STRICT_EXTEND_MIN),
             onTyped = { grant("Typed", Config.STRICT_EXTEND_MIN) },
             leaveLabel = tr("Close it"),
+            targetPkg = shortsPkg,
             onLeave = { shortsPkg?.let { exitApp(it) }; endShorts() }
         )
     }
@@ -315,20 +317,24 @@ class FocusAccessibility : AccessibilityService() {
     }
 
     /** Press BACK until the app is gone (never HOME first: that is what triggers picture-in-picture). */
-    fun exitApp(pkg: String) {
+    fun exitApp(pkg: String, toLauncher: Boolean = false) {
         Shared.suppressUntil = System.currentTimeMillis() + 6000
         var n = 0
+        val goOut = { if (toLauncher) Leaver.launcher(this@FocusAccessibility) else Leaver.home(this@FocusAccessibility) }
         val r = object : Runnable {
             override fun run() {
                 val cur = try { rootInActiveWindow?.packageName?.toString() } catch (_: Exception) { null }
                 if (cur != pkg) {
                     // not the focused window: if the app is still on screen (floating or split window), Back would hit the wrong window
-                    if (pkg in visiblePackages()) { Leaver.home(this@FocusAccessibility); Leaver.kill(this@FocusAccessibility, pkg, 900) }
-                    else Leaver.kill(this@FocusAccessibility, pkg, 500)
+                    if (pkg in visiblePackages()) { goOut(); Leaver.kill(this@FocusAccessibility, pkg, 900) }
+                    else {
+                        if (toLauncher) Leaver.launcher(this@FocusAccessibility)
+                        Leaver.kill(this@FocusAccessibility, pkg, 500)
+                    }
                     return
                 }
                 if (n >= 8) {
-                    Leaver.home(this@FocusAccessibility)
+                    goOut()
                     Leaver.kill(this@FocusAccessibility, pkg, 900)
                     return
                 }

@@ -56,12 +56,33 @@ object Apps {
     fun defaultAllowed(ctx: Context): Set<String> =
         (resolve(ctx, "phone") + resolve(ctx, "camera") + resolve(ctx, "clock")).toSet()
 
-    /** Never locked out: Focus itself, the launcher, system UI, and anything call-related. */
-    fun alwaysAllowed(ctx: Context): Set<String> {
-        val homes = pkgsFor(ctx, Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME))
-        return (homes + ctx.packageName + listOf(
-            "android", "com.android.systemui", "com.android.permissioncontroller", "com.google.android.permissioncontroller"
-        )).toSet()
+    fun homeLaunchers(ctx: Context): Set<String> =
+        pkgsFor(ctx, Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)).toSet()
+
+    fun otherLaunchers(ctx: Context): Set<String> = homeLaunchers(ctx) - ctx.packageName
+
+    fun defaultHomePackage(ctx: Context): String? = try {
+        val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        ctx.packageManager.resolveActivity(i, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
+    } catch (_: Exception) { null }
+
+    fun isDefaultHome(ctx: Context): Boolean = defaultHomePackage(ctx) == ctx.packageName
+
+    fun imePackages(ctx: Context): Set<String> = try {
+        val imm = ctx.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+        imm?.enabledInputMethodList?.map { it.packageName }?.toSet() ?: emptySet()
+    } catch (_: Exception) { emptySet() }
+
+    /** Never locked out: Focus itself, system UI, permission dialogs, and optionally other launchers when not launcher-locked. */
+    fun alwaysAllowed(ctx: Context, includeOtherLaunchers: Boolean = true): Set<String> {
+        val base = setOf(
+            ctx.packageName,
+            "android",
+            "com.android.systemui",
+            "com.android.permissioncontroller",
+            "com.google.android.permissioncontroller",
+        )
+        return if (includeOtherLaunchers) base + otherLaunchers(ctx) else base
     }
 
     fun callRelated(pkg: String) =

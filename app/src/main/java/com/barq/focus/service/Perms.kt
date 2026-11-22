@@ -81,13 +81,42 @@ object Leaver {
         return pkg in found
     }
 
-    fun leave(ctx: Context, pkg: String) {
-        if (isBrowser(ctx, pkg)) { home(ctx); return }   // no BACK presses, no kill: tabs and history stay
+    fun leave(ctx: Context, pkg: String, toLauncher: Boolean = false) {
+        val useLauncher = toLauncher || useStudyLauncherHome(ctx)
+        if (MusicGuard.isKnownMusicPlayer(pkg) || pkg in MusicGuard.activePlayingPackages(ctx)) {
+            if (useLauncher) launcher(ctx) else home(ctx)
+            return
+        }
+        if (isBrowser(ctx, pkg)) {
+            if (useLauncher) launcher(ctx) else home(ctx)
+            return
+        }
         val a = FocusAccessibility.instance
-        if (a != null) a.exitApp(pkg) else { home(ctx); kill(ctx, pkg, 700) }
+        if (a != null) a.exitApp(pkg, useLauncher) else {
+            if (useLauncher) launcher(ctx) else home(ctx)
+            kill(ctx, pkg, 700)
+        }
+    }
+
+    private fun useStudyLauncherHome(ctx: Context): Boolean {
+        val s = com.barq.focus.data.Store(ctx)
+        return s.studyLock(System.currentTimeMillis()) != null ||
+            (s.launcherOnlyAllowed && com.barq.focus.data.Apps.isDefaultHome(ctx))
+    }
+
+    fun launcher(ctx: Context) {
+        try {
+            ctx.startActivity(
+                Intent(ctx, com.barq.focus.LauncherActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            )
+        } catch (_: Exception) {
+            home(ctx)
+        }
     }
 
     fun home(ctx: Context) {
+        if (useStudyLauncherHome(ctx)) { launcher(ctx); return }
         try {
             ctx.startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (_: Exception) {}
@@ -95,6 +124,7 @@ object Leaver {
 
     fun kill(ctx: Context, pkg: String, delayMs: Long) {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (!MusicGuard.canSafelyKill(ctx, pkg)) return@postDelayed
             try { ctx.getSystemService(ActivityManager::class.java).killBackgroundProcesses(pkg) } catch (_: Exception) {}
         }, delayMs)
     }

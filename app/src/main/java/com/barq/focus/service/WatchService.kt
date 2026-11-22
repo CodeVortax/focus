@@ -88,6 +88,11 @@ class WatchService : Service() {
     private val warnedAt = HashMap<String, Long>()      // the pass (by its end time) that already got its "30 s left" warning
     private val blockPass = HashMap<String, Long>()
     private var always: Set<String> = emptySet()
+    private var coreAlways: Set<String> = emptySet()
+    private var otherHomes: Set<String> = emptySet()
+    private var imes: Set<String> = emptySet()
+    private var isDefaultHome = false
+    private var otherHomeSince = 0L
     private val musicRows = HashMap<String, Long>()
     // what an unanswered gate had left when it went out of view (Recents, a system window), so it does not start over
     private val sessions = GateSessions()
@@ -103,6 +108,14 @@ class WatchService : Service() {
 
     override fun onBind(i: Intent?): IBinder? = null
 
+    private fun refreshEnv() {
+        always = Apps.alwaysAllowed(this, includeOtherLaunchers = true)
+        coreAlways = Apps.alwaysAllowed(this, includeOtherLaunchers = false)
+        otherHomes = Apps.otherLaunchers(this)
+        imes = Apps.imePackages(this)
+        isDefaultHome = Apps.isDefaultHome(this)
+    }
+
     override fun onCreate() {
         super.onCreate()
         store = Store(this)
@@ -112,7 +125,7 @@ class WatchService : Service() {
         cycUsed = store.cycleUsed
         if (com.barq.focus.BuildConfig.DEBUG) sessions.log = { Log.d("FocusGate", it) }
         db.fixOpen(store.beat)
-        always = Apps.alwaysAllowed(this)
+        refreshEnv()
         Shared.watchAlive = true
 
         ServiceCompat.startForeground(
@@ -250,29 +263,41 @@ class WatchService : Service() {
         if (tick % 10 == 0) store.beat = now
         syncScreen(now)
 
+        if (tick % 15 == 0) refreshEnv()
         val cur = fg
         projectTick(now, cur)
         val gated = store.gated() - store.projectApps()          // the apps of a running project session skip the gate
         cycleTick(now, cur, gated)
-        val lockBlock0 = store.studyLock(now) ?: store.activeBlock()?.takeIf { it.lock }
+        val lockBlock0 = store.activeLauncherBlock(now, isDefaultHome) ?: store.activeBlock()?.takeIf { it.lock }
         val brk = if (lockBlock0 == null) cycleBreak(now) else null
         val lockBlock = lockBlock0 ?: brk
-        // a study/focus lock lets only the allowed apps through; a free-time break only stops the distracting (gated) ones
-        val blocked = lockBlock != null && cur != null &&
-            (if (lockBlock === brk) cur in gated && cur !in always && !Apps.callRelated(cur) else !isAllowed(lockBlock, cur))
+        // During Study Lock / Home Launcher lock, ignore brief Quickstep/Recents launcher transitions (< 900ms), then block if the user stays there.
+        val isLauncherLock = lockBlock != null && (lockBlock.id == -99L || lockBlock.id == -98L)
+        if (!isLauncherLock || cur == null || cur !in otherHomes) otherHomeSince = 0L
+        else if (otherHomeSince == 0L) otherHomeSince = now
+
+        val curBlocked = lockBlock != null && cur != null && when {
+            lockBlock === brk -> cur in gated && cur !in always && !Apps.callRelated(cur)
+            isLauncherLock && cur in otherHomes -> now - otherHomeSince >= 900L && !isAllowed(lockBlock, cur)
+            else -> !isAllowed(lockBlock, cur)
+        }
+        val hiddenBlockTarget = if (!curBlocked && lockBlock != null && lockBlock !== brk) hiddenBlocked(lockBlock, cur, now) else null
+        val blockTarget = if (curBlocked) cur else hiddenBlockTarget
+        val blocked = blockTarget != null
         // A gated app can also sit in a floating or split window while another app has the focus: gate that one too.
         val gtarget = if (cur != null && cur in gated) cur else if (gated.isNotEmpty()) hiddenGated(gated, cur, now) else null
 
         // An app that merely pauses for a moment (a transition, the gate's own audio focus) reads as "nothing in front":
         // keep the gate on screen for a short grace instead of hiding it and showing it again (the flicker).
         if (cur != null || !overlay.showing) nullSince = 0L
-        val settling = cur == null && gtarget == null && overlay.showing && (overlay.tag == "gate" || overlay.tag == "block") && run {
+        val settling = cur == null && gtarget == null && hiddenBlockTarget == null && overlay.showing && (overlay.tag == "gate" || overlay.tag == "block") && run {
             if (nullSince == 0L) nullSince = now
             now - nullSince < 2500L
         }
         if (!settling) {
             if (blocked) {
-                if (!overlay.showing && now > Shared.suppressUntil && (blockPass[cur!!] ?: 0L) <= now) showBlock(lockBlock!!, cur)
+                val target = blockTarget!!
+                if (!overlay.showing && now > Shared.suppressUntil && (blockPass[target] ?: 0L) <= now) showBlock(lockBlock!!, target)
             } else {
                 if (overlay.showing && overlay.tag == "block") overlay.hide()
                 if (gtarget == null) {
@@ -371,29 +396,46 @@ class WatchService : Service() {
         return vis.firstOrNull { it != cur && it != packageName && it in gated && (allowedUntil[it] ?: 0L) <= now && now >= Shared.treatUntil }
     }
 
-    private fun isAllowed(b: Block, pkg: String) =
-        pkg in always || pkg in b.allowed || Apps.callRelated(pkg)
+    /** A blocked app sitting in a floating, pop-up or split window during a lock. */
+    private fun hiddenBlocked(b: Block, cur: String?, now: Long): String? {
+        val vis = FocusAccessibility.instance?.visiblePackages() ?: return null
+        return vis.firstOrNull {
+            it != cur && it != packageName && it !in otherHomes && !isAllowed(b, it) && (blockPass[it] ?: 0L) <= now
+        }
+    }
+
+    private fun isAllowed(b: Block, pkg: String): Boolean {
+        val base = if (b.id == -99L || b.id == -98L) coreAlways else always
+        return pkg in base || pkg in imes || pkg in b.allowed || Apps.callRelated(pkg)
+    }
 
     private fun showBlock(b: Block, cur: String) {
+        val launcherMode = b.id == -99L || b.id == -98L
         val ch = ArrayList<Choice>()
         if (!b.strict) ch += Choice(tr("I really need this  ·  2 min"), 0xFFEA4335.toInt(), wait = 30, icon = "\uD83C\uDD98") {
             blockPass[cur] = System.currentTimeMillis() + 2 * 60_000L
             if (fgRow >= 0) db.setReason(fgRow, "Emergency (block)")
             say(Moment.EMERGENCY)
         }
+        val appLabel = Config.TRACKED[cur] ?: cur
+        val subtitle = when (b.id) {
+            -98L -> "$appLabel  ·  " + tr("Allowed apps only")
+            -99L -> "$appLabel  ·  " + tr(b.name) + "  ·  " + trf("until %s", "%02d:%02d".format(b.endMin / 60, b.endMin % 60))
+            else -> "$appLabel  ·  ${b.name}  ·  " + trf("until %s", "%02d:%02d".format(b.endMin / 60, b.endMin % 60))
+        }
         overlay.show(
             tag = "block",
-            title = tr("Not-free time"),
-            subtitle = (Config.TRACKED[cur] ?: cur) + "  ·  " + b.name + "  ·  " +
-                trf("until %s", "%02d:%02d".format(b.endMin / 60, b.endMin % 60)),
+            title = tr(if (b.id == -98L) "Launcher lock" else "Not-free time"),
+            subtitle = subtitle,
             delaySec = 0,
             choices = ch,
-            leaveLabel = tr("Back to work"),
+            leaveLabel = tr(if (launcherMode) "Back to launcher" else "Back to work"),
             note = store.support(Moment.BLOCK),
+            targetPkg = cur,
             onLeave = {
                 if (fgRow >= 0) db.setReason(fgRow, "blocked")
                 Shared.suppressUntil = System.currentTimeMillis() + 5000
-                Leaver.leave(applicationContext, cur)
+                Leaver.leave(applicationContext, cur, toLauncher = launcherMode)
             }
         )
     }
@@ -522,6 +564,7 @@ class WatchService : Service() {
             note = store.support(moment),
             choices = ch,
             typedLabel = trf("Go  ·  %d min", Config.CUSTOM_MINUTES),
+            targetPkg = cur,
             onTyped = { r -> grant(cur, r, Config.CUSTOM_MINUTES) },
             onLeave = {
                 if (fgRow >= 0) db.setReason(fgRow, "left")

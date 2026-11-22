@@ -31,14 +31,22 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
+import com.barq.focus.service.PillShape
 import com.barq.focus.ui.theme.AppTheme
 import com.barq.focus.ui.theme.CardSwatches
 import com.barq.focus.data.I18n
@@ -247,12 +255,60 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                     IconButton(onClick = { dayHour = (dayHour + 1).coerceAtMost(12); store.dayStartHour = dayHour }) { Text("+", style = MaterialTheme.typography.titleLarge) }
                 }
                 var pill by remember { mutableStateOf(store.pillOn) }
+                var pillShape by remember { mutableIntStateOf(store.pillShape) }
+                var pillWidth by remember { mutableIntStateOf(store.pillWidthDp) }
+                var pillOffset by remember { mutableIntStateOf(store.pillTopOffsetDp) }
+                var pillLand by remember { mutableStateOf(store.pillLandscape) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(tr("Top pill"))
-                        Text(tr("A small island at the top of the screen: your running timer, the song playing, charging and ringer changes. Needs the overlay permission."), style = MaterialTheme.typography.labelLarge)
+                        Text(tr("A small Focus island at the top of the screen for your timer, Focus music, voice notes and study alerts. Needs the overlay permission."), style = MaterialTheme.typography.labelLarge)
                     }
                     Switch(checked = pill, onCheckedChange = { pill = it; store.pillOn = it })
+                }
+                if (pill) {
+                    val activeShape = PillShape.fromCode(pillShape)
+                    val accentColor = MaterialTheme.colorScheme.primary
+                    PillPreviewCard(activeShape, pillWidth, pillOffset, accentColor)
+                    Text(tr("Cutout shape"), fontWeight = FontWeight.SemiBold)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PillShape.entries.forEach { s ->
+                            FilterChip(
+                                selected = pillShape == s.code,
+                                onClick = { pillShape = s.code; store.pillShape = s.code },
+                                label = { Text(tr(s.label)) }
+                            )
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("Pill width"), Modifier.weight(1f))
+                        Text("${pillWidth} dp", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Slider(
+                        value = pillWidth.toFloat(),
+                        onValueChange = { v -> pillWidth = v.toInt(); store.pillWidthDp = pillWidth },
+                        valueRange = 140f..250f,
+                        steps = 10
+                    )
+                    if (!activeShape.isFlushTop) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(tr("Top offset"), Modifier.weight(1f))
+                            Text("${pillOffset} dp", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Slider(
+                            value = pillOffset.toFloat(),
+                            onValueChange = { v -> pillOffset = v.toInt(); store.pillTopOffsetDp = pillOffset },
+                            valueRange = 0f..28f,
+                            steps = 13
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(tr("Show in landscape"))
+                            Text(tr("Keep the Focus pill visible when you rotate your phone."), style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked = pillLand, onCheckedChange = { pillLand = it; store.pillLandscape = it })
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -618,6 +674,87 @@ internal fun PermRow(title: String, desc: String, ok: Boolean, onGrant: () -> Un
     }
 }
 
+
+@Composable
+private fun PillPreviewCard(shape: PillShape, widthDp: Int, offsetDp: Int, accent: Color) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(66.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF121418))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val pillW = (widthDp.toFloat() / 360f).coerceIn(0.36f, 0.78f) * w
+            val pillH = if (shape.isFlushTop) 32.dp.toPx() else 28.dp.toPx()
+            val y = if (shape.isFlushTop) 0f else (offsetDp.dp.toPx() * 0.45f).coerceIn(2.dp.toPx(), h - pillH - 4.dp.toPx())
+            val x = when (shape) {
+                PillShape.SIDE_LEFT -> 12.dp.toPx()
+                PillShape.SIDE_RIGHT -> w - pillW - 12.dp.toPx()
+                else -> (w - pillW) / 2f
+            }
+            val fillColor = Color.Black
+            val borderColor = accent.copy(alpha = 0.72f)
+            val camColor = Color.White.copy(alpha = 0.35f)
+            if (!shape.isFlushTop) {
+                val r = pillH / 2f
+                drawRoundRect(fillColor, Offset(x, y), Size(pillW, pillH), CornerRadius(r, r))
+                drawRoundRect(borderColor, Offset(x, y), Size(pillW, pillH), CornerRadius(r, r), style = Stroke(1.5.dp.toPx()))
+                val camX = when (shape) {
+                    PillShape.SIDE_LEFT -> x + 13.dp.toPx()
+                    PillShape.SIDE_RIGHT -> x + pillW - 13.dp.toPx()
+                    else -> w / 2f
+                }
+                if (shape != PillShape.CENTER) drawCircle(camColor, 4.5.dp.toPx(), Offset(camX, y + pillH / 2f), style = Stroke(1.2.dp.toPx()))
+            } else if (shape == PillShape.WATERDROP) {
+                val ear = 9.dp.toPx()
+                val botR = 12.dp.toPx()
+                val path = Path().apply {
+                    moveTo(x, 0f)
+                    quadraticBezierTo(x + ear, 0f, x + ear, ear)
+                    lineTo(x + ear, pillH - botR)
+                    quadraticBezierTo(x + ear, pillH, x + ear + botR, pillH)
+                    lineTo(x + pillW - ear - botR, pillH)
+                    quadraticBezierTo(x + pillW - ear, pillH, x + pillW - ear, pillH - botR)
+                    lineTo(x + pillW - ear, ear)
+                    quadraticBezierTo(x + pillW - ear, 0f, x + pillW, 0f)
+                    close()
+                }
+                drawPath(path, fillColor)
+                drawPath(path, borderColor, style = Stroke(1.5.dp.toPx()))
+                drawCircle(camColor, 4.5.dp.toPx(), Offset(w / 2f, 11.dp.toPx()), style = Stroke(1.2.dp.toPx()))
+            } else {
+                val ear = 5.dp.toPx()
+                val inset = 12.dp.toPx()
+                val cornerR = 11.dp.toPx()
+                val midY = pillH * 0.56f
+                val path = Path().apply {
+                    moveTo(x, 0f)
+                    quadraticBezierTo(x + ear, 0f, x + inset, midY)
+                    quadraticBezierTo(x + inset + 2.dp.toPx(), pillH, x + inset + cornerR, pillH)
+                    lineTo(x + pillW - inset - cornerR, pillH)
+                    quadraticBezierTo(x + pillW - inset - 2.dp.toPx(), pillH, x + pillW - inset, midY)
+                    quadraticBezierTo(x + pillW - ear, 0f, x + pillW, 0f)
+                    close()
+                }
+                drawPath(path, fillColor)
+                drawPath(path, borderColor, style = Stroke(1.5.dp.toPx()))
+                drawCircle(camColor, 4.dp.toPx(), Offset(w / 2f, 10.dp.toPx()), style = Stroke(1.2.dp.toPx()))
+            }
+            // progress shimmer line along the bottom of the island preview
+            drawRect(accent.copy(alpha = 0.85f), Offset(x + 18.dp.toPx(), y + pillH - 2.dp.toPx()), Size((pillW - 36.dp.toPx()) * 0.62f, 2.dp.toPx()))
+        }
+        Text(
+            "Focus  ·  24:15",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.82f),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)
+        )
+    }
+}
 
 private fun openLink(ctx: android.content.Context, url: String) {
     try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}

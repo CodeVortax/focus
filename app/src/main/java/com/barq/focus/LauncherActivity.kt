@@ -105,7 +105,8 @@ private fun LauncherHome() {
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(1000) } }
     BackHandler(true) {}                                   // a launcher has nowhere to go back to
 
-    val lock = remember(now) { store.studyLock(now) }
+    val studyLock = remember(now) { store.studyLock(now) }
+    val onlyAllowed = store.launcherOnlyAllowed || studyLock != null
     val apps = remember(rev) { store.launcherApps().mapNotNull { p -> Apps.launchables(ctx).firstOrNull { it.pkg == p } } }
     val cards = remember(rev, now / 5000) { store.cards().filter { it.type == CardType.STUDY } }
     val activeCard = cards.firstOrNull { it.id == store.activeCardId }
@@ -113,7 +114,10 @@ private fun LauncherHome() {
     var showLock by remember { mutableStateOf(false) }
     var showUnlock by remember { mutableStateOf(false) }
 
-    fun launch(pkg: String) { ctx.packageManager.getLaunchIntentForPackage(pkg)?.let { ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+    fun launch(pkg: String) {
+        if (onlyAllowed && pkg !in store.launcherApps()) return
+        ctx.packageManager.getLaunchIntentForPackage(pkg)?.let { ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
     fun openFocus(go: String? = null) {
         ctx.startActivity(Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP).also { if (go != null) it.putExtra("go", go) })
     }
@@ -124,25 +128,46 @@ private fun LauncherHome() {
         Text(DateFormat.getDateInstance(DateFormat.FULL).format(Date(now)), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(12.dp))
 
-        if (lock != null) {
+        if (studyLock != null) {
+            val lockStatus = when {
+                store.launcherLockUntil > now -> {
+                    val leftSec = ((store.launcherLockUntil - now) / 1000L).coerceAtLeast(0L)
+                    trf("Study lock · %s left", com.barq.focus.data.clockText(leftSec))
+                }
+                else -> tr("Study lock · timer running")
+            }
             Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                Text(
-                    "\uD83D\uDD12 " + trf("Study lock until %s", "%02d:%02d".format(lock.endMin / 60, lock.endMin % 60)),
-                    Modifier.padding(14.dp), fontWeight = FontWeight.SemiBold
-                )
+                Text("\uD83D\uDD12 $lockStatus", Modifier.padding(14.dp), fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.height(8.dp))
+        } else if (onlyAllowed) {
+            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Text("\uD83D\uDEE1\uFE0F " + tr("Allowed apps only"), Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.labelLarge)
             }
             Spacer(Modifier.height(8.dp))
         }
         activeCard?.let { c ->
             val left = if (store.activePaused) store.activeRemaining else store.activeEnd - now
             Card(Modifier.fillMaxWidth().clickable { openFocus("card:${c.id}") }) {
-                Column(Modifier.padding(14.dp)) {
-                    Text(c.title, fontWeight = FontWeight.SemiBold, color = androidx.compose.ui.graphics.Color(c.color))
-                    val s = kotlin.math.abs(left) / 1000
-                    Text(
-                        (if (left < 0) "+" else "") + "%d:%02d".format(s / 60, s % 60) + "  ·  " + tr(if (store.activePaused) "Paused" else if (left < 0) "Over budget" else "left"),
-                        style = MaterialTheme.typography.headlineSmall
-                    )
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(c.title, fontWeight = FontWeight.SemiBold, color = androidx.compose.ui.graphics.Color(c.color))
+                        val s = kotlin.math.abs(left) / 1000
+                        Text(
+                            (if (left < 0) "+" else "") + "%d:%02d".format(s / 60, s % 60) + "  ·  " + tr(if (store.activePaused) "Paused" else if (left < 0) "Over budget" else "left"),
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    }
+                    if (!(store.launcherLockOnTimer && store.launcherStrict)) {
+                        FilledTonalButton(onClick = {
+                            if (store.activePaused) store.resumeActive() else store.pauseActive()
+                            com.barq.focus.service.TimerAlarm.reschedule(ctx, store)
+                            com.barq.focus.service.Notifier.syncTimer(ctx, store)
+                            rev++
+                        }) {
+                            Text(tr(if (store.activePaused) "Resume" else "Pause"))
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -159,10 +184,17 @@ private fun LauncherHome() {
         }
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            if (apps.isEmpty()) Text(
-                tr("No apps yet. Open Focus → menu → Study launcher and choose the apps you want here."),
-                Modifier.align(Alignment.Center), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant
-            ) else LazyVerticalGrid(GridCells.Fixed(store.launcherCols), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (apps.isEmpty()) Column(
+                Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    tr("No apps yet. Open Focus → menu → Study launcher and choose the apps you want here."),
+                    textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (studyLock == null) OutlinedButton(onClick = { openFocus("launcher") }) { Text(tr("Choose apps")) }
+            } else LazyVerticalGrid(GridCells.Fixed(store.launcherCols), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 items(apps, key = { it.pkg }) { a ->
                     Column(Modifier.clip(RoundedCornerShape(16.dp)).clickable { launch(a.pkg) }.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         val bmp = remember(a.pkg) { SysUsage.icon(ctx, a.pkg) }
@@ -175,16 +207,16 @@ private fun LauncherHome() {
 
         Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = { openFocus() }, Modifier.weight(1f)) { Text(tr("Focus")) }
-            if (lock == null) {
-                OutlinedButton(onClick = { showAll = true }, Modifier.weight(1f)) { Text(tr("All apps")) }
+            if (studyLock == null) {
+                if (!onlyAllowed) OutlinedButton(onClick = { showAll = true }, Modifier.weight(1f)) { Text(tr("All apps")) }
                 OutlinedButton(onClick = { showLock = true }, Modifier.weight(1f)) { Text(tr("Study lock")) }
-            } else if (store.launcherLockUntil > now) {
+            } else if (store.launcherLockUntil > now && !store.launcherStrict) {
                 OutlinedButton(onClick = { showUnlock = true }, Modifier.weight(2f)) { Text(tr("Unlock early")) }
             }
         }
     }
 
-    if (showAll) {
+    if (showAll && !onlyAllowed) {
         var q by remember { mutableStateOf("") }
         val all = remember { Apps.launchables(ctx) }
         val hits = all.filter { q.isBlank() || it.label.contains(q, true) }
@@ -220,18 +252,24 @@ private fun LauncherHome() {
     )
     if (showUnlock) {
         var typed by remember { mutableStateOf("") }
+        val phrase = tr(UNLOCK_PHRASE)
         AlertDialog(
             onDismissRequest = { showUnlock = false },
             title = { Text(tr("Unlock early")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(tr("Type this sentence exactly:"), style = MaterialTheme.typography.bodyMedium)
-                    Text(tr(UNLOCK_PHRASE), fontWeight = FontWeight.SemiBold)
-                    OutlinedTextField(typed, { typed = it }, modifier = Modifier.fillMaxWidth())
+                    Text(phrase, fontWeight = FontWeight.SemiBold)
+                    OutlinedTextField(
+                        typed,
+                        { next -> if (next.length - typed.length <= 2) typed = next },
+                        label = { Text(tr("Type the sentence above, letter by letter")) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             },
             confirmButton = {
-                TextButton(enabled = typed.trim() == tr(UNLOCK_PHRASE), onClick = { store.launcherLockUntil = 0L; showUnlock = false }) { Text(tr("Unlock")) }
+                TextButton(enabled = typed.trim().equals(phrase.trim(), ignoreCase = false), onClick = { store.launcherLockUntil = 0L; showUnlock = false }) { Text(tr("Unlock")) }
             },
             dismissButton = { TextButton(onClick = { showUnlock = false }) { Text(tr("Cancel")) } }
         )

@@ -632,6 +632,12 @@ class Store(ctx: Context) {
     var launcherLockOnTimer: Boolean               // also lock while a subject timer runs
         get() = p.getBoolean("launcher_lock_timer", false)
         set(v) { p.edit().putBoolean("launcher_lock_timer", v).apply() }
+    var launcherOnlyAllowed: Boolean               // only chosen apps under Home launcher / no All-apps bypass
+        get() = p.getBoolean("launcher_only_allowed", true)
+        set(v) { p.edit().putBoolean("launcher_only_allowed", v).apply() }
+    var launcherStrict: Boolean                    // hide early unlock and emergency bypass on launcher lock
+        get() = p.getBoolean("launcher_strict", false)
+        set(v) { p.edit().putBoolean("launcher_strict", v).apply() }
 
     /** The study lock as a strict block: only the launcher's apps (plus Focus, the phone and the system) work. */
     fun studyLock(now: Long): Block? {
@@ -643,6 +649,18 @@ class Store(ctx: Context) {
         val c = Calendar.getInstance(); c.timeInMillis = until
         val m = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
         return Block(-99L, "Study lock", 0, m, lock = true, strict = true, allowed = launcherApps())
+    }
+
+    /**
+     * Launcher-level lock for WatchService: timed/timer Study Lock (-99) OR Home-launcher allowed-apps-only gate (-98)
+     * whenever Focus is the active Home launcher.
+     */
+    fun activeLauncherBlock(now: Long, isDefaultHome: Boolean): Block? {
+        studyLock(now)?.let { return it }
+        if (launcherOnlyAllowed && isDefaultHome) {
+            return Block(-98L, "Home launcher", 0, 23 * 60 + 59, lock = true, strict = launcherStrict, allowed = launcherApps())
+        }
+        return null
     }
 
     var timerCompact: Boolean
@@ -778,10 +796,26 @@ class Store(ctx: Context) {
         get() = p.getLong("cycle_break_until", 0L)
         set(v) { p.edit().putLong("cycle_break_until", v).apply() }
 
-    /** The small top-of-screen pill (timer, song, charging). Off until switched on in Setup. */
+    /** The Focus-only top island pill (timer, Focus audio, notices). Off until switched on in Setup. */
     var pillOn: Boolean
         get() = p.getBoolean("pill_on", false)
         set(v) { p.edit().putBoolean("pill_on", v).apply() }
+    /** 0 = center punch-hole, 1 = waterdrop notch, 2 = V shape notch, 3 = side left, 4 = side right */
+    var pillShape: Int
+        get() = p.getInt("pill_shape", 0).coerceIn(0, 4)
+        set(v) { p.edit().putInt("pill_shape", v.coerceIn(0, 4)).apply() }
+    var pillTopOffsetDp: Int
+        get() = p.getInt("pill_top_offset_dp", 8).coerceIn(0, 32)
+        set(v) { p.edit().putInt("pill_top_offset_dp", v.coerceIn(0, 32)).apply() }
+    var pillWidthDp: Int
+        get() = p.getInt("pill_width_dp", 180).coerceIn(130, 260)
+        set(v) { p.edit().putInt("pill_width_dp", v.coerceIn(130, 260)).apply() }
+    var pillHeightDp: Int
+        get() = p.getInt("pill_height_dp", 34).coerceIn(28, 44)
+        set(v) { p.edit().putInt("pill_height_dp", v.coerceIn(28, 44)).apply() }
+    var pillLandscape: Boolean
+        get() = p.getBoolean("pill_landscape", false)
+        set(v) { p.edit().putBoolean("pill_landscape", v).apply() }
 
     // ---- who the home screen greets ----
     var userName: String

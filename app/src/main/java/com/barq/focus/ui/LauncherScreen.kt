@@ -48,8 +48,16 @@ fun LauncherScreen(store: Store, onBack: () -> Unit) {
     var cols by remember { mutableIntStateOf(store.launcherCols) }
     var tasks by remember { mutableStateOf(store.launcherTasks) }
     var onTimer by remember { mutableStateOf(store.launcherLockOnTimer) }
+    var onlyAllowed by remember { mutableStateOf(store.launcherOnlyAllowed) }
+    var strictLock by remember { mutableStateOf(store.launcherStrict) }
     var picker by remember { mutableStateOf(false) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var isHome by remember { mutableStateOf(Apps.isDefaultHome(ctx)) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        isHome = Apps.isDefaultHome(ctx)
+        now = System.currentTimeMillis()
+        onPauseOrDispose {}
+    }
     val locked = store.studyLock(now) != null
 
     Scaffold(topBar = {
@@ -60,6 +68,17 @@ fun LauncherScreen(store: Store, onBack: () -> Unit) {
                 tr("A small home screen with only what you choose, and a study lock that blocks every other app (and the phone's settings) so you can't cheat. It is optional: use it as your home screen or just open it when you study."),
                 style = MaterialTheme.typography.bodyMedium
             )
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = if (isHome) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Text(
+                    tr(if (isHome) "Focus is your Home app. Allowed-apps gate is active." else "Not set as Home app yet. Tap Home app settings to make it your launcher."),
+                    Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { ctx.startActivity(Intent(ctx, LauncherActivity::class.java)) }) { Text(tr("Open it now")) }
                 OutlinedButton(enabled = !locked, onClick = {
@@ -71,7 +90,15 @@ fun LauncherScreen(store: Store, onBack: () -> Unit) {
 
             Text(tr("Apps on the launcher"), fontWeight = FontWeight.SemiBold)
             Text(trf("%d apps chosen. These are also the only apps that work during a study lock.", apps.size), style = MaterialTheme.typography.bodyMedium)
-            OutlinedButton(onClick = { picker = true }) { Text(tr("Choose apps")) }
+            OutlinedButton(enabled = !locked, onClick = { picker = true }) { Text(tr("Choose apps")) }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(tr("Allowed apps only under Home launcher"))
+                    Text(tr("Hides All apps on the launcher and blocks unchosen apps whenever Focus is your Home app."), style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = onlyAllowed, enabled = !locked, onCheckedChange = { onlyAllowed = it; store.launcherOnlyAllowed = it })
+            }
 
             Text(tr("Columns"), fontWeight = FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -89,7 +116,14 @@ fun LauncherScreen(store: Store, onBack: () -> Unit) {
                     Text(tr("Lock while a subject timer runs"))
                     Text(tr("Other apps are blocked for as long as a timer is running. Pause or stop the timer to get out."), style = MaterialTheme.typography.bodySmall)
                 }
-                Switch(checked = onTimer, onCheckedChange = { onTimer = it; store.launcherLockOnTimer = it })
+                Switch(checked = onTimer, enabled = !locked, onCheckedChange = { onTimer = it; store.launcherLockOnTimer = it })
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(tr("Strict lock (no early unlock)"))
+                    Text(tr("Hides the Unlock early button and blocks any 2-minute emergency bypass until time runs out."), style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = strictLock, enabled = !locked, onCheckedChange = { strictLock = it; store.launcherStrict = it })
             }
             if (store.launcherLockUntil > now) Text(
                 trf("Locked until %s", java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(store.launcherLockUntil))),
@@ -97,7 +131,7 @@ fun LauncherScreen(store: Store, onBack: () -> Unit) {
             ) else {
                 Text(tr("Start a lock now:"), style = MaterialTheme.typography.bodyMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(25, 45, 60, 90).forEach { m ->
+                    listOf(25, 45, 60, 90, 120).forEach { m ->
                         OutlinedButton(onClick = { store.launcherLockUntil = System.currentTimeMillis() + m * 60_000L; now = System.currentTimeMillis() }, contentPadding = PaddingValues(horizontal = 12.dp)) { Text("$m") }
                     }
                 }

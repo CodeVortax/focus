@@ -38,6 +38,7 @@ import android.provider.Settings
 import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
@@ -213,7 +214,7 @@ class Overlay private constructor(private val ctx: Context) {
     fun show(
         tag: String, title: String, subtitle: String, delaySec: Int, choices: List<Choice>,
         typedLabel: String? = null, onTyped: ((String) -> Unit)? = null, strictPhrase: String? = null,
-        leaveLabel: String = "Leave", note: String? = null, onLeave: () -> Unit,
+        leaveLabel: String = "Leave", note: String? = null, targetPkg: String? = null, onLeave: () -> Unit,
     ) {
         if (root != null || !Settings.canDrawOverlays(ctx)) return
 
@@ -437,8 +438,13 @@ class Overlay private constructor(private val ctx: Context) {
             setPadding(0, 0, 0, dp(104))
             addView(col, FrameLayout.LayoutParams(-1, -2))
         }
-        // opaque, full-bleed: the screen behind must not show through
-        val frame = FrameLayout(ctx).apply {
+        // opaque, full-bleed: the screen behind must not show through; Back key cannot dismiss the gate
+        val frame = object : FrameLayout(ctx) {
+            override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                if (event.keyCode == KeyEvent.KEYCODE_BACK) return true
+                return super.dispatchKeyEvent(event)
+            }
+        }.apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 intArrayOf(pal.bg, ColorUtils.blendARGB(pal.bg, pal.primary, 0.12f))
@@ -460,7 +466,7 @@ class Overlay private constructor(private val ctx: Context) {
             root = frame
             this.tag = tag
             delayLeft = delaySec
-            grabAudio()
+            if (MusicGuard.shouldGrabOverlayAudio(ctx, targetPkg)) grabAudio()
             h.post(countdown)
         } catch (_: Exception) {
             root = null
@@ -476,7 +482,7 @@ class Overlay private constructor(private val ctx: Context) {
         dropAudio()
     }
 
-    // Pause whatever is playing behind the gate (YouTube keeps playing under an overlay otherwise).
+    // Pause distracting video behind the gate only when no music player is active.
     private fun grabAudio() {
         try {
             val r = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)

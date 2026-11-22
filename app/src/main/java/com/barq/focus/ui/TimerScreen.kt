@@ -35,19 +35,32 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.barq.focus.data.FocusCard
 import com.barq.focus.data.Store
+import com.barq.focus.service.Alerts
+import com.barq.focus.service.FocusWidgets
+import com.barq.focus.service.Notifier
+import com.barq.focus.service.TimerAlarm
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
+    val ctx = LocalContext.current
     val view = LocalView.current
     DisposableEffect(Unit) { view.keepScreenOn = true; onDispose { view.keepScreenOn = false } }
+
+    fun syncTimerOutputs() {
+        Alerts.stop()
+        TimerAlarm.reschedule(ctx, store)
+        Notifier.syncTimer(ctx, store)
+        FocusWidgets.refresh(ctx, true)
+    }
 
     val total = card.minutes * 60_000L
     var endAt by remember { mutableLongStateOf(if (store.activeCardId == card.id) store.activeEnd else 0L) }
@@ -60,6 +73,7 @@ fun TimerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
             if (now >= endAt) {
                 done = true
                 store.stopActive()
+                syncTimerOutputs()
             }
             delay(500)
         }
@@ -102,8 +116,9 @@ fun TimerScreen(store: Store, card: FocusCard, onExit: () -> Unit) {
                     endAt = System.currentTimeMillis() + total
                     now = System.currentTimeMillis()
                     store.startActive(card.id, endAt)
+                    syncTimerOutputs()
                 },
-                onStop = { store.stopActive(); onExit() },
+                onStop = { store.stopActive(); syncTimerOutputs(); onExit() },
                 onToggleCompact = { compact = !compact; store.timerCompact = compact }
             )
             if (done) {

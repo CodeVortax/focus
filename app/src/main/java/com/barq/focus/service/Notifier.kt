@@ -179,6 +179,19 @@ object Notifier {
         try { ctx.getSystemService(NotificationManager::class.java).notify(PROJECT_ID, b.build()) } catch (_: SecurityException) {}
     }
 
+    /** Pure progress computation for the running subject timer notification (Android system + external capsule readers). */
+    data class TimerProgress(val maxSec: Int, val progressSec: Int, val percent: Int)
+
+    fun computeTimerProgress(plannedMinutes: Int, leftMs: Long, elapsedMs: Long): TimerProgress {
+        val plannedSec = plannedMinutes.coerceAtLeast(1) * 60
+        val remainingSec = ((leftMs.coerceAtLeast(0L) + 999L) / 1000L).toInt()
+        val elapsedSec = (elapsedMs.coerceAtLeast(0L) / 1000L).toInt()
+        val totalSec = maxOf(plannedSec, elapsedSec + remainingSec, 1)
+        val curSec = if (leftMs <= 0L) totalSec else (totalSec - remainingSec).coerceIn(0, totalSec)
+        val pct = ((curSec * 100L) / totalSec).toInt().coerceIn(0, 100)
+        return TimerProgress(maxSec = totalSec, progressSec = curSec, percent = pct)
+    }
+
     fun syncTimer(ctx: Context, store: Store) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         val id = store.activeCardId
@@ -186,26 +199,45 @@ object Notifier {
             if (lastTimer.isNotEmpty()) { nm.cancel(TIMER_ID); lastTimer = "" }
             return
         }
+        val card = store.cards().firstOrNull { it.id == id } ?: return
         val now = System.currentTimeMillis()
         val end = store.activeEnd
         val paused = store.activePaused
         val over = !paused && end <= now
-        val sig = "$id|$end|$paused|${store.activeRemaining}|$over|${I18n.code}"
+        val leftMs = if (paused) store.activeRemaining else end - now
+        val elapsedMs = if (paused) (card.minutes.coerceAtLeast(1) * 60_000L - leftMs) else (now - store.activeStart)
+        val prog = computeTimerProgress(card.minutes, leftMs, elapsedMs)
+        val bucket = if (paused || over) -1 else prog.progressSec / 5
+        val sig = "$id|$end|$paused|${store.activeRemaining}|$over|$bucket|${I18n.code}"
         if (sig == lastTimer) return
-        val card = store.cards().firstOrNull { it.id == id } ?: return
         lastTimer = sig
         ensureChannels(ctx)
 
         val b = NotificationCompat.Builder(ctx, CH_TIMER)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setColor(card.color)
             .setContentTitle(iso(card.title))
-            .setOngoing(true).setOnlyAlertOnce(true)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setProgress(prog.maxSec, prog.progressSec, false)
             .setContentIntent(TimerAlarm.openApp(ctx, "card:active"))
         when {
             paused -> b.setContentText(trf("Paused  ·  %s left", fmt(store.activeRemaining)))
-            over -> b.setContentText(tr("Over budget")).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(false).setWhen(end)
-            else -> b.setContentText(tr("Time left")).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true).setWhen(end)
+                .setShowWhen(false)
+                .setUsesChronometer(false)
+            over -> b.setContentText(tr("Over budget") + "  ·  " + fmt(leftMs))
+                .setShowWhen(true)
+                .setUsesChronometer(true)
+                .setChronometerCountDown(false)
+                .setWhen(end)
+            else -> b.setContentText(trf("%s left", fmt(leftMs)) + "  ·  ${prog.percent}%")
+                .setShowWhen(true)
+                .setUsesChronometer(true)
+                .setChronometerCountDown(true)
+                .setWhen(end)
         }
         val total = card.items.size
         if (total > 0) b.setSubText(trf("%d / %d tasks", card.items.count { it.done }, total))
@@ -219,7 +251,7 @@ object Notifier {
         else b.addAction(0, tr("Pause"), TimerAlarm.broadcast(ctx, TimerAlarm.ACTION_PAUSE))
         b.addAction(0, tr("+5 min"), TimerAlarm.broadcast(ctx, TimerAlarm.ACTION_ADD5))
         b.addAction(0, tr("Stop"), TimerAlarm.broadcast(ctx, TimerAlarm.ACTION_STOPT))
-        nm.notify(TIMER_ID, b.build())
+        try { nm.notify(TIMER_ID, b.build()) } catch (_: SecurityException) {}
     }
 
     /** After a language change: rebuild everything in the new language. */
