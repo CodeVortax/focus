@@ -412,7 +412,7 @@ class WatchService : Service() {
     private fun showBlock(b: Block, cur: String) {
         val launcherMode = b.id == -99L || b.id == -98L
         val ch = ArrayList<Choice>()
-        if (!b.strict) ch += Choice(tr("I really need this  ·  2 min"), 0xFFEA4335.toInt(), wait = 30, icon = "\uD83C\uDD98") {
+        if (!b.strict) ch += Choice(tr("I really need this  ·  2 min"), 0xFFEA4335.toInt(), wait = 30, icon = "emergency") {
             blockPass[cur] = System.currentTimeMillis() + 2 * 60_000L
             if (fgRow >= 0) db.setReason(fgRow, "Emergency (block)")
             say(Moment.EMERGENCY)
@@ -475,13 +475,13 @@ class WatchService : Service() {
                 cycUsed = 0L; cycWarned = false
                 store.cycleUsed = 0L
                 store.cycleBreakUntil = now + store.cycleBreakMin * 60_000L
-                val msg = "\u2615 " + trf("Break time: %d min", store.cycleBreakMin)
+                val msg = trf("Break time: %d min", store.cycleBreakMin)
                 if (store.pillOn) pill.notice(msg, 0xFFFBBC04.toInt(), 6000L)
                 else try { android.widget.Toast.makeText(applicationContext, msg, android.widget.Toast.LENGTH_LONG).show() } catch (_: Exception) {}
             } else {
                 if (!cycWarned && allow - cycUsed <= 60_000L) {
                     cycWarned = true
-                    val msg = "\u2615 " + tr("1 min until your break")
+                    val msg = tr("1 min until your break")
                     if (store.pillOn) pill.notice(msg, 0xFFFBBC04.toInt(), 5000L)
                     else try { android.widget.Toast.makeText(applicationContext, msg, android.widget.Toast.LENGTH_SHORT).show() } catch (_: Exception) {}
                 }
@@ -499,7 +499,7 @@ class WatchService : Service() {
         val left = until - now
         if (left in 1L..30_000L && warnedAt[cur] != until) {
             warnedAt[cur] = until
-            val msg = "\u23F3 " + (Config.TRACKED[cur] ?: cur) + "  " + tr("30 s left")
+            val msg = (Config.TRACKED[cur] ?: cur) + "  ·  " + tr("30 s left")
             if (store.pillOn) pill.notice(msg, 0xFFFBBC04.toInt(), 5000L)
             else try { android.widget.Toast.makeText(applicationContext, msg, android.widget.Toast.LENGTH_SHORT).show() } catch (_: Exception) {}
         }
@@ -535,24 +535,24 @@ class WatchService : Service() {
         }
         if (!returning) visits.add(now)
         val ch = ArrayList<Choice>()
-        ch += Choice(trf("Just search  ·  %d min", Config.SEARCH_MINUTES), 0xFF4285F4.toInt(), icon = "\uD83D\uDD0D") { grant(cur, "Just search", Config.SEARCH_MINUTES) }
-        ch += Choice(trf("A link  ·  %d min", Config.LINK_MINUTES), 0xFF4285F4.toInt(), icon = "\uD83D\uDD17") { grant(cur, "A link", Config.LINK_MINUTES) }
+        ch += Choice(trf("Just search  ·  %d min", Config.SEARCH_MINUTES), 0xFF4285F4.toInt(), icon = "search") { grant(cur, "Just search", Config.SEARCH_MINUTES) }
+        ch += Choice(trf("A link  ·  %d min", Config.LINK_MINUTES), 0xFF4285F4.toInt(), icon = "link") { grant(cur, "A link", Config.LINK_MINUTES) }
         if (allowedUntil.containsKey(cur)) {
             // the session just ended: a small extension is one tap away (after the same short countdown), not a fresh start
-            ch += Choice(tr("+2 min"), 0xFF4285F4.toInt(), icon = "\u23F1") { grant(cur, "+2 min", 2) }
-            ch += Choice(tr("+5 min"), 0xFF4285F4.toInt(), icon = "\u23F1") { grant(cur, "+5 min", 5) }
+            ch += Choice(tr("+2 min"), 0xFF4285F4.toInt(), icon = "timer") { grant(cur, "+2 min", 2) }
+            ch += Choice(tr("+5 min"), 0xFF4285F4.toInt(), icon = "timer") { grant(cur, "+5 min", 5) }
         }
         if (bank >= Config.TREAT_STEP) {
-            ch += Choice(trf("Treat  ·  %d min  (bank %d)", Config.TREAT_STEP, bank), 0xFF34A853.toInt(), icon = "\uD83C\uDF7F") {
+            ch += Choice(trf("Treat  ·  %d min  (bank %d)", Config.TREAT_STEP, bank), 0xFF34A853.toInt(), icon = "treat") {
                 store.spend(Config.TREAT_STEP); grant(cur, "Treat", Config.TREAT_STEP); treated(Config.TREAT_STEP)
             }
-            if (bank > Config.TREAT_STEP) ch += Choice(trf("Use all  ·  %d min", bank), 0xFF34A853.toInt(), icon = "\uD83C\uDF89") {
+            if (bank > Config.TREAT_STEP) ch += Choice(trf("Use all  ·  %d min", bank), 0xFF34A853.toInt(), icon = "all") {
                 store.spend(bank); grant(cur, "Treat (all)", bank); treated(bank)
             }
         } else {
             ch += Choice(tr("Treat bank empty: finish tasks to earn"), 0xFF555866.toInt(), enabled = false) {}
         }
-        ch += Choice(tr("I'm distracted"), 0xFFEA4335.toInt(), wait = Config.DISTRACTED_WAIT, icon = "\uD83C\uDF00") {
+        ch += Choice(tr("I'm distracted"), 0xFFEA4335.toInt(), wait = Config.DISTRACTED_WAIT, icon = "distracted") {
             grant(cur, "I'm distracted", Config.DISTRACTED_MINUTES)
         }
 

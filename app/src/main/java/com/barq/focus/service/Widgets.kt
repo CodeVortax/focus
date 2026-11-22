@@ -69,7 +69,7 @@ object FocusWidgets {
         val bank = s.bankSec()
         v.setTextViewText(R.id.w_big, if (bank >= 3600) com.barq.focus.data.clockText(bank.toLong()).substringBeforeLast(':') else s.bankText())
         v.setTextViewText(R.id.w_small, if (bank >= 3600) tr("h : min") else tr("min"))
-        v.setTextViewText(R.id.w_line, "\uD83D\uDD25 " + days(Game.workStreak(s)))
+        v.setTextViewText(R.id.w_line, tr("Work streak") + ": " + days(Game.workStreak(s)))
         v.setTextColor(R.id.w_big, accent(s))
         v.setOnClickPendingIntent(R.id.w_root, open(ctx, "home"))
         return v
@@ -84,7 +84,7 @@ object FocusWidgets {
         if (card == null) {
             v.setViewVisibility(R.id.w_chrono, android.view.View.GONE)
             v.setViewVisibility(R.id.w_big, android.view.View.VISIBLE)
-            v.setTextViewText(R.id.w_big, "\u23F1")
+            v.setTextViewText(R.id.w_big, "--:--")
             v.setTextViewText(R.id.w_small, tr("No timer running"))
             v.setTextViewText(R.id.w_line, tr("Tap to pick a subject"))
             v.setOnClickPendingIntent(R.id.w_root, open(ctx))
@@ -98,7 +98,7 @@ object FocusWidgets {
         v.setChronometer(R.id.w_chrono, android.os.SystemClock.elapsedRealtime() + left, null, !s.activePaused)
         v.setTextColor(R.id.w_chrono, card.color)
         v.setTextViewText(R.id.w_small, tr(if (s.activePaused) "Paused" else if (left < 0) "Over budget" else "left"))
-        v.setTextViewText(R.id.w_line, "\uD83C\uDF7F " + com.barq.focus.data.hmText(s.bankSec()))
+        v.setTextViewText(R.id.w_line, tr("Treat bank") + ": " + com.barq.focus.data.hmText(s.bankSec()))
         v.setOnClickPendingIntent(R.id.w_root, open(ctx, "card:${card.id}"))
         return v
     }
@@ -121,7 +121,7 @@ object FocusWidgets {
         val s = Store(ctx)
         val v = RemoteViews(ctx.packageName, R.layout.widget_streak)
         v.setTextViewText(R.id.w_label, tr("Work streak"))
-        v.setTextViewText(R.id.w_big, "\uD83D\uDD25 " + Game.workStreak(s))
+        v.setTextViewText(R.id.w_big, Game.workStreak(s).toString())
         v.setTextViewText(R.id.w_small, tr("work-day streak"))
         v.setTextViewText(R.id.w_line, tr("Light Shorts") + ": " + days(Game.lightStreak(s)))
         v.setTextColor(R.id.w_big, accent(s))
@@ -184,13 +184,13 @@ object FocusWidgets {
         v.setTextViewText(R.id.w_empty, tr("Add a subject with tasks in Focus"))
         v.setTextViewText(
             R.id.w_line,
-            "\uD83C\uDF7F " + com.barq.focus.data.hmText(s.bankSec()) + "   \uD83D\uDD25 " + days(Game.workStreak(s)) +
-                "   \uD83D\uDCF1 " + trf("%d swiped", s.shortsSwipes())
+            com.barq.focus.data.hmText(s.bankSec()) + "  ·  " + days(Game.workStreak(s)) +
+                "  ·  " + trf("%d swiped", s.shortsSwipes())
         )
         val nowMs = System.currentTimeMillis()
         cards.filter { it.examDate > nowMs }.minByOrNull { it.examDate }?.let { c ->
             val d = ((c.examDate - nowMs) / 86_400_000L).toInt() + 1
-            v.setTextViewText(R.id.w_line, "\uD83D\uDCC5 ${c.title} " + trf("%d d", d) + "   " + "\uD83C\uDF7F " + com.barq.focus.data.hmText(s.bankSec()))
+            v.setTextViewText(R.id.w_line, "${c.title} " + trf("%d d", d) + "  ·  " + com.barq.focus.data.hmText(s.bankSec()))
         }
         v.setOnClickPendingIntent(R.id.w_root, open(ctx))
         return v

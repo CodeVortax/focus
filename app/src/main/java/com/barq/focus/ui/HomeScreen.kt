@@ -47,6 +47,14 @@ import com.barq.focus.data.Game
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.LocalActivity
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.WorkspacePremium
 import com.barq.focus.data.Moment
 import com.barq.focus.data.support
 import com.barq.focus.data.tr
@@ -212,7 +220,9 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                     else Button(onClick = go1, modifier = mod, shape = shape) { txt() }
                     if (running == null) {
                         FilledTonalButton(onClick = spark5, modifier = Modifier.heightIn(min = btnHeight), shape = shape, contentPadding = PaddingValues(horizontal = 14.dp)) {
-                            Text(tr("⚡ 5m"), fontWeight = FontWeight.Bold)
+                            Icon(Icons.Rounded.Bolt, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(tr("5 min"), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -257,15 +267,15 @@ fun HomeScreen(store: Store, onOpen: (FocusCard) -> Unit, go: (String) -> Unit) 
                             )
                         }
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatChip("\uD83C\uDF7F " + com.barq.focus.data.hmText(store.bankSec()))
-                            StatChip("\uD83D\uDCF1 $swipes")
-                            StatChip("\uD83D\uDD25 $workStreak")
-                            if (shields > 0) StatChip("\uD83D\uDEE1\uFE0F $shields")
-                            StatChip(Game.titleOf(lvl).first + " " + trf("Lv %d · %d%% Piggy", lvl, Game.interestPct(lvl)))
+                            StatChip(Icons.Rounded.LocalActivity, com.barq.focus.data.hmText(store.bankSec()))
+                            StatChip(Icons.Rounded.Smartphone, "$swipes")
+                            StatChip(Icons.Rounded.LocalFireDepartment, "$workStreak")
+                            if (shields > 0) StatChip(Icons.Rounded.Shield, "$shields")
+                            StatChip(Icons.Rounded.WorkspacePremium, trf("Lv %d · %d%% Piggy", lvl, Game.interestPct(lvl)))
                         }
                         if (moreOpen) {
                             Text(
-                                trf("Shorts today: %d swiped, %d min", swipes, shortsMin) + "  ·  \uD83D\uDEE1\uFE0F $lightStreak",
+                                trf("Shorts today: %d swiped, %d min", swipes, shortsMin) + "  ·  " + trf("Light streak: %d", lightStreak),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             val (weekLeft, weekAll) = Weekly.progress(cards)
@@ -481,7 +491,10 @@ internal fun CardTile(c: FocusCard, spentMin: Long, onClick: () -> Unit, onLong:
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 when {
                     t == 0 -> Text(Config.freeWord(c.id), fontWeight = FontWeight.Bold, color = col, style = MaterialTheme.typography.titleMedium)
-                    left == 0 -> Text(tr("Plate cleared ✓"), fontWeight = FontWeight.Bold, color = col, style = MaterialTheme.typography.titleMedium)
+                    left == 0 -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Icon(Icons.Rounded.CheckCircle, null, tint = col, modifier = Modifier.size(18.dp))
+                        Text(tr("Plate cleared"), fontWeight = FontWeight.Bold, color = col, style = MaterialTheme.typography.titleMedium)
+                    }
                     else -> Row(verticalAlignment = Alignment.Bottom) {
                         Text("$left", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = col)
                         Text(
@@ -503,8 +516,14 @@ internal fun CardTile(c: FocusCard, spentMin: Long, onClick: () -> Unit, onLong:
                 }
             }
         } else {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(typeLabel(c.type) + if (c.eps.isNotEmpty()) "  ▶ " + c.eps.count { it.done } + "/" + c.eps.size else if (c.media.isNotEmpty()) "  ▶" else "", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = col)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(typeLabel(c.type), style = MaterialTheme.typography.labelLarge, color = col)
+                    if (c.eps.isNotEmpty() || c.media.isNotEmpty()) {
+                        Icon(Icons.Rounded.PlayArrow, null, tint = col, modifier = Modifier.size(15.dp))
+                        if (c.eps.isNotEmpty()) Text("${c.eps.count { it.done }}/${c.eps.size}", style = MaterialTheme.typography.labelLarge, color = col)
+                    }
+                }
                 Text("${c.minutes}m", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = col)
             }
         }
@@ -689,9 +708,16 @@ private fun HomeHeader(name: String, onName: () -> Unit, onLayouts: () -> Unit, 
 }
 
 @Composable
-private fun StatChip(text: String) {
-    Text(
-        text, style = MaterialTheme.typography.labelMedium, maxLines = 1,
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 10.dp, vertical = 5.dp)
-    )
+private fun StatChip(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Icon(icon, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+        Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+    }
 }

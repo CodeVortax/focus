@@ -31,9 +31,26 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Casino
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Savings
+import androidx.compose.material.icons.rounded.School
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -96,13 +113,25 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            Text(emoji, fontSize = 44.sp)
+                            Box(
+                                Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.WorkspacePremium, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp))
+                            }
                             Column(Modifier.weight(1f)) {
                                 Text(tr(title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                 Text(trf("Level %d  ·  %d XP", level, data.xp), style = MaterialTheme.typography.bodyMedium)
                             }
                             Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.secondaryContainer) {
-                                Text("\uD83D\uDEE1\uFE0F ${data.shields}/2", Modifier.padding(horizontal = 10.dp, vertical = 4.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                                Row(
+                                    Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Shield, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
+                                    Text("${data.shields}/2", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                                }
                             }
                         }
                         LinearProgressIndicator(progress = { frac }, modifier = Modifier.fillMaxWidth())
@@ -121,8 +150,8 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StreakCard("🔥", data.work, tr("work-day streak"), Modifier.weight(1f))
-                    StreakCard("🛡️", data.light, tr("light-Shorts streak (50 or fewer)"), Modifier.weight(1f))
+                    StreakCard(Icons.Rounded.LocalFireDepartment, MaterialTheme.colorScheme.primary, data.work, tr("work-day streak"), Modifier.weight(1f))
+                    StreakCard(Icons.Rounded.Shield, MaterialTheme.colorScheme.tertiary, data.light, tr("light-Shorts streak (50 or fewer)"), Modifier.weight(1f))
                 }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -138,7 +167,12 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                         .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(if (q.done) "✅" else "⬜", fontSize = 20.sp)
+                    Icon(
+                        if (q.done) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                        null,
+                        tint = if (q.done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
                     Spacer(Modifier.width(12.dp))
                     Text(tr(q.text), Modifier.weight(1f), fontWeight = if (q.done) FontWeight.SemiBold else FontWeight.Normal)
                     Text(tr("+40 XP"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
@@ -183,7 +217,7 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
                             Text(tr(b.name), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                             Text(tr(b.desc), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
                         } else {
-                            Text("❓", fontSize = 40.sp)
+                            Icon(Icons.Rounded.HelpOutline, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(40.dp))
                             Text(tr("Hidden until you earn it"), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
                         }
                     }
@@ -194,20 +228,34 @@ fun TrophiesScreen(store: Store, onBack: () -> Unit) {
 }
 
 @Composable
-private fun StreakCard(emoji: String, days: Int, label: String, modifier: Modifier) {
+private fun StreakCard(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color, days: Int, label: String, modifier: Modifier) {
     Column(
         modifier.clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.secondaryContainer).padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(emoji, fontSize = 30.sp)
+        Icon(icon, null, tint = tint, modifier = Modifier.size(30.dp))
+        Spacer(Modifier.height(4.dp))
         Text("$days", fontSize = 34.sp, fontWeight = FontWeight.Bold)
         Text(label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
     }
 }
 
-/** Badge picture from res/drawable-nodpi/badge_<id>.webp, or the emoji on a dark tile when there's no art yet. */
+private fun badgeFallbackVector(id: String) = when (id) {
+    "speed" -> Icons.Rounded.Bolt
+    "week", "two", "month", "comeback" -> Icons.Rounded.LocalFireDepartment
+    "detox", "free", "retire" -> Icons.Rounded.Shield
+    "scribe", "worm" -> Icons.Rounded.AutoStories
+    "dumper" -> Icons.Rounded.Psychology
+    "dare" -> Icons.Rounded.Casino
+    "classy", "prepared" -> Icons.Rounded.School
+    "piggy", "whale", "payday", "interest" -> Icons.Rounded.Savings
+    "overtime" -> Icons.Rounded.Timer
+    else -> Icons.Rounded.EmojiEvents
+}
+
+/** Badge picture from res/drawable-nodpi/badge_<id>.webp, or a crisp vector badge icon when there's no art yet. */
 @Composable
-fun BadgeArt(id: String, emoji: String, size: Dp, locked: Boolean) {
+fun BadgeArt(id: String, @Suppress("UNUSED_PARAMETER") emoji: String, size: Dp, locked: Boolean) {
     val ctx = LocalContext.current
     val res = remember(id) { ctx.resources.getIdentifier("badge_$id", "drawable", ctx.packageName) }
     val shape = RoundedCornerShape(size / 5)
@@ -219,7 +267,12 @@ fun BadgeArt(id: String, emoji: String, size: Dp, locked: Boolean) {
         )
     } else {
         Box(Modifier.size(size).clip(shape).background(Color(0xFF1E1F24)), contentAlignment = Alignment.Center) {
-            Text(if (locked) "🔒" else emoji, fontSize = (size.value * 0.5f).sp)
+            Icon(
+                imageVector = if (locked) Icons.Rounded.Lock else badgeFallbackVector(id),
+                contentDescription = null,
+                tint = if (locked) Color(0xFF8E8E93) else Color(0xFFFFD54F),
+                modifier = Modifier.size(size * 0.48f)
+            )
         }
     }
 }

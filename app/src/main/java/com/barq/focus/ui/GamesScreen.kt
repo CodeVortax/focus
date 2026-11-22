@@ -37,9 +37,29 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.Air
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Calculate
+import androidx.compose.material.icons.rounded.Casino
+import androidx.compose.material.icons.rounded.CenterFocusStrong
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.Flight
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.LinearScale
+import androidx.compose.material.icons.rounded.Pets
+import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.RocketLaunch
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.SportsTennis
+import androidx.compose.material.icons.rounded.Style
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -221,32 +241,32 @@ private fun bestOf(store: Store, key: String): String {
     return if (v > 0L) trf("Best: %d", v.toInt()) else ""
 }
 
-private data class HubEntry(val id: String, val emoji: String, val name: String, val blurb: String, val best: String)
+private data class HubEntry(val id: String, val icon: ImageVector, val name: String, val blurb: String, val best: String)
 
 @Composable
 private fun GamesHub(store: Store, listState: androidx.compose.foundation.lazy.LazyListState, onBack: () -> Unit, onPick: (String) -> Unit) {
     // show the record of the hardest Sudoku level played (beginner times would always look "best")
     val sudokuBest = listOf(2, 1, 0, 3).map { store.getLong("sudoku_best_$it") }.firstOrNull { it > 0L }
     val entries = listOf(
-        HubEntry("breath", "🫧", tr("Calm Breathing"), tr("A slow breathing circle. No score, no pressure."),
+        HubEntry("breath", Icons.Rounded.Air, tr("Calm Breathing"), tr("A slow breathing circle. No score, no pressure."),
             store.getLong(BREATH_TOTAL_KEY).let { if (it >= 60L) trf("Total: %d min", (it / 60L).toInt()) else "" }),
-        HubEntry("tetris", "🧱", tr("Blocks"), tr("Falling blocks. Find the rhythm and let the noise go quiet."), trf("Best: %d", store.getLong("hs_tetris"))),
-        HubEntry("dash", "🔷", tr("Beat Dash"), tr("Hold to jump in time with the beat. One touch."), trf("Best: %d%%", store.getLong("hs_dash"))),
-        HubEntry("snake", "🐍", tr("Snake"), tr("Eat, grow, and don't hit the walls or yourself."), bestOf(store, "hs_snake")),
-        HubEntry("brick", "🏓", tr("Brick Breaker"), tr("Smash every brick. Colours give power-ups."), bestOf(store, "hs_brick")),
-        HubEntry("flappy", "🐤", tr("Flappy Bird"), tr("Hold to rise, release to sink. Squeeze through the pipes."), bestOf(store, "hs_flappy")),
-        HubEntry("flap", "🐦", tr("Sky Flap"), tr("Tap to flap through the gaps. Simple, tense, addictive."), bestOf(store, "hs_flap")),
-        HubEntry("dino", "🦖", tr("Dino Run"), tr("Jump the cactus, duck the birds. Endless."), bestOf(store, "hs_dino")),
-        HubEntry("invaders", "👾", tr("Space Invasion"), tr("Shoot the fleet before it reaches you."), bestOf(store, "hs_invaders")),
-        HubEntry("stack", "🗼", tr("Stack Tower"), tr("Tap to drop blocks and build the tallest tower. Precision wins."), bestOf(store, "hs_stack")),
-        HubEntry("sudoku", "🔢", tr("Sudoku"), tr("Classic number logic. Three difficulty levels."), if (sudokuBest != null) trf("Best time: %s", fmtTime(sudokuBest.toInt())) else ""),
-        HubEntry("2048", "🔲", tr("2048"), tr("Slide and merge tiles. A calm number puzzle."), bestOf(store, "hs_2048")),
-        HubEntry("mines", "💣", tr("Minesweeper"), tr("Clear the field without hitting a mine."), store.getLong("hs_mines").let { if (it > 0L) trf("Best time: %s", fmtTime(it.toInt())) else "" }),
-        HubEntry("yahtzee", "🎲", tr("Yahtzee"), tr("Roll five dice, three tries a turn, fill the scoreboard."), bestOf(store, "hs_yahtzee")),
-        HubEntry("memory", "🃏", tr("Memory Match"), tr("Flip cards and find the pairs in as few moves as you can."), store.getLong("hs_memory").let { if (it > 0L) trf("Best: %d moves", it.toInt()) else "" }),
-        HubEntry("schulte", "🎯", tr("Schulte Table"), tr("Find 1 to 25 in order. A classic attention drill."), store.getLong("hs_schulte").let { if (it > 0L) trf("Best time: %s", fmtMs(it)) else "" }),
-        HubEntry("nback", "🧠", tr("N-Back"), tr("A working-memory workout. Spot the square from N steps ago."), store.getLong("hs_nback").let { if (it > 0L) trf("Best: %d-back", it.toInt()) else "" }),
-        HubEntry("react", "⚡", tr("Reaction Test"), tr("Tap the moment the screen turns green."), store.getLong("hs_react").let { if (it > 0L) trf("Best average: %d ms", it.toInt()) else "" }),
+        HubEntry("tetris", Icons.Rounded.GridView, tr("Blocks"), tr("Falling blocks. Find the rhythm and let the noise go quiet."), trf("Best: %d", store.getLong("hs_tetris"))),
+        HubEntry("dash", Icons.Rounded.Bolt, tr("Beat Dash"), tr("Hold to jump in time with the beat. One touch."), trf("Best: %d%%", store.getLong("hs_dash"))),
+        HubEntry("snake", Icons.Rounded.LinearScale, tr("Snake"), tr("Eat, grow, and don't hit the walls or yourself."), bestOf(store, "hs_snake")),
+        HubEntry("brick", Icons.Rounded.SportsTennis, tr("Brick Breaker"), tr("Smash every brick. Colours give power-ups."), bestOf(store, "hs_brick")),
+        HubEntry("flappy", Icons.Rounded.Flight, tr("Flappy Bird"), tr("Hold to rise, release to sink. Squeeze through the pipes."), bestOf(store, "hs_flappy")),
+        HubEntry("flap", Icons.Rounded.Flight, tr("Sky Flap"), tr("Tap to flap through the gaps. Simple, tense, addictive."), bestOf(store, "hs_flap")),
+        HubEntry("dino", Icons.Rounded.Pets, tr("Dino Run"), tr("Jump the cactus, duck the birds. Endless."), bestOf(store, "hs_dino")),
+        HubEntry("invaders", Icons.Rounded.RocketLaunch, tr("Space Invasion"), tr("Shoot the fleet before it reaches you."), bestOf(store, "hs_invaders")),
+        HubEntry("stack", Icons.Rounded.Layers, tr("Stack Tower"), tr("Tap to drop blocks and build the tallest tower. Precision wins."), bestOf(store, "hs_stack")),
+        HubEntry("sudoku", Icons.Rounded.Calculate, tr("Sudoku"), tr("Classic number logic. Three difficulty levels."), if (sudokuBest != null) trf("Best time: %s", fmtTime(sudokuBest.toInt())) else ""),
+        HubEntry("2048", Icons.Rounded.Apps, tr("2048"), tr("Slide and merge tiles. A calm number puzzle."), bestOf(store, "hs_2048")),
+        HubEntry("mines", Icons.Rounded.Warning, tr("Minesweeper"), tr("Clear the field without hitting a mine."), store.getLong("hs_mines").let { if (it > 0L) trf("Best time: %s", fmtTime(it.toInt())) else "" }),
+        HubEntry("yahtzee", Icons.Rounded.Casino, tr("Yahtzee"), tr("Roll five dice, three tries a turn, fill the scoreboard."), bestOf(store, "hs_yahtzee")),
+        HubEntry("memory", Icons.Rounded.Style, tr("Memory Match"), tr("Flip cards and find the pairs in as few moves as you can."), store.getLong("hs_memory").let { if (it > 0L) trf("Best: %d moves", it.toInt()) else "" }),
+        HubEntry("schulte", Icons.Rounded.CenterFocusStrong, tr("Schulte Table"), tr("Find 1 to 25 in order. A classic attention drill."), store.getLong("hs_schulte").let { if (it > 0L) trf("Best time: %s", fmtMs(it)) else "" }),
+        HubEntry("nback", Icons.Rounded.Psychology, tr("N-Back"), tr("A working-memory workout. Spot the square from N steps ago."), store.getLong("hs_nback").let { if (it > 0L) trf("Best: %d-back", it.toInt()) else "" }),
+        HubEntry("react", Icons.Rounded.FlashOn, tr("Reaction Test"), tr("Tap the moment the screen turns green."), store.getLong("hs_react").let { if (it > 0L) trf("Best average: %d ms", it.toInt()) else "" }),
     )
     val land = isLandscape()
     val gridState = rememberLazyGridState()
@@ -268,7 +288,7 @@ private fun GamesHub(store: Store, listState: androidx.compose.foundation.lazy.L
                 }
                 items(entries.size, key = { entries[it].id }) { i ->
                     val e = entries[i]
-                    GameCard(e.emoji, e.name, e.blurb, e.best) { onPick(e.id) }
+                    GameCard(e.icon, e.name, e.blurb, e.best) { onPick(e.id) }
                 }
             }
         } else {
@@ -286,7 +306,7 @@ private fun GamesHub(store: Store, listState: androidx.compose.foundation.lazy.L
                 }
                 items(entries.size, key = { entries[it].id }) { i ->
                     val e = entries[i]
-                    GameCard(e.emoji, e.name, e.blurb, e.best) { onPick(e.id) }
+                    GameCard(e.icon, e.name, e.blurb, e.best) { onPick(e.id) }
                 }
             }
         }
@@ -294,10 +314,15 @@ private fun GamesHub(store: Store, listState: androidx.compose.foundation.lazy.L
 }
 
 @Composable
-private fun GameCard(emoji: String, name: String, blurb: String, best: String, onClick: () -> Unit) {
+private fun GameCard(icon: ImageVector, name: String, blurb: String, best: String, onClick: () -> Unit) {
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(emoji, fontSize = 38.sp)
+            Box(
+                Modifier.size(50.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
+            }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

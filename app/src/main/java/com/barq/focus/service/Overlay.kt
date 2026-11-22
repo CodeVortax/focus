@@ -298,7 +298,7 @@ class Overlay private constructor(private val ctx: Context) {
             }
         }
 
-        // reasons as tiles (two per row): emoji, name, and the minutes below
+        // reasons as tiles (two per row): crisp vector glyph, name, and the minutes below
         fun tile(ch: Choice): View = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
@@ -309,8 +309,10 @@ class Overlay private constructor(private val ctx: Context) {
                 setStroke(dp(1), ColorUtils.setAlphaComponent(ch.color, 120))
             }
             val parts = ch.label.split("  ·  ", limit = 2)
-            if (ch.icon.isNotEmpty()) addView(tv(ch.icon, 24f, pal.on))
-            addView(tv(parts[0], 16f, pal.on, true).apply { setPadding(0, dp(4), 0, 0) })
+            if (ch.icon.isNotEmpty()) {
+                addView(ChoiceGlyphView(ctx, ch.icon, ch.color), LinearLayout.LayoutParams(dp(24), dp(24)))
+            }
+            addView(tv(parts[0], 16f, pal.on, true).apply { setPadding(0, dp(6), 0, 0) })
             val sub = parts.getOrNull(1) ?: if (ch.wait > 0) trf("Breathe… %ds", ch.wait) else ""
             if (sub.isNotEmpty()) addView(tv(sub, 13f, pal.dim))
             if (!ch.enabled) alpha = 0.4f
@@ -501,5 +503,82 @@ class Overlay private constructor(private val ctx: Context) {
     private fun dropAudio() {
         try { focus?.let { am.abandonAudioFocusRequest(it) } } catch (_: Exception) {}
         focus = null
+    }
+}
+
+private class ChoiceGlyphView(c: Context, private val kind: String, tint: Int) : View(c) {
+    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        color = tint
+    }
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = tint
+    }
+
+    override fun onDraw(cv: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        val u = minOf(w, h)
+        stroke.strokeWidth = u * 0.10f
+        when (kind) {
+            "search" -> {
+                cv.drawCircle(u * 0.42f, u * 0.42f, u * 0.27f, stroke)
+                cv.drawLine(u * 0.62f, u * 0.62f, u * 0.85f, u * 0.85f, stroke)
+            }
+            "link" -> {
+                val r = RectF(u * 0.14f, u * 0.32f, u * 0.62f, u * 0.68f)
+                cv.drawRoundRect(r, u * 0.18f, u * 0.18f, stroke)
+                val r2 = RectF(u * 0.38f, u * 0.32f, u * 0.86f, u * 0.68f)
+                cv.drawRoundRect(r2, u * 0.18f, u * 0.18f, stroke)
+            }
+            "timer" -> {
+                cv.drawCircle(u * 0.50f, u * 0.54f, u * 0.34f, stroke)
+                cv.drawLine(u * 0.50f, u * 0.54f, u * 0.50f, u * 0.34f, stroke)
+                cv.drawLine(u * 0.50f, u * 0.54f, u * 0.66f, u * 0.54f, stroke)
+                cv.drawLine(u * 0.40f, u * 0.12f, u * 0.60f, u * 0.12f, stroke)
+            }
+            "treat" -> {
+                val p = android.graphics.Path().apply {
+                    moveTo(u * 0.50f, u * 0.12f)
+                    lineTo(u * 0.61f, u * 0.36f)
+                    lineTo(u * 0.88f, u * 0.39f)
+                    lineTo(u * 0.68f, u * 0.57f)
+                    lineTo(u * 0.73f, u * 0.84f)
+                    lineTo(u * 0.50f, u * 0.71f)
+                    lineTo(u * 0.27f, u * 0.84f)
+                    lineTo(u * 0.32f, u * 0.57f)
+                    lineTo(u * 0.12f, u * 0.39f)
+                    lineTo(u * 0.39f, u * 0.36f)
+                    close()
+                }
+                cv.drawPath(p, stroke)
+            }
+            "all" -> {
+                cv.drawLine(u * 0.50f, u * 0.14f, u * 0.50f, u * 0.86f, stroke)
+                cv.drawLine(u * 0.14f, u * 0.50f, u * 0.86f, u * 0.50f, stroke)
+                cv.drawLine(u * 0.24f, u * 0.24f, u * 0.76f, u * 0.76f, stroke)
+                cv.drawLine(u * 0.76f, u * 0.24f, u * 0.24f, u * 0.76f, stroke)
+            }
+            "distracted" -> {
+                cv.drawCircle(u * 0.50f, u * 0.50f, u * 0.34f, stroke)
+                cv.drawCircle(u * 0.50f, u * 0.50f, u * 0.14f, stroke)
+            }
+            "emergency" -> {
+                val p = android.graphics.Path().apply {
+                    moveTo(u * 0.50f, u * 0.14f)
+                    lineTo(u * 0.86f, u * 0.82f)
+                    lineTo(u * 0.14f, u * 0.82f)
+                    close()
+                }
+                cv.drawPath(p, stroke)
+                cv.drawLine(u * 0.50f, u * 0.38f, u * 0.50f, u * 0.60f, stroke)
+                cv.drawCircle(u * 0.50f, u * 0.71f, u * 0.045f, fill)
+            }
+            else -> cv.drawCircle(u * 0.50f, u * 0.50f, u * 0.24f, fill)
+        }
     }
 }

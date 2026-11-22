@@ -49,6 +49,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -248,7 +249,11 @@ fun SubjectScreen(store: Store, initial: FocusCard, onExit: () -> Unit, onSettin
                                 store.startActive(card.id, System.currentTimeMillis() + 5 * 60_000L)
                                 store.challengeAccepted()
                                 refresh()
-                            }) { Text("⚡ " + tr("5-min spark")) }
+                            }) {
+                                Icon(Icons.Rounded.Bolt, null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(tr("5-min spark"))
+                            }
                         }
                         listOf(1, 5, 10).forEach { m -> OutlinedButton(onClick = { addMinutes(m) }) { Text("+${m}m") } }
                     }

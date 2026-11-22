@@ -1,4 +1,4 @@
-name: Signed build on code change
+name: Signed Release & Auto Bump
 
 on:
   push:
@@ -14,8 +14,13 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: auto-release-main
+  cancel-in-progress: false
+
 jobs:
-  build:
+  signed-release:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
 
     steps:
@@ -23,6 +28,66 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump version by +0.1 and push commit
+        id: bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          python3 - <<'PY'
+          import re, subprocess
+
+          with open("app/build.gradle.kts", "r", encoding="utf-8") as f:
+              src = f.read()
+
+          vc_m = re.search(r'versionCode\s*=\s*(\d+)', src)
+          vn_m = re.search(r'versionName\s*=\s*"([^"]+)"', src)
+          if not vc_m or not vn_m:
+              raise SystemExit("Could not find versionCode or versionName in app/build.gradle.kts")
+
+          old_code = int(vc_m.group(1))
+          old_name = vn_m.group(1)
+
+          existing_tags = set(subprocess.check_output(["git", "tag", "-l"], text=True).splitlines())
+
+          m = re.match(r'^(\d+)\.(\d+)\.(\d+)(.*)$', old_name)
+          new_code = old_code + 1
+          if m:
+              maj, minor, patch, suffix = int(m.group(1)), int(m.group(2)) + 1, int(m.group(3)), m.group(4)
+              while f"v{maj}.{minor}.{patch}{suffix}" in existing_tags:
+                  minor += 1
+              new_name = f"{maj}.{minor}.{patch}{suffix}"
+          else:
+              m2 = re.match(r'^(\d+)\.(\d+)(.*)$', old_name)
+              if not m2:
+                  raise SystemExit(f"Unsupported versionName format: {old_name}")
+              maj, minor, suffix = int(m2.group(1)), int(m2.group(2)) + 1, m2.group(3)
+              while f"v{maj}.{minor}{suffix}" in existing_tags:
+                  minor += 1
+              new_name = f"{maj}.{minor}{suffix}"
+
+          updated = re.sub(r'(versionCode\s*=\s*)\d+', rf'\g<1>{new_code}', src, count=1)
+          updated = re.sub(r'(versionName\s*=\s*")[^"]+(")', rf'\g<1>{new_name}\g<2>', updated, count=1)
+
+          with open("app/build.gradle.kts", "w", encoding="utf-8") as f:
+              f.write(updated)
+
+          print(f"Bumped {old_name} ({old_code}) -> {new_name} ({new_code})")
+          with open("/tmp/bumped_ver.env", "w") as out:
+              out.write(f"NEW_CODE={new_code}\nNEW_NAME={new_name}\n")
+          PY
+
+          cat /tmp/bumped_ver.env >> "$GITHUB_ENV"
+          source /tmp/bumped_ver.env
+
+          git add app/build.gradle.kts
+          git commit -m "chore: bump version to v${NEW_NAME} [skip ci]"
+          git pull --rebase origin main || true
+          git push origin HEAD:main
+
+          echo "RELEASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -47,6 +112,10 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::KEYSTORE_BASE64 secret is missing. Signed release cannot be built without signing secrets."
+            exit 1
+          fi
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           {
             echo "storeFile=$RUNNER_TEMP/release.jks"
@@ -55,62 +124,53 @@ jobs:
             echo "keyPassword=$KEY_PASSWORD"
           } > keystore.properties
 
-      - name: Read version and detect a version bump
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          VN=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
-          VC=$(grep -oP 'versionCode = \K[0-9]+' app/build.gradle.kts)
-          echo "VERSION_NAME=$VN" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$VC" >> "$GITHUB_ENV"
-          BUMP=false
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ -n "$BEFORE" ] && ! echo "$BEFORE" | grep -qE '^0+$'; then
-            if git diff "$BEFORE" HEAD -- app/build.gradle.kts | grep -qE '^\+\s*versionName'; then
-              BUMP=true
-            fi
-          fi
-          echo "BUMP=$BUMP" >> "$GITHUB_ENV"
-          echo "version $VN (code $VC), version bump in this push: $BUMP"
-
       - name: Build signed release APKs
         run: gradle assembleRelease --stacktrace
 
-      - name: Verify signatures and name the files
+      - name: Verify signatures and package signed APKs and zip
         run: |
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
-          mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/focus-v${VERSION_NAME}.apk"
-          cp ai/build/outputs/apk/release/ai-release.apk "dist/focus-study-mate-v${VERSION_NAME}.apk"
-          for f in dist/*.apk; do
+          mkdir -p dist-signed
+          cp app/build/outputs/apk/release/app-release.apk "dist-signed/focus-signed-v${NEW_NAME}.apk"
+          cp ai/build/outputs/apk/release/ai-release.apk "dist-signed/focus-study-mate-signed-v${NEW_NAME}.apk"
+          for f in dist-signed/*.apk; do
             "$BT/apksigner" verify --print-certs "$f"
           done
-          (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+          (cd dist-signed && sha256sum *.apk > SHA256SUMS-signed.txt && zip -9 "focus-signed-v${NEW_NAME}.zip" focus-signed-*.apk focus-study-mate-signed-*.apk SHA256SUMS-signed.txt)
 
       - name: Remove signing material
         if: always()
         run: rm -f keystore.properties "$RUNNER_TEMP/release.jks"
 
-      - name: Keep APKs as an artifact
+      - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: focus-signed-apks
-          path: dist/*
+          name: focus-signed-apks-v${{ env.NEW_NAME }}
+          path: dist-signed/*
 
       - name: Prepare release notes
-        if: env.BUMP == 'true'
         env:
           BEFORE: ${{ github.event.before }}
         run: |
-          F="fastlane/metadata/android/en-US/changelogs/${VERSION_CODE}.txt"
-          if [ -f "$F" ]; then cp "$F" notes.md; else git log "$BEFORE"..HEAD --pretty='- %s' > notes.md; fi
+          F="fastlane/metadata/android/en-US/changelogs/${NEW_CODE}.txt"
+          if [ -f "$F" ]; then
+            cp "$F" notes.md
+          elif [ -n "$BEFORE" ] && ! echo "$BEFORE" | grep -qE '^0+$'; then
+            git log "${BEFORE}..${RELEASE_SHA}" --pretty='- %s' > notes.md 2>/dev/null || git log -n 10 --pretty='- %s' > notes.md
+          else
+            git log -n 10 --pretty='- %s' > notes.md
+          fi
+          if [ ! -s notes.md ]; then
+            echo "Signed release v${NEW_NAME}" > notes.md
+          fi
 
-      - name: Publish GitHub release (only when versionName changed)
-        if: env.BUMP == 'true'
+      - name: Publish GitHub Release automatically
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.VERSION_NAME }}
-          target_commitish: ${{ github.sha }}
-          name: Focus v${{ env.VERSION_NAME }}
-          files: dist/*
-          prerelease: ${{ contains(env.VERSION_NAME, 'beta') }}
+          tag_name: v${{ env.NEW_NAME }}
+          target_commitish: ${{ env.RELEASE_SHA }}
+          name: Focus v${{ env.NEW_NAME }}
+          files: dist-signed/*
+          prerelease: ${{ contains(env.NEW_NAME, 'beta') }}
           body_path: notes.md
+          make_latest: ${{ !contains(env.NEW_NAME, 'beta') }}

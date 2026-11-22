@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CrisisAlert
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -167,8 +170,18 @@ fun MinesGame(store: Store, onBack: () -> Unit) {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     when {
-                                        showMine && v != 2 -> Text("💣", fontSize = iconSp)
-                                        v == 2 -> Text("🚩", fontSize = iconSp)
+                                        showMine && v != 2 -> Icon(
+                                            Icons.Rounded.CrisisAlert,
+                                            contentDescription = tr("Mine"),
+                                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        v == 2 -> Icon(
+                                            Icons.Rounded.Flag,
+                                            contentDescription = tr("Flag"),
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                         v == 1 && s.adj[i] > 0 -> Text(
                                             "${s.adj[i]}", fontWeight = FontWeight.Bold, fontSize = numSp,
                                             color = MINE_NUM_COLORS[s.adj[i]]
@@ -196,8 +209,15 @@ fun MinesGame(store: Store, onBack: () -> Unit) {
                             ScoreBox(tr("Time"), fmtTime(s.seconds), Modifier.weight(1f))
                             ScoreBox(tr("Best"), if (best > 0L) fmtTime(best.toInt()) else "-", Modifier.weight(1f))
                         }
-                        if (s.flagMode) Button(onClick = { s.flagMode = false }) { Text("🚩 " + tr("Flag mode")) }
-                        else OutlinedButton(onClick = { s.flagMode = true }) { Text("🚩 " + tr("Flag mode")) }
+                        if (s.flagMode) Button(onClick = { s.flagMode = false }) {
+                            Icon(Icons.Rounded.Flag, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(tr("Flag mode"))
+                        } else OutlinedButton(onClick = { s.flagMode = true }) {
+                            Icon(Icons.Rounded.Flag, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(tr("Flag mode"))
+                        }
                         Text(tr("Tap to dig. Long-press or use flag mode to mark a mine. Tap a number to clear around it."), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
                     }
                     boardGrid(Modifier.fillMaxHeight().aspectRatio(1f))
@@ -219,8 +239,15 @@ fun MinesGame(store: Store, onBack: () -> Unit) {
                         Modifier.widthIn(max = 420.dp).fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (s.flagMode) Button(onClick = { s.flagMode = false }) { Text("🚩 " + tr("Flag mode")) }
-                        else OutlinedButton(onClick = { s.flagMode = true }) { Text("🚩 " + tr("Flag mode")) }
+                        if (s.flagMode) Button(onClick = { s.flagMode = false }) {
+                            Icon(Icons.Rounded.Flag, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(tr("Flag mode"))
+                        } else OutlinedButton(onClick = { s.flagMode = true }) {
+                            Icon(Icons.Rounded.Flag, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(tr("Flag mode"))
+                        }
                     }
                 }
             }

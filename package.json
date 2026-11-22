@@ -1,0 +1,11 @@
+{
+  "name": "focus-android-preview",
+  "private": true,
+  "version": "0.31.0",
+  "scripts": {
+    "dev": "node preview-server.mjs",
+    "start": "node preview-server.mjs",
+    "build": "gradle assembleDebug --console=plain",
+    "lint": "gradle lint --console=plain"
+  }
+}

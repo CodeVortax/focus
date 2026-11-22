@@ -805,8 +805,8 @@ class Store(ctx: Context) {
         get() = p.getInt("pill_shape", 0).coerceIn(0, 4)
         set(v) { p.edit().putInt("pill_shape", v.coerceIn(0, 4)).apply() }
     var pillTopOffsetDp: Int
-        get() = p.getInt("pill_top_offset_dp", 8).coerceIn(0, 32)
-        set(v) { p.edit().putInt("pill_top_offset_dp", v.coerceIn(0, 32)).apply() }
+        get() = p.getInt("pill_top_offset_dp", 0).coerceIn(-20, 28)
+        set(v) { p.edit().putInt("pill_top_offset_dp", v.coerceIn(-20, 28)).apply() }
     var pillWidthDp: Int
         get() = p.getInt("pill_width_dp", 180).coerceIn(130, 260)
         set(v) { p.edit().putInt("pill_width_dp", v.coerceIn(130, 260)).apply() }

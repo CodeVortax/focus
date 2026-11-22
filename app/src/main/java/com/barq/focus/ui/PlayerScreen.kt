@@ -51,6 +51,12 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.rounded.Brightness6
+import androidx.compose.material.icons.rounded.Forward10
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Replay10
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -278,9 +284,9 @@ fun PlayerScreen(store: Store, card0: FocusCard, onExit: () -> Unit, ep: Int = -
                             if (!locked) {
                                 val third = size.width / 3f
                                 when {
-                                    o.x < third -> { exo.seekTo((exo.currentPosition - 10_000L).coerceAtLeast(0L)); showHud("⏪", "-10 s", null) }
-                                    o.x > 2 * third -> { exo.seekTo(exo.currentPosition + 10_000L); showHud("⏩", "+10 s", null) }
-                                    else -> { if (exo.isPlaying) exo.pause() else exo.play(); showHud(if (exo.isPlaying) "⏸" else "▶", "", null) }
+                                    o.x < third -> { exo.seekTo((exo.currentPosition - 10_000L).coerceAtLeast(0L)); showHud("r10", "-10 s", null) }
+                                    o.x > 2 * third -> { exo.seekTo(exo.currentPosition + 10_000L); showHud("f10", "+10 s", null) }
+                                    else -> { if (exo.isPlaying) exo.pause() else exo.play(); showHud(if (exo.isPlaying) "pause" else "play", "", null) }
                                 }
                             }
                         }
@@ -301,18 +307,18 @@ fun PlayerScreen(store: Store, card0: FocusCard, onExit: () -> Unit, ep: Int = -
                                 1 -> {
                                     volF = (volF - drag.y / (size.height * 0.75f)).coerceIn(0f, 1f)
                                     audio.setStreamVolume(AudioManager.STREAM_MUSIC, (volF * maxVol).roundToInt(), 0)
-                                    showHud("🔊", "${(volF * 100).roundToInt()}%", volF)
+                                    showHud("vol", "${(volF * 100).roundToInt()}%", volF)
                                 }
                                 2 -> {
                                     briF = (briF - drag.y / (size.height * 0.75f)).coerceIn(0.02f, 1f)
                                     window?.let { w -> val lp = w.attributes; lp.screenBrightness = briF; w.attributes = lp }
-                                    showHud("☀️", "${(briF * 100).roundToInt()}%", briF)
+                                    showHud("bri", "${(briF * 100).roundToInt()}%", briF)
                                 }
                                 3 -> {
                                     acc += drag.x
                                     target = (startPos + acc / size.width * 120_000f).toLong().coerceIn(0L, max(dur, 1L))
                                     val d = (target - startPos) / 1000
-                                    showHud(if (d >= 0) "⏩" else "⏪", clock(target) + "  (" + (if (d >= 0) "+" else "") + d + " s)", null)
+                                    showHud(if (d >= 0) "f10" else "r10", clock(target) + "  (" + (if (d >= 0) "+" else "") + d + " s)", null)
                                 }
                             }
                         },
@@ -328,7 +334,16 @@ fun PlayerScreen(store: Store, card0: FocusCard, onExit: () -> Unit, ep: Int = -
                 Modifier.align(Alignment.Center).clip(RoundedCornerShape(20.dp)).background(Color(0xCC000000)).padding(horizontal = 22.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(h.icon, fontSize = 30.sp)
+                val vec = when (h.icon) {
+                    "r10" -> Icons.Rounded.Replay10
+                    "f10" -> Icons.Rounded.Forward10
+                    "pause" -> Icons.Rounded.Pause
+                    "play" -> Icons.Rounded.PlayArrow
+                    "vol" -> Icons.Rounded.VolumeUp
+                    "bri" -> Icons.Rounded.Brightness6
+                    else -> Icons.Rounded.PlayArrow
+                }
+                Icon(vec, null, tint = Color.White, modifier = Modifier.size(32.dp))
                 if (h.text.isNotEmpty()) Text(h.text, color = Color.White, fontWeight = FontWeight.SemiBold)
                 h.frac?.let { LinearProgressIndicator(progress = { it }, Modifier.width(120.dp), color = Color.White, trackColor = Color(0x44FFFFFF)) }
             }

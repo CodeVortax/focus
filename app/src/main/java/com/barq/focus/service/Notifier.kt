@@ -98,7 +98,7 @@ object Notifier {
         if (l.size > 6) box.addLine(trf("+%d more subjects", l.size - 6))
         box.addLine(trf("Treat bank: %s min", store.bankText()))
         box.addLine(trf("Shorts today: %d swiped", store.shortsSwipes()))
-        box.setSummaryText("🔥 " + Game.workStreak(store))
+        box.setSummaryText(tr("Work streak") + ": " + trf("%d d", Game.workStreak(store)))
         return NotificationCompat.Builder(ctx, CH_STATUS)
             .setSmallIcon(android.R.drawable.ic_menu_recent_history)
             .setContentTitle(title)

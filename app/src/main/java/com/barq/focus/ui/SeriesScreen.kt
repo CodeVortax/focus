@@ -34,6 +34,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -169,7 +172,11 @@ fun SeriesScreen(store: Store, card0: FocusCard, onBack: () -> Unit, onPlay: (In
                                 }
                             }
                             if (left > 0 && !e.done) TextButton(onClick = { giveBack = i }) { Text(tr("Return")) }
-                            Text(if (e.done) "✓" else if (e.locked) "🔒" else if (left > 0) "▶" else "", style = MaterialTheme.typography.titleLarge)
+                            when {
+                                e.done -> Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                                e.locked -> Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                left > 0 -> Icon(Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.primary)
+                            }
                         }
                     }
                 }

@@ -24,6 +24,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.Payments
+import androidx.compose.material.icons.rounded.Report
+import androidx.compose.material.icons.rounded.Savings
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,17 +76,23 @@ fun PiggyScreen(store: Store, onBack: () -> Unit) {
             item {
                 Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("\uD83D\uDC37  " + trf("%s min in the piggy", minText(balance)), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Rounded.Savings, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                            Text(trf("%s min in the piggy", minText(balance)), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        }
                         lots.firstOrNull()?.let {
                             Text(trf("Next payout: %s min in %d days", minText(it.sec + it.sec * rate / 100), Vault.daysLeft(it)), style = MaterialTheme.typography.bodyMedium)
                         } ?: Text(tr("Empty for now. Leave some treat time unspent and it lands here tonight."), style = MaterialTheme.typography.bodyMedium)
                         if (tonightSec >= 60) {
                             val projected = tonightSec + tonightSec * rate / 100
-                            Text(
-                                "\uD83C\uDF19  " + trf("Going in tonight: %s min (pays %s min in 7 days)", minText(tonightSec), minText(projected)),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Icon(Icons.Rounded.Bedtime, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
+                                Text(
+                                    trf("Going in tonight: %s min (pays %s min in 7 days)", minText(tonightSec), minText(projected)),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                         Text(
                             if (nextTier != null) trf("Level %d perk: %d%% interest (next: %d%% at Lv %d)", level, rate, nextTier.second, nextTier.first)
@@ -94,7 +106,7 @@ fun PiggyScreen(store: Store, onBack: () -> Unit) {
             item {
                 Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("\uD83D\uDEE1\uFE0F", style = MaterialTheme.typography.headlineMedium)
+                        Icon(Icons.Rounded.Shield, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(trf("Piggy Shields: %d / 2", shields), fontWeight = FontWeight.Bold)
                             Text(
@@ -140,15 +152,15 @@ fun PiggyScreen(store: Store, onBack: () -> Unit) {
             if (ledger.isEmpty()) item { Text(tr("Nothing yet. The first deposit or fine shows up here.")) }
             items(ledger) { e ->
                 val (icon, tint) = when (e.kind) {
-                    "fine" -> "\uD83D\uDEA8" to MaterialTheme.colorScheme.error
-                    "shield" -> "\uD83D\uDEE1\uFE0F" to MaterialTheme.colorScheme.primary
-                    "warn" -> "\u26A0\uFE0F" to MaterialTheme.colorScheme.onSurfaceVariant
-                    "rel" -> "\uD83D\uDCB0" to MaterialTheme.colorScheme.primary
-                    else -> "\uD83D\uDC37" to MaterialTheme.colorScheme.onSurface
+                    "fine" -> Icons.Rounded.Report to MaterialTheme.colorScheme.error
+                    "shield" -> Icons.Rounded.Shield to MaterialTheme.colorScheme.primary
+                    "warn" -> Icons.Rounded.Warning to MaterialTheme.colorScheme.onSurfaceVariant
+                    "rel" -> Icons.Rounded.Payments to MaterialTheme.colorScheme.primary
+                    else -> Icons.Rounded.Savings to MaterialTheme.colorScheme.onSurface
                 }
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(icon, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(end = 12.dp))
+                        Icon(icon, null, tint = tint, modifier = Modifier.padding(end = 12.dp).size(24.dp))
                         Column(Modifier.weight(1f)) {
                             Text(tr(e.title), fontWeight = FontWeight.SemiBold)
                             if (e.text.isNotEmpty()) Text(tr(e.text), style = MaterialTheme.typography.bodyMedium)

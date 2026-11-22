@@ -132,7 +132,9 @@ fun VoiceSection(voices: List<Voice>, onChange: (List<Voice>) -> Unit, tint: Col
         voices.forEach { v ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 VoicePlayButton(v.file, tint)
-                Text("🎤  " + Voices.clock(v.ms), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Icon(Icons.Default.Mic, null, tint = tint, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(Voices.clock(v.ms), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 IconButton(onClick = {
                     if (VoicePlayer.playing == v.file) VoicePlayer.stop()
                     Voices.delete(ctx, v.file)

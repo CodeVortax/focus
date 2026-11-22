@@ -1,12 +1,15 @@
-name: Build Focus APK
+name: Debug Build & Test
 
 on:
   push:
+    branches-ignore:
+      - 'v*'
   pull_request:
   workflow_dispatch:
 
 jobs:
-  build:
+  debug-build:
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
 
     steps:
@@ -35,10 +38,17 @@ jobs:
       - name: Build debug APKs
         run: gradle assembleDebug --stacktrace
 
-      - name: Upload APK artifacts
+      - name: Package distinctly named debug APKs and zip
+        run: |
+          VN=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          echo "VERSION_NAME=$VN" >> "$GITHUB_ENV"
+          mkdir -p dist-debug
+          cp app/build/outputs/apk/debug/app-debug.apk "dist-debug/focus-debug-v${VN}.apk"
+          cp ai/build/outputs/apk/debug/ai-debug.apk "dist-debug/focus-study-mate-debug-v${VN}.apk"
+          (cd dist-debug && sha256sum *.apk > SHA256SUMS-debug.txt && zip -9 "focus-debug-v${VN}.zip" focus-debug-*.apk focus-study-mate-debug-*.apk SHA256SUMS-debug.txt)
+
+      - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: focus-debug-apk
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            ai/build/outputs/apk/debug/ai-debug.apk
+          name: focus-debug-apks-v${{ env.VERSION_NAME }}
+          path: dist-debug/*

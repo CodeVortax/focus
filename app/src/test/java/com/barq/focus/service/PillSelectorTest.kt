@@ -95,4 +95,29 @@ class PillSelectorTest {
         assertFalse(PillShape.SIDE_LEFT.isFlushTop)
         assertFalse(PillShape.SIDE_RIGHT.isFlushTop)
     }
+
+    @Test fun emitsSecondaryCircleWhenTimerAndFocusMusicRunTogether() {
+        val input = baseInput(now = 5_000L).copy(
+            activeCardId = 3L,
+            cardTitle = "Chemistry",
+            cardMinutes = 30,
+            activeEnd = 5_000L + 15 * 60_000L,
+            focusMusicPlaying = true,
+            focusMusicActive = true,
+            focusMusicId = 42L,
+            focusMusicTitle = "Rain Lo-Fi",
+            focusMusicArtist = "Focus Tapes",
+            focusMusicPosMs = 65_000L,
+            focusMusicDurMs = 180_000L,
+        )
+        val dual = PillSelector.selectDual(input)
+        assertNotNull(dual)
+        assertEquals(PillKind.TIMER, dual?.primary?.kind)
+        assertEquals("Chemistry", dual?.primary?.label)
+        assertNotNull(dual?.secondary)
+        assertEquals(PillKind.FOCUS_MUSIC, dual?.secondary?.kind)
+        assertEquals("Rain Lo-Fi", dual?.secondary?.label)
+        assertEquals("Focus Tapes", dual?.secondary?.artist)
+        assertTrue(dual?.secondary?.mediaPlaying == true)
+    }
 }

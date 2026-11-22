@@ -27,7 +27,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -419,9 +423,9 @@ private fun SudokuBoard(s: SdState, levelName: String) {
                     Text(fmtTime(s.seconds), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ToolButton("✏️ " + tr("Notes") + (if (s.notesMode) " ✓" else ""), Modifier.weight(1f), s.notesMode) { s.notesMode = !s.notesMode }
-                    ToolButton("⌫ " + tr("Erase"), Modifier.weight(1f), false) { s.erase() }
-                    ToolButton("💡 " + tr("Hint") + " ${HINT_MAX[s.diff] - s.hints}", Modifier.weight(1f), false) { s.hint() }
+                    ToolButton(Icons.Rounded.Edit, tr("Notes"), Modifier.weight(1f), s.notesMode) { s.notesMode = !s.notesMode }
+                    ToolButton(Icons.AutoMirrored.Rounded.Backspace, tr("Erase"), Modifier.weight(1f), false) { s.erase() }
+                    ToolButton(Icons.Rounded.Lightbulb, tr("Hint") + " ${HINT_MAX[s.diff] - s.hints}", Modifier.weight(1f), false) { s.hint() }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (d in 1..5) SudokuDigitKey(s, d, Modifier.weight(1f))
@@ -445,12 +449,9 @@ private fun SudokuBoard(s: SdState, levelName: String) {
             }
             SudokuGridCanvas(s, hidden, Modifier.widthIn(max = 460.dp).fillMaxWidth().aspectRatio(1f))
             Row(Modifier.widthIn(max = 460.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ToolButton(
-                    "✏️ " + tr("Notes") + (if (s.notesMode) " ✓" else ""),
-                    Modifier.weight(1f), s.notesMode
-                ) { s.notesMode = !s.notesMode }
-                ToolButton("⌫ " + tr("Erase"), Modifier.weight(1f), false) { s.erase() }
-                ToolButton("💡 " + tr("Hint") + " ${HINT_MAX[s.diff] - s.hints}", Modifier.weight(1f), false) { s.hint() }
+                ToolButton(Icons.Rounded.Edit, tr("Notes"), Modifier.weight(1f), s.notesMode) { s.notesMode = !s.notesMode }
+                ToolButton(Icons.AutoMirrored.Rounded.Backspace, tr("Erase"), Modifier.weight(1f), false) { s.erase() }
+                ToolButton(Icons.Rounded.Lightbulb, tr("Hint") + " ${HINT_MAX[s.diff] - s.hints}", Modifier.weight(1f), false) { s.hint() }
             }
             Row(Modifier.widthIn(max = 460.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (d in 1..9) SudokuDigitKey(s, d, Modifier.weight(1f))
@@ -460,12 +461,23 @@ private fun SudokuBoard(s: SdState, levelName: String) {
 }
 
 @Composable
-private fun ToolButton(label: String, modifier: Modifier, active: Boolean, onClick: () -> Unit) {
+private fun ToolButton(icon: ImageVector, label: String, modifier: Modifier, active: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    Box(
+    Row(
         modifier.height(44.dp).clip(RoundedCornerShape(12.dp))
             .background(if (active) scheme.primaryContainer else scheme.surfaceVariant)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) { Text(label, fontSize = 13.sp, maxLines = 1) }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(Modifier.width(5.dp))
+        Text(label, fontSize = 13.sp, maxLines = 1)
+    }
 }

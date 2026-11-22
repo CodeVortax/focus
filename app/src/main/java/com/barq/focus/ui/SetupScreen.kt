@@ -290,18 +290,19 @@ fun SetupScreen(store: Store, onBack: () -> Unit, onTour: () -> Unit = {}) {
                         valueRange = 140f..250f,
                         steps = 10
                     )
-                    if (!activeShape.isFlushTop) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(tr("Top offset"), Modifier.weight(1f))
-                            Text("${pillOffset} dp", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(tr("Top offset"))
+                            Text(tr("Negative moves the pill higher above the notification icons."), style = MaterialTheme.typography.bodySmall)
                         }
-                        Slider(
-                            value = pillOffset.toFloat(),
-                            onValueChange = { v -> pillOffset = v.toInt(); store.pillTopOffsetDp = pillOffset },
-                            valueRange = 0f..28f,
-                            steps = 13
-                        )
+                        Text("${pillOffset} dp", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     }
+                    Slider(
+                        value = pillOffset.toFloat(),
+                        onValueChange = { v -> pillOffset = v.toInt(); store.pillTopOffsetDp = pillOffset },
+                        valueRange = -20f..28f,
+                        steps = 23
+                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(tr("Show in landscape"))
@@ -690,7 +691,7 @@ private fun PillPreviewCard(shape: PillShape, widthDp: Int, offsetDp: Int, accen
             val h = size.height
             val pillW = (widthDp.toFloat() / 360f).coerceIn(0.36f, 0.78f) * w
             val pillH = if (shape.isFlushTop) 32.dp.toPx() else 28.dp.toPx()
-            val y = if (shape.isFlushTop) 0f else (offsetDp.dp.toPx() * 0.45f).coerceIn(2.dp.toPx(), h - pillH - 4.dp.toPx())
+            val y = if (shape.isFlushTop) 0f else ((offsetDp + 10).dp.toPx() * 0.45f).coerceIn(0f, h - pillH - 4.dp.toPx())
             val x = when (shape) {
                 PillShape.SIDE_LEFT -> 12.dp.toPx()
                 PillShape.SIDE_RIGHT -> w - pillW - 12.dp.toPx()
