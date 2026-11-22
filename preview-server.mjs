@@ -2,7 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const PORT = Number(process.env.APP_PORT || 3000);
+const PORT = Number(process.env.APP_PORT || process.env.DEFAULT_APP_PORT || 3000);
 const ROOT = process.cwd();
 
 const APK_FILES = {
@@ -150,10 +150,11 @@ gradle assembleDebug</pre>
 
 const server = http.createServer((req, res) => {
   const urlPath = (req.url || '/').split('?')[0];
+  const isHead = req.method === 'HEAD';
 
   if (urlPath === '/health' || urlPath === '/healthz') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true }));
+    res.end(isHead ? undefined : JSON.stringify({ ok: true }));
     return;
   }
 
@@ -162,7 +163,7 @@ const server = http.createServer((req, res) => {
     const found = findExisting(apkCandidates);
     if (!found) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('APK not built yet. Run gradle assembleDebug first.');
+      res.end(isHead ? undefined : 'APK not built yet. Run gradle assembleDebug first.');
       return;
     }
     const filename = path.basename(urlPath);
@@ -171,16 +172,31 @@ const server = http.createServer((req, res) => {
       'Content-Length': String(found.size),
       'Content-Disposition': `attachment; filename="${filename}"`,
     });
-    fs.createReadStream(found.path).pipe(res);
+    if (isHead) {
+      res.end();
+      return;
+    }
+    const stream = fs.createReadStream(found.path);
+    stream.on('error', () => {
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
+    stream.pipe(res);
     return;
   }
 
   const html = renderHtml();
   res.writeHead(200, {
     'Content-Type': 'text/html; charset=utf-8',
+    'Content-Length': String(Buffer.byteLength(html)),
     'Cache-Control': 'no-cache',
   });
-  res.end(html);
+  res.end(isHead ? undefined : html);
+});
+
+server.on('error', (err) => {
+  console.error('Preview server error:', err);
+  process.exit(1);
 });
 
 server.listen(PORT, '0.0.0.0', () => {

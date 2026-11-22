@@ -127,6 +127,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
@@ -544,9 +545,14 @@ class Pill(private val ctx: Context) {
         val owner = PillLifecycleOwner().also { it.onAttach() }
         val host = OutsideAwareHost(overlayCtx) {
             if (uiState.expanded) collapseFromUser()
+        }.apply {
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
         }
         val cv = ComposeView(overlayCtx).apply {
             fitsSystemWindows = false
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setViewTreeLifecycleOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
             setViewTreeViewModelStoreOwner(owner)
@@ -615,12 +621,29 @@ class Pill(private val ctx: Context) {
         applyGeometryToParams(params)
         disableMoveAnimation(params)
 
-        wm.addView(host, params)
-        activeWm = wm
+        try {
+            wm.addView(host, params)
+            activeWm = wm
+        } catch (e: Exception) {
+            if (usingA11yOverlay) {
+                val appWm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                val fallbackParams = createLayoutParams(false).also {
+                    applyGeometryToParams(it)
+                    disableMoveAnimation(it)
+                }
+                usingA11yOverlay = false
+                appWm.addView(host, fallbackParams)
+                activeWm = appWm
+                lp = fallbackParams
+            } else {
+                owner.onDetach()
+                throw e
+            }
+        }
+        if (lp == null) lp = params
         root = host
         composeView = cv
         lifecycleOwner = owner
-        lp = params
         lastWindowExpanded = uiState.expanded
     }
 
